@@ -1,14 +1,15 @@
 //! USB communication interface for the Texas Instruments XDS110 EnergyTrace probe.
 
-use rusb::{Context, DeviceHandle, UsbContext};
+use rusb::{Context, Device, DeviceHandle, UsbContext};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use crate::config::{CMD_IF, CMD_IN_EP, CMD_OUT_EP, CMD_TIMEOUT_MS, DATA_IF, DATA_IN_EP, PID, VID};
 use crate::protocol::{
-    CMD_CALIBRATE, CMD_CLEANUP, CMD_CONNECT, CMD_DCDC_RESTART, CMD_DCDC_SET_VCC, CMD_DISCONNECT,
-    CMD_HWINFO, CMD_SET_DIG, CMD_SET_RANGE, CMD_SET_SRST, CMD_SETUP, CMD_STOP, Calibration,
-    ProtocolError, decode_response, encode_command,
+    CMD_CALIBRATE, CMD_CLEANUP, CMD_CONNECT, CMD_DISCONNECT, CMD_HWINFO, CMD_SET_DIG,
+    CMD_SET_RANGE, CMD_SET_SRST, CMD_SETUP, CMD_STOP, Calibration, ProtocolError, decode_response,
+    encode_command,
 };
 
 #[derive(Debug)]
@@ -34,6 +35,18 @@ impl std::fmt::Display for ProbeError {
 
 impl std::error::Error for ProbeError {}
 
+/// Locate the XDS110 probe on the USB bus.
+pub fn find_device(context: &Context) -> Result<Device<Context>, ProbeError> {
+    context
+        .devices()?
+        .iter()
+        .find(|d| {
+            d.device_descriptor()
+                .is_ok_and(|desc| desc.vendor_id() == VID && desc.product_id() == PID)
+        })
+        .ok_or(ProbeError::DeviceNotFound)
+}
+
 impl From<rusb::Error> for ProbeError {
     fn from(e: rusb::Error) -> Self {
         Self::Usb(e)
@@ -48,11 +61,12 @@ impl From<ProtocolError> for ProbeError {
 
 pub struct Xds110 {
     handle: Arc<DeviceHandle<Context>>,
+    shut_down: AtomicBool,
 }
 
 impl Xds110 {
     /// Open the XDS110 probe, set its configuration, and claim interfaces.
-    pub fn open(_reset: bool) -> Result<Self, ProbeError> {
+    pub fn open() -> Result<Self, ProbeError> {
         let context = Context::new()?;
         let handle = Self::find_device(&context)?;
 
@@ -80,18 +94,12 @@ impl Xds110 {
 
         Ok(Self {
             handle: Arc::new(handle),
+            shut_down: AtomicBool::new(false),
         })
     }
 
     fn find_device(context: &Context) -> Result<DeviceHandle<Context>, ProbeError> {
-        for device in context.devices()?.iter() {
-            if let Ok(desc) = device.device_descriptor() {
-                if desc.vendor_id() == VID && desc.product_id() == PID {
-                    return Ok(device.open()?);
-                }
-            }
-        }
-        Err(ProbeError::DeviceNotFound)
+        Ok(find_device(context)?.open()?)
     }
 
     /// Clone the thread-safe device handle reference
@@ -202,22 +210,12 @@ impl Xds110 {
         Ok(())
     }
 
-    /// Restart the target MCU via DCDC restart (Cmd 0x25: ET_DCDC_RestartMCU)
-    pub fn restart_mcu(&self) -> Result<(), ProbeError> {
-        let _ = self.cmd(CMD_CONNECT, &[], 2);
-        self.cmd(CMD_DCDC_RESTART, &[], 2)?;
-        Ok(())
-    }
-
-    /// Set the target DCDC VCC supply voltage in millivolts (Cmd 0x24: ET_DCDC_SetVcc)
-    pub fn set_vcc(&self, millivolts: u16) -> Result<(), ProbeError> {
-        let _ = self.cmd(CMD_CONNECT, &[], 2);
-        self.cmd(CMD_DCDC_SET_VCC, &millivolts.to_le_bytes(), 2)?;
-        Ok(())
-    }
-
     /// Perform clean probe shutdown sequence (STOP, CLEANUP, DISCONNECT).
+    /// Idempotent: only the first call talks to the probe.
     pub fn shutdown(&self) {
+        if self.shut_down.swap(true, Ordering::SeqCst) {
+            return;
+        }
         let _ = self.cmd(CMD_STOP, &[], 1);
         let _ = self.cmd(CMD_CLEANUP, &[], 1);
         let _ = self.cmd(CMD_DISCONNECT, &[], 1);

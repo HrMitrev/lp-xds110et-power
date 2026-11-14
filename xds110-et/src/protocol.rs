@@ -1,5 +1,8 @@
 //! Protocol commands and frame encoding/decoding for XDS110 EnergyTrace.
 
+// The command table documents the full protocol; not every command is used by this tool.
+#![allow(dead_code)]
+
 use std::fmt;
 
 // Protocol command bytes
@@ -77,7 +80,7 @@ pub fn decode_response(cmd: u8, resp: &[u8]) -> Result<Vec<u8>, ProtocolError> {
         return Err(ProtocolError::InvalidMagic(resp[0]));
     }
     let payload_len = u16::from_le_bytes([resp[1], resp[2]]) as usize;
-    if resp.len() < 3 + payload_len {
+    if payload_len < 4 || resp.len() < 3 + payload_len {
         return Err(ProtocolError::LengthMismatch {
             declared: payload_len,
             actual: resp.len() - 3,
@@ -149,6 +152,16 @@ mod tests {
             }
             _ => panic!("Expected CommandFailed"),
         }
+    }
+
+    #[test]
+    fn test_decode_response_short_declared_length_does_not_panic() {
+        // Declared payload (2) is smaller than the 4-byte error code
+        let resp = [b'*', 0x02, 0x00, 0, 0, 0, 0, 0xAA];
+        assert!(matches!(
+            decode_response(CMD_HWINFO, &resp),
+            Err(ProtocolError::LengthMismatch { .. })
+        ));
     }
 
     #[test]

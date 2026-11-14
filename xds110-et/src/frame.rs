@@ -17,6 +17,12 @@ pub struct FrameParser {
     last_seq: Option<u8>,
 }
 
+impl Default for FrameParser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FrameParser {
     pub fn new() -> Self {
         Self {
@@ -24,11 +30,6 @@ impl FrameParser {
             preamble_seen: false,
             last_seq: None,
         }
-    }
-
-    /// Reset sequence tracking (e.g., on reconnect)
-    pub fn reset_seq(&mut self) {
-        self.last_seq = None;
     }
 
     /// Push incoming chunk of bytes
@@ -72,14 +73,7 @@ impl FrameParser {
 
             // Check sequence continuity
             let lost = match self.last_seq {
-                Some(last) => {
-                    let expected = (last.wrapping_add(1)) & 0xFF;
-                    if seq != expected {
-                        (seq.wrapping_sub(last).wrapping_sub(1)) as u32
-                    } else {
-                        0
-                    }
-                }
+                Some(last) => seq.wrapping_sub(last).wrapping_sub(1) as u32,
                 None => 0,
             };
             self.last_seq = Some(seq);
@@ -88,7 +82,7 @@ impl FrameParser {
             let payload_start = pos + 6;
             let mut samples = [Sample { adc: 0, status: 0 }; SAMPLES_PER_FRAME];
 
-            for i in 0..SAMPLES_PER_FRAME {
+            for (i, slot) in samples.iter_mut().enumerate() {
                 let off = payload_start + i * 4;
                 let word = u32::from_be_bytes([
                     self.buf[off],
@@ -96,11 +90,9 @@ impl FrameParser {
                     self.buf[off + 2],
                     self.buf[off + 3],
                 ]);
-                let raw_adc = word >> 8;
-                let status = (word & 0xFF) as u8;
-                samples[i] = Sample {
-                    adc: signed24(raw_adc),
-                    status,
+                *slot = Sample {
+                    adc: signed24(word >> 8),
+                    status: (word & 0xFF) as u8,
                 };
             }
 
