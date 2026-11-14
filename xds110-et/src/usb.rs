@@ -3,7 +3,7 @@
 use rusb::{Context, Device, DeviceHandle, UsbContext};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::config::{CMD_IF, CMD_IN_EP, CMD_OUT_EP, CMD_TIMEOUT_MS, DATA_IF, DATA_IN_EP, PID, VID};
 use crate::protocol::{
@@ -129,13 +129,17 @@ impl Xds110 {
             .unwrap_or(ProbeError::Timeout))
     }
 
-    /// Drain any pending data from the sample stream interface
+    /// Stop a stream possibly left running by a killed process, then drain stale sample data.
+    /// Bounded in time: a probe that is still streaming would otherwise never run dry.
     pub fn drain_data(&self) {
+        let _ = self.cmd(CMD_STOP, &[], 1);
         let mut buf = [0u8; 0x2000];
         let timeout = Duration::from_millis(100);
-        while let Ok(n) = self.handle.read_bulk(DATA_IN_EP, &mut buf, timeout) {
-            if n == 0 {
-                break;
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while Instant::now() < deadline {
+            match self.handle.read_bulk(DATA_IN_EP, &mut buf, timeout) {
+                Ok(n) if n > 0 => {}
+                _ => break,
             }
         }
     }

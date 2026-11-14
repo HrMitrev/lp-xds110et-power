@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use crossbeam_channel::{Receiver, Sender, bounded};
+use crossbeam_channel::{Receiver, SendTimeoutError, Sender, bounded};
 use rusb::{Context, DeviceHandle};
 
 use crate::config::{CMD_TIMEOUT_MS, DATA_IN_EP};
@@ -56,7 +56,7 @@ fn read_loop(dev: &DeviceHandle<Context>, tx: &Sender<Chunk>, stop: &AtomicBool)
         let err = match dev.read_bulk(DATA_IN_EP, &mut buf, READ_TIMEOUT) {
             Ok(n) => {
                 last_data = Instant::now();
-                if n > 0 && tx.send(Ok(buf[..n].to_vec())).is_err() {
+                if n > 0 && !send_unless_stopped(tx, Ok(buf[..n].to_vec()), stop) {
                     return;
                 }
                 continue;
@@ -74,8 +74,26 @@ fn read_loop(dev: &DeviceHandle<Context>, tx: &Sender<Chunk>, stop: &AtomicBool)
         }
 
         if last_data.elapsed() >= give_up_after {
-            let _ = tx.send(Err(err));
+            send_unless_stopped(tx, Err(err), stop);
             return;
+        }
+    }
+}
+
+/// Blocking send that gives up when the consumer is gone or a stop is requested.
+/// A plain `send` on the full channel would block forever once the consumer stops
+/// receiving, which would deadlock the join in `Drop`.
+fn send_unless_stopped(tx: &Sender<Chunk>, mut item: Chunk, stop: &AtomicBool) -> bool {
+    loop {
+        match tx.send_timeout(item, Duration::from_millis(50)) {
+            Ok(()) => return true,
+            Err(SendTimeoutError::Disconnected(_)) => return false,
+            Err(SendTimeoutError::Timeout(returned)) => {
+                if stop.load(Ordering::Relaxed) {
+                    return false;
+                }
+                item = returned;
+            }
         }
     }
 }
