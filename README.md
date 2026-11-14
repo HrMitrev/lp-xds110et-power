@@ -1,5 +1,12 @@
 # XDS110 EnergyTrace Tools
 
+<p align="center">
+  <picture>
+    <source srcset="assets/gui.jxl" type="image/jxl" />
+    <img src="assets/lp-xds110et.png" alt="Texas Instruments LP-XDS110ET" width="600" />
+  </picture>
+</p>
+
 Utilities for capturing, logging, and visualizing power measurements from Texas Instruments **LP-XDS110ET** EnergyTrace hardware (`0451:BEF3`).
 
 > ⚡ **Note**: This application is **vibe coded** with LLMs specifically for the **TI LP-XDS110ET** (LaunchPad with EnergyTrace debug probe).
