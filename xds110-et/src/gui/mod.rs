@@ -191,7 +191,7 @@ impl EnergyTraceApp {
 
         self.top_x_range = Some(match self.top_x_range {
             Some([lo, hi]) => {
-                let span = (hi - lo).max(0.5);
+                let span = (hi - lo).max(view::MIN_SPAN_S);
                 // If the user was viewing the entire span, keep autoscaling to the full range
                 if span >= (hi - full_lo) - 0.5 {
                     [full_lo, end_t]

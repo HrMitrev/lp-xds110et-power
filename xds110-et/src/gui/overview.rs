@@ -3,15 +3,13 @@
 use eframe::egui::{self, Color32, CursorIcon, RichText, Stroke};
 use egui_plot::{Line, Plot, PlotPoints, PlotUi, Span, VLine};
 
-use super::view::{self, clamp_lenient};
+use super::view::{self, MIN_SPAN_S, clamp_lenient};
 use super::{EnergyTraceApp, FrameView, OverviewDragMode, PLOT_BACKGROUND};
 use crate::data_series::Unit;
 
 const MIN_PX_PER_SEC: f64 = 2.0;
 const MAX_PX_PER_SEC: f64 = 200.0;
 const SCALE_STEP: f64 = 1.3;
-/// Smallest window (seconds) the overview handles can shrink the detail view to.
-const MIN_WINDOW_S: f64 = 0.1;
 /// Pixel distance within which a window edge can be grabbed.
 const HANDLE_HIT_PX: f64 = 14.0;
 /// Maximum number of points drawn in the overview line.
@@ -178,7 +176,7 @@ impl EnergyTraceApp {
                 set_cursor(CursorIcon::Grabbing);
             } else {
                 // Clicked outside: jump-center the window around the click
-                let span = (cur_hi - cur_lo).max(0.5);
+                let span = (cur_hi - cur_lo).max(MIN_SPAN_S);
                 let [lo, hi] =
                     view::slide_range([t - span / 2.0, t + span / 2.0], 0.0, full_lo, full_hi);
                 self.set_top_x_range(lo, hi);
@@ -191,12 +189,12 @@ impl EnergyTraceApp {
             match self.overview_drag_mode {
                 OverviewDragMode::ResizeLeft => {
                     set_cursor(CursorIcon::ResizeHorizontal);
-                    let lo = clamp_lenient(cur_lo + delta, full_lo, cur_hi - MIN_WINDOW_S);
+                    let lo = clamp_lenient(cur_lo + delta, full_lo, cur_hi - MIN_SPAN_S);
                     self.set_top_x_range(lo, cur_hi);
                 }
                 OverviewDragMode::ResizeRight => {
                     set_cursor(CursorIcon::ResizeHorizontal);
-                    let hi = clamp_lenient(cur_hi + delta, cur_lo + MIN_WINDOW_S, full_hi);
+                    let hi = clamp_lenient(cur_hi + delta, cur_lo + MIN_SPAN_S, full_hi);
                     self.set_top_x_range(cur_lo, hi);
                 }
                 OverviewDragMode::SlideBody => {

@@ -145,7 +145,7 @@ impl<W: Write> WindowWriter<W> {
 
         writeln!(
             self.writer,
-            "{},\"{:.3}\",{},{},{},{},{},{:.2},{:.1},{:.1},{:.1},{:02x}",
+            "{},\"{:.7}\",{},{},{},{},{},{:.2},{:.1},{:.1},{:.1},{:02x}",
             self.rows_written,
             time_s,
             utc_now_string(),

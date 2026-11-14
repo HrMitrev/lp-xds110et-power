@@ -1,7 +1,7 @@
 //! Pure helpers for manipulating plot view ranges (no UI dependencies).
 
-/// Smallest time span (seconds) the detail view may be zoomed or resized to.
-pub const MIN_SPAN_S: f64 = 0.05;
+/// Smallest time span (seconds) the detail view may be zoomed or resized to (~2.5 samples).
+pub const MIN_SPAN_S: f64 = 1e-5;
 /// A view whose right edge is within this many seconds of the data end counts as "following live".
 pub const END_TOLERANCE_S: f64 = 0.2;
 
@@ -79,7 +79,10 @@ mod tests {
 
     #[test]
     fn test_zoom_refuses_degenerate_ranges() {
-        assert_eq!(zoom_range([0.0, 0.1], 0.05, 100.0, MIN_SPAN_S), [0.0, 0.1]);
+        assert_eq!(
+            zoom_range([0.0, 0.1], 0.05, 20_000.0, MIN_SPAN_S),
+            [0.0, 0.1]
+        );
         assert_eq!(
             zoom_range([0.0, 1.0], 0.5, f64::NAN, MIN_SPAN_S),
             [0.0, 1.0]
