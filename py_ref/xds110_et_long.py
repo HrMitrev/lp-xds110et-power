@@ -336,8 +336,13 @@ def stream(x, wr, st, max_samples, offset, slope, t0):
                 last_report = now
                 cur = lambda a: (a - offset) * slope
                 print_live(
-                    now - t0, st.n, wr.rows, st.reconnects,
-                    cur(st.adc_min), cur(st.adc_max), cur(st.adc_sum / st.n),
+                    now - t0,
+                    st.n,
+                    wr.rows,
+                    st.reconnects,
+                    cur(st.adc_min),
+                    cur(st.adc_max),
+                    cur(st.adc_sum / st.n),
                 )
     finally:
         stop.set()
