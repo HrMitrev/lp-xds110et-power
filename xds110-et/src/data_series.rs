@@ -177,10 +177,30 @@ mod tests {
     #[test]
     fn test_window_stats() {
         let points = vec![
-            PlotPoint { time_s: 0.0, avg_na: 100.0, min_na: 80.0, max_na: 120.0 },
-            PlotPoint { time_s: 1.0, avg_na: 200.0, min_na: 180.0, max_na: 220.0 },
-            PlotPoint { time_s: 2.0, avg_na: 300.0, min_na: 280.0, max_na: 320.0 },
-            PlotPoint { time_s: 3.0, avg_na: 400.0, min_na: 380.0, max_na: 420.0 },
+            PlotPoint {
+                time_s: 0.0,
+                avg_na: 100.0,
+                min_na: 80.0,
+                max_na: 120.0,
+            },
+            PlotPoint {
+                time_s: 1.0,
+                avg_na: 200.0,
+                min_na: 180.0,
+                max_na: 220.0,
+            },
+            PlotPoint {
+                time_s: 2.0,
+                avg_na: 300.0,
+                min_na: 280.0,
+                max_na: 320.0,
+            },
+            PlotPoint {
+                time_s: 3.0,
+                avg_na: 400.0,
+                min_na: 380.0,
+                max_na: 420.0,
+            },
         ];
 
         let stats = compute_window_stats(&points, 0.5, 2.5).unwrap();

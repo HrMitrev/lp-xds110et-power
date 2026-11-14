@@ -1,16 +1,14 @@
 //! USB communication interface for the Texas Instruments XDS110 EnergyTrace probe.
 
+use rusb::{Context, DeviceHandle, UsbContext};
 use std::sync::Arc;
 use std::time::Duration;
-use rusb::{Context, DeviceHandle, UsbContext};
 
-use crate::config::{
-    CMD_IF, CMD_IN_EP, CMD_OUT_EP, CMD_TIMEOUT_MS, DATA_IF, DATA_IN_EP, PID, VID,
-};
+use crate::config::{CMD_IF, CMD_IN_EP, CMD_OUT_EP, CMD_TIMEOUT_MS, DATA_IF, DATA_IN_EP, PID, VID};
 use crate::protocol::{
-    decode_response, encode_command, Calibration, ProtocolError, CMD_CALIBRATE, CMD_CLEANUP,
-    CMD_CONNECT, CMD_DCDC_RESTART, CMD_DCDC_SET_VCC, CMD_DISCONNECT, CMD_HWINFO, CMD_SETUP,
-    CMD_SET_DIG, CMD_SET_RANGE, CMD_SET_SRST, CMD_STOP,
+    CMD_CALIBRATE, CMD_CLEANUP, CMD_CONNECT, CMD_DCDC_RESTART, CMD_DCDC_SET_VCC, CMD_DISCONNECT,
+    CMD_HWINFO, CMD_SET_DIG, CMD_SET_RANGE, CMD_SET_SRST, CMD_SETUP, CMD_STOP, Calibration,
+    ProtocolError, decode_response, encode_command,
 };
 
 #[derive(Debug)]
@@ -118,7 +116,9 @@ impl Xds110 {
             }
         }
 
-        Err(last_err.map(ProbeError::from).unwrap_or(ProbeError::Timeout))
+        Err(last_err
+            .map(ProbeError::from)
+            .unwrap_or(ProbeError::Timeout))
     }
 
     /// Drain any pending data from the sample stream interface
@@ -231,4 +231,3 @@ impl Drop for Xds110 {
         let _ = self.handle.release_interface(DATA_IF);
     }
 }
-

@@ -2,17 +2,17 @@
 
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use crossbeam_channel::{bounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, bounded};
 
 use crate::config::{
     CMD_TIMEOUT_MS, DATA_IN_EP, DEFAULT_ROWS_PER_HOUR, DEFAULT_SLOPE_NA_PER_LSB, SAMPLE_RATE_HZ,
 };
-use crate::csv_writer::{create_csv_file, utc_now_string, WindowWriter};
+use crate::csv_writer::{WindowWriter, create_csv_file, utc_now_string};
 use crate::data_series::PlotPoint;
 use crate::frame::FrameParser;
 use crate::protocol::{CMD_DCDC_SET_VCC, CMD_START};
@@ -27,8 +27,6 @@ pub enum ProbeControlCommand {
 
 /// Number of hardware samples per live GUI plot point (20 ms @ 256 kS/s = 50 Hz refresh)
 const SAMPLES_PER_GUI_POINT: u64 = 5120;
-
-
 
 /// Human-readable formatting of current with automatic unit selection
 pub fn fmt_current(na: f64) -> String {
@@ -263,8 +261,7 @@ fn stream_session<W: Write>(
     ctrl_rx: Option<&Receiver<ProbeControlCommand>>,
 ) -> Result<bool, ProbeError> {
     // Channel for passing raw data chunks from dedicated USB reader thread
-    let (chunk_tx, chunk_rx): (Sender<Result<Vec<u8>, rusb::Error>>, Receiver<_>) =
-        bounded(128);
+    let (chunk_tx, chunk_rx): (Sender<Result<Vec<u8>, rusb::Error>>, Receiver<_>) = bounded(128);
 
     // Dedicated reader thread to prevent USB endpoint FIFO overrun
     let thread_stop = Arc::new(AtomicBool::new(false));

@@ -11,8 +11,8 @@ pub mod protocol;
 pub mod usb;
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
 use clap::{Parser, Subcommand};

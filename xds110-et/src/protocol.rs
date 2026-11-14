@@ -38,7 +38,10 @@ impl fmt::Display for ProtocolError {
             Self::FrameTooShort(len) => write!(f, "Response frame too short: {len} bytes"),
             Self::InvalidMagic(b) => write!(f, "Invalid magic byte in response: 0x{b:02x}"),
             Self::LengthMismatch { declared, actual } => {
-                write!(f, "Declared payload len {declared} does not match buffer len {actual}")
+                write!(
+                    f,
+                    "Declared payload len {declared} does not match buffer len {actual}"
+                )
             }
             Self::CommandFailed { cmd, code } => {
                 write!(f, "Command 0x{cmd:02x} failed with error code {code}")
@@ -157,4 +160,3 @@ mod tests {
         assert_eq!(signed24(0xFFFFFF), -1);
     }
 }
-

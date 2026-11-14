@@ -1,16 +1,15 @@
 //! Decoupled CSV logging and decimated window accumulation.
 
+use chrono::Utc;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
-use chrono::Utc;
 
 use crate::config::SAMPLE_RATE_HZ;
 use crate::frame::Sample;
 use crate::protocol::Calibration;
 
-pub const CSV_HEADER: &str =
-    "index,time_s,utc,samples,frames_lost,adc_min,adc_max,adc_avg,current_min_nA,current_max_nA,current_avg_nA,status_or";
+pub const CSV_HEADER: &str = "index,time_s,utc,samples,frames_lost,adc_min,adc_max,adc_avg,current_min_nA,current_max_nA,current_avg_nA,status_or";
 
 /// Formats UTC timestamp in ISO 8601 string
 pub fn utc_now_string() -> String {
@@ -191,13 +190,7 @@ pub fn create_csv_file(
     let file = File::create(path)?;
     let mut writer = BufWriter::new(file);
 
-    WindowWriter::write_cal_comment(
-        &mut writer,
-        cal,
-        cal.idx0_offset,
-        slope,
-        SAMPLE_RATE_HZ,
-    )?;
+    WindowWriter::write_cal_comment(&mut writer, cal, cal.idx0_offset, slope, SAMPLE_RATE_HZ)?;
     writeln!(
         writer,
         "# rows_per_hour={rows_per_hour} samples_per_row={window_size} (status_or = bitwise OR of all status bytes in the row)"
@@ -205,7 +198,12 @@ pub fn create_csv_file(
     writeln!(writer, "{CSV_HEADER}")?;
     writer.flush()?;
 
-    Ok(WindowWriter::new(writer, window_size, cal.idx0_offset, slope))
+    Ok(WindowWriter::new(
+        writer,
+        window_size,
+        cal.idx0_offset,
+        slope,
+    ))
 }
 
 #[cfg(test)]
@@ -219,16 +217,31 @@ mod tests {
         let mut wr = WindowWriter::new(&mut output, 4, 100.0, 10.0);
 
         let s1 = [
-            Sample { adc: 110, status: 0x10 },
-            Sample { adc: 90, status: 0x20 },
-            Sample { adc: 120, status: 0x00 },
+            Sample {
+                adc: 110,
+                status: 0x10,
+            },
+            Sample {
+                adc: 90,
+                status: 0x20,
+            },
+            Sample {
+                adc: 120,
+                status: 0x00,
+            },
         ];
         wr.add_samples(&s1).unwrap();
         assert_eq!(wr.rows_written, 0); // Not reached 4 yet
 
         let s2 = [
-            Sample { adc: 80, status: 0x04 }, // 4th sample -> triggers row 0
-            Sample { adc: 105, status: 0x01 }, // 1st sample of row 1
+            Sample {
+                adc: 80,
+                status: 0x04,
+            }, // 4th sample -> triggers row 0
+            Sample {
+                adc: 105,
+                status: 0x01,
+            }, // 1st sample of row 1
         ];
         wr.add_samples(&s2).unwrap();
         assert_eq!(wr.rows_written, 1);

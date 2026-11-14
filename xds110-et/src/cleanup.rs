@@ -1,14 +1,14 @@
 //! Process exit hooks and probe disconnect (0x02) management.
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use rusb::{Context, UsbContext};
 
 use crate::config::{CMD_IF, CMD_IN_EP, CMD_OUT_EP, DATA_IF, PID, VID};
 use crate::protocol::{
-    encode_command, CMD_CLEANUP, CMD_CONNECT, CMD_DCDC_SET_VCC, CMD_DISCONNECT, CMD_STOP,
+    CMD_CLEANUP, CMD_CONNECT, CMD_DCDC_SET_VCC, CMD_DISCONNECT, CMD_STOP, encode_command,
 };
 
 /// Send the STOP (0x20), CLEANUP (0x21), and DISCONNECT (0x02) command sequence
