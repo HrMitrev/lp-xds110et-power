@@ -131,6 +131,96 @@ pub fn live_gui() -> CmdResult {
     gui_res
 }
 
+pub fn dfu_info() -> CmdResult {
+    let dfu = crate::dfu::ensure_dfu_mode()?;
+    let status = dfu.get_status()?;
+    let (serial, config) = dfu.read_info_block()?;
+
+    println!("XDS110 DFU Device Information:");
+    println!("  DFU State:      {}", status.state);
+    println!("  DFU Status:     {}", status.status);
+    println!("  Flash Size:     {} KB", dfu.info.total_flash_size / 1024);
+    println!("  Block Size:     {} bytes", dfu.info.block_size);
+    println!("  App Start Addr: 0x{:08x}", dfu.info.app_start_addr);
+    println!("  Serial Number:  {serial}");
+    println!("  Configuration:  {config}");
+    Ok(())
+}
+
+pub fn dfu_switch() -> CmdResult {
+    println!("Switching XDS110 to DFU bootloader mode...");
+    crate::dfu::trigger_dfu_mode_switch()?;
+    println!("Command sent. Device is re-enumerating into DFU mode.");
+    Ok(())
+}
+
+pub fn dfu_reset() -> CmdResult {
+    let dfu = crate::dfu::DfuDevice::open()?;
+    println!("Resetting XDS110 back to runtime mode...");
+    dfu.reset_to_runtime()?;
+    println!("Reset command sent.");
+    Ok(())
+}
+
+pub fn dfu_serial(serial: Option<String>, suffix_only: bool, reset: bool) -> CmdResult {
+    let dfu = crate::dfu::ensure_dfu_mode()?;
+    let (curr_serial, _curr_config) = dfu.read_info_block()?;
+
+    match serial {
+        None => {
+            println!("Current Serial Number: {curr_serial}");
+        }
+        Some(s) => {
+            let final_serial = if suffix_only {
+                if s.len() != 4 {
+                    return Err(format!("Suffix must be exactly 4 characters, got '{}'", s).into());
+                }
+                let prefix = if curr_serial.len() >= 4 {
+                    &curr_serial[0..4]
+                } else {
+                    "LS42"
+                };
+                format!("{prefix}{s}")
+            } else {
+                if s.len() != 8 {
+                    return Err(format!("Serial number must be exactly 8 characters, got '{}'", s).into());
+                }
+                s
+            };
+
+            println!("Setting serial number to '{final_serial}'...");
+            let (new_serial, _) = dfu.write_info_block(Some(&final_serial), None)?;
+            println!("Serial number successfully updated to '{new_serial}'.");
+
+            if reset {
+                println!("Resetting probe back to runtime mode...");
+                dfu.reset_to_runtime()?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+pub fn dfu_config(config_num: u32, reset: bool) -> CmdResult {
+    let dfu = crate::dfu::ensure_dfu_mode()?;
+    println!("Setting configuration to {config_num}...");
+    let (_, new_cfg) = dfu.write_info_block(None, Some(config_num))?;
+    println!("Configuration successfully updated to {new_cfg}.");
+
+    if reset {
+        println!("Resetting probe back to runtime mode...");
+        dfu.reset_to_runtime()?;
+    }
+
+    Ok(())
+}
+
+pub fn dfu_flash(path: &Path, reset: bool) -> CmdResult {
+    crate::dfu::flash_firmware_file(path, reset)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

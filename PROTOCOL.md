@@ -24,8 +24,9 @@ Decompiled output: `out/` (generate with `decomp.ps1`).
 | 0x21 | ET_Cleanup            | -                                                | -                     |
 | 0x22 | ET_DCDC_GetMCUVersion | -                                                | u32                   |
 | 0x23 | ET_DCDC_PowerDownMCU  | -                                                | -                     |
-| 0x25 | ET_DCDC_RestartMCU    | -                                                | -                     |
 | 0x24 | ET_DCDC_SetVcc        | u16 (mV)                                         | -                     |
+| 0x25 | ET_DCDC_RestartMCU    | -                                                | -                     |
+| 0x26 | XDS_EnterDFUMode      | -                                                | -                     |
 | 0x28 | XDS_ConnectET         | -                                                | -                     |
 | 0x30 | ET_Setup_Range        | u8                                               | -                     |
 | 0x31 | ET_Setup_Dig          | u8                                               | -                     |
@@ -133,3 +134,45 @@ Calibration
 
 • A calibration read returns a sum and a count; ADC = sum/count. Index 0 is the zero offset, e.g. −44495/5 = −8899.
 • Current is  (adc − offset) × slope , piecewise-linear between the calibration points. I haven't fully derived the slopes yet.
+
+## Device Firmware Upgrade (DFU) & Serial Configuration
+Reverse engineered from TI's `xdsdfu.exe` and verified against hardware.
+
+### 1. DFU Mode Switch
+- Runtime device: `VID: 0x0451, PID: 0xBEF3`.
+- Send 4-byte command `2A 01 00 26` (`'*'`, len=1, cmd=0x26) on Interface 2, Bulk OUT endpoint `0x02`.
+- Probe reboots and enumerates as a USB DFU device: `VID: 0x1CBE, PID: 0x00FF` (or `0x0451:0xBEF4`).
+- DFU Interface: Interface 0 (`bInterfaceClass = 0xFE`, `bInterfaceSubClass = 0x01`, `bInterfaceProtocol = 0x02`).
+- Transfer block size (`wTransferSize`): 1024 bytes (0x0400).
+
+### 2. Standard USB DFU Requests (Control Endpoint 0)
+| Request | Code | Type | Value / Index | Description |
+|---------|------|------|---------------|-------------|
+| `DFU_DETACH` | `0x00` | Host->Dev `0x21` | timeout / iface | Detach and re-enumerate |
+| `DFU_DNLOAD` | `0x01` | Host->Dev `0x21` | block_num / iface | Send command (wValue=0) or data chunk (wValue>=2) |
+| `DFU_UPLOAD` | `0x02` | Dev->Host `0xA1` | block_num / iface | Read memory chunk (wValue>=2) |
+| `DFU_GETSTATUS` | `0x03` | Dev->Host `0xA1` | 0 / iface | Read 6-byte status (`status`, `pollTimeout[3]`, `state`, `iString`) |
+| `DFU_CLRSTATUS` | `0x04` | Host->Dev `0x21` | 0 / iface | Clear error state |
+| `DFU_ABORT` | `0x06` | Host->Dev `0x21` | 0 / iface | Abort current transfer to idle |
+
+### 3. Vendor Command Packets (sent via `DFU_DNLOAD` with `wValue = 0`, length 8)
+- `DFU_CMD_PROG (0x01)`: `01 00 <start_block: u16le> <length: u32le>` (start_block = start_address / 1024)
+- `DFU_CMD_READ (0x02)`: `02 00 <start_block: u16le> <length: u32le>`
+- `DFU_CMD_CHECK (0x03)`: `03 00 <start_block: u16le> <length: u32le>`
+- `DFU_CMD_ERASE (0x04)`: `04 00 <start_block: u16le> <num_blocks: u16le> 00 00`
+- `DFU_CMD_INFO (0x05)`: `05 00 00 00 00 00 00 00` (returns 20 bytes via `DFU_UPLOAD`)
+- `DFU_CMD_BIN (0x06)`: `06 00 00 00 00 00 00 00`
+- `DFU_CMD_RESET (0x07)`: `07 00 00 00 00 00 00 00` (triggers probe reboot to runtime mode)
+
+### 4. Memory Layout
+- Flash size: 1048576 bytes (1 MB, 64 flash erase blocks of 16 KB / 0x4000).
+- `0x00000000 - 0x00003FFF` (16 KB): Bootloader area (`boot_loader.bin`).
+- `0x00004000 - ...` (Application): Firmware binary (`firmware_3.0.0.xx.bin`), start block = 16 (`0x4000 / 1024`).
+- `0x000FC000` (Last 16 KB block, block 63): Configuration and serial information block:
+  - `offset 0..7`: 8 ASCII characters for the Serial Number (e.g. `LS4205CD`).
+  - `offset 16..19` (`0x10`): Configuration number encoded as `0xAA550000 | (config & 0xFFFF)`.
+    - Config 1: `0xAA550001` (Standard: Debug, App COM, Aux COM, CMSIS-DAP 1.0, EnergyTrace)
+    - Config 2: `0xAA550002` (Drag-n-Drop)
+    - Config 4: `0xAA550004` (CMSIS-DAP 2.0)
+    - Config 5: `0xAA550005` (EVM Test Automation)
+

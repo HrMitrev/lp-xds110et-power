@@ -8,6 +8,7 @@ mod config;
 mod csv_loader;
 mod csv_writer;
 mod data_series;
+mod dfu;
 mod frame;
 mod gui;
 mod protocol;
@@ -37,6 +38,16 @@ fn main() -> commands::CmdResult {
             commands::capture_headless(time, rows_per_hour, output, slope, retry_delay, max_retries)
         }
         Some(Commands::View { path }) => commands::view_file(&path),
+        Some(Commands::DfuInfo) => commands::dfu_info(),
+        Some(Commands::DfuSwitch) => commands::dfu_switch(),
+        Some(Commands::DfuReset) => commands::dfu_reset(),
+        Some(Commands::DfuSerial {
+            serial,
+            suffix_only,
+            reset,
+        }) => commands::dfu_serial(serial, suffix_only, reset),
+        Some(Commands::DfuConfig { config, reset }) => commands::dfu_config(config, reset),
+        Some(Commands::DfuFlash { file, reset }) => commands::dfu_flash(&file, reset),
         None => commands::live_gui(),
     }
 }
