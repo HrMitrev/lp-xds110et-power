@@ -1,0 +1,25 @@
+# Rust build artifacts
+target/
+**/target/
+**/*.rs.bk
+
+# Python cache and temporary files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+env/
+venv/
+
+# Capture logs
+logs/
+*.csv
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
