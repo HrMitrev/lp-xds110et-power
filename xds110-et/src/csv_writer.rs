@@ -33,6 +33,8 @@ pub struct WindowWriter<W: Write> {
     adc_min: i32,
     adc_max: i32,
     status_or: u8,
+    // Formatted UTC second, so very high row rates don't format a timestamp per row
+    utc_cache: (i64, String),
 }
 
 impl<W: Write> WindowWriter<W> {
@@ -50,6 +52,7 @@ impl<W: Write> WindowWriter<W> {
             adc_min: i32::MAX,
             adc_max: i32::MIN,
             status_or: 0,
+            utc_cache: (i64::MIN, String::new()),
         }
     }
 
@@ -133,12 +136,21 @@ impl<W: Write> WindowWriter<W> {
         Ok(())
     }
 
+    /// Flush buffered rows to the underlying writer.
+    pub fn flush(&mut self) -> std::io::Result<()> {
+        self.writer.flush()
+    }
+
     /// Flush the accumulated window into a single CSV row.
     pub fn flush_window(&mut self) -> std::io::Result<()> {
         if self.n == 0 {
             return Ok(());
         }
 
+        let now = Utc::now();
+        if now.timestamp() != self.utc_cache.0 {
+            self.utc_cache = (now.timestamp(), utc_now_string());
+        }
         let time_s = self.start_sample as f64 / SAMPLE_RATE_HZ as f64;
         let avg_adc = self.adc_sum as f64 / self.n as f64;
         let cur = |adc: f64| (adc - self.offset) * self.slope;
@@ -148,7 +160,7 @@ impl<W: Write> WindowWriter<W> {
             "{},\"{:.7}\",{},{},{},{},{},{:.2},{:.1},{:.1},{:.1},{:02x}",
             self.rows_written,
             time_s,
-            utc_now_string(),
+            self.utc_cache.1,
             self.n,
             self.lost_in_window,
             self.adc_min,
@@ -159,7 +171,6 @@ impl<W: Write> WindowWriter<W> {
             cur(avg_adc),
             self.status_or
         )?;
-        self.writer.flush()?;
 
         self.rows_written += 1;
         self.start_sample += self.n;

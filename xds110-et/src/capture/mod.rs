@@ -246,6 +246,7 @@ pub fn run_capture(
             Err(SessionError::Probe(e)) => {
                 let lost_at = Instant::now();
                 let _ = wr.flush_window();
+                let _ = wr.flush();
                 if !retry.record_failure(&format!("stream error: {e}; reconnecting")) {
                     gave_up = true;
                     break;
@@ -259,6 +260,7 @@ pub fn run_capture(
 
     if let Some(wr) = writer.as_mut() {
         let _ = wr.flush_window();
+        let _ = wr.flush();
     }
 
     let (rows, offset) = writer

@@ -126,6 +126,7 @@ pub fn stream_session<W: Write>(
 
         if last_status.elapsed() >= STATUS_INTERVAL {
             last_status = Instant::now();
+            writer.flush().map_err(SessionError::Log)?;
             report::print_status(
                 env.run_start.elapsed(),
                 stats,
