@@ -73,9 +73,6 @@ pub fn capture_headless(
     retry_delay: f64,
     max_retries: u32,
 ) -> CmdResult {
-    if rows_per_hour == 0 {
-        return Err("--rows-per-hour must be >= 1".into());
-    }
     if !(time.is_finite() && time >= 0.0) {
         return Err("--time must be a non-negative number".into());
     }

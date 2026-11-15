@@ -174,11 +174,19 @@ pub fn run_capture(
     gui_tx: Option<Sender<Vec<PlotPoint>>>,
     ctrl_rx: Option<Receiver<ProbeControlCommand>>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    if config.rows_per_hour == 0 {
-        return Err("rows_per_hour must be >= 1".into());
-    }
-    let window_size =
-        (((SAMPLE_RATE_HZ as f64 * 3600.0) / config.rows_per_hour as f64).round() as u64).max(1);
+    let (window_size, raw_mode) = if config.rows_per_hour == 0 {
+        eprintln!(
+            "Raw sample mode (-r 0): logging every sample as its own row ({} samples/sec).",
+            SAMPLE_RATE_HZ
+        );
+        (1u64, true)
+    } else {
+        (
+            (((SAMPLE_RATE_HZ as f64 * 3600.0) / config.rows_per_hour as f64).round() as u64)
+                .max(1),
+            false,
+        )
+    };
     let max_samples = (config.time_limit_sec > 0.0)
         .then(|| (config.time_limit_sec * SAMPLE_RATE_HZ as f64).round() as u64);
     let time_limit =
@@ -190,10 +198,14 @@ pub fn run_capture(
     let run_start = Instant::now();
     let mut gave_up = false;
 
-    eprintln!(
-        "Starting capture: {} rows/hour (window size: {} samples)",
-        config.rows_per_hour, window_size
-    );
+    if raw_mode {
+        eprintln!("Starting capture: raw mode (1 sample per row, window size: 1 sample)");
+    } else {
+        eprintln!(
+            "Starting capture: {} rows/hour (window size: {} samples)",
+            config.rows_per_hour, window_size
+        );
+    }
     eprintln!("Output file: {}", config.output_path.display());
 
     let env = SessionEnv {

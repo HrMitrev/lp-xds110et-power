@@ -255,9 +255,14 @@ pub fn create_csv_file(
     let mut writer = BufWriter::with_capacity(1024 * 1024, file);
 
     WindowWriter::write_cal_comment(&mut writer, cal, cal.idx0_offset, slope, SAMPLE_RATE_HZ)?;
+    let rph_comment = if rows_per_hour == 0 {
+        "raw (1 sample/row)".to_string()
+    } else {
+        rows_per_hour.to_string()
+    };
     writeln!(
         writer,
-        "# rows_per_hour={rows_per_hour} samples_per_row={window_size} (status_or = bitwise OR of all status bytes in the row)"
+        "# rows_per_hour={rph_comment} samples_per_row={window_size} (status_or = bitwise OR of all status bytes in the row)"
     )?;
     writeln!(writer, "{CSV_HEADER}")?;
     writer.flush()?;

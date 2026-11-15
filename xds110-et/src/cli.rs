@@ -43,7 +43,7 @@ pub enum Commands {
         #[arg(short = 't', long = "time", default_value_t = 0.0)]
         time: f64,
 
-        /// CSV rows written per hour of capture (default: 3600 = 1 row/s)
+        /// CSV rows written per hour of capture (0 = raw mode / 1 sample per row; default: 3600 = 1 row/s)
         #[arg(short = 'r', long = "rows-per-hour", default_value_t = config::DEFAULT_ROWS_PER_HOUR)]
         rows_per_hour: u32,
 
