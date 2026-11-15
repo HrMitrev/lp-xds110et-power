@@ -2,6 +2,9 @@
 
 Python utilities for analyzing and comparing Texas Instruments XDS110 debug probe firmware binaries (`firmware_3.0.0.xx.bin`) targeted for the **MSP432E401YTPDT** microcontroller (ARM Cortex-M4F).
 
+For a detailed breakdown of the reverse-engineering evidence regarding the compiler toolchain, SDK, ROM DriverLib, and execution model, see:
+- [TOOLCHAIN_AND_SDK.md](TOOLCHAIN_AND_SDK.md)
+
 ## Scripts
 
 ### 1. `inspect_firmware.py`
