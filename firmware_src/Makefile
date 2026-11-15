@@ -6,6 +6,18 @@ TARGET     ?= firmware
 BUILD_DIR   = build
 PYTHON     ?= python
 
+# Verbosity control (use V=1 or VERBOSE=1 for full command lines)
+V          ?= 0
+VERBOSE    ?= $(V)
+
+ifeq ($(VERBOSE),1)
+Q          :=
+ECHO       := @:
+else
+Q          := @
+ECHO       := @echo
+endif
+
 # Standalone toolchain path (if fetched locally)
 TOOLCHAIN_DIR ?= toolchain
 
@@ -76,39 +88,39 @@ check-sdk:
 	fi
 
 fetch-sdk sdk:
-	$(PYTHON) scripts/fetch_sdk.py
+	$(Q)$(PYTHON) scripts/fetch_sdk.py
 
 fetch-toolchain toolchain:
-	$(PYTHON) scripts/fetch_toolchain.py
+	$(Q)$(PYTHON) scripts/fetch_toolchain.py
 
 $(BUILD_DIR):
-	@mkdir -p $(BUILD_DIR)/src
-	@mkdir -p $(BUILD_DIR)/sdk/driverlib
+	$(Q)mkdir -p $(BUILD_DIR)/src
+	$(Q)mkdir -p $(BUILD_DIR)/sdk/ti/devices/msp432e4/driverlib
 
 $(BUILD_DIR)/%.o: %.c
-	@mkdir -p $(dir $@)
-	@echo "  CC    $<"
-	@$(CC) $(CFLAGS) -c $< -o $@
+	$(Q)mkdir -p $(dir $@)
+	$(ECHO) "  CC    $<"
+	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/$(TARGET).elf: $(OBJS) msp432e401y.ld
-	@echo "  LD    $@"
-	@$(CC) $(OBJS) $(LDFLAGS) -o $@
-	@echo "--- Size Information ---"
-	@$(SIZE) $@
+	$(ECHO) "  LD    $@"
+	$(Q)$(CC) $(OBJS) $(LDFLAGS) -o $@
+	$(ECHO) "--- Size Information ---"
+	$(Q)$(SIZE) $@
 
 $(BUILD_DIR)/$(TARGET).bin: $(BUILD_DIR)/$(TARGET).elf
-	@echo "  OBJCOPY $@"
-	@$(OBJCOPY) -O binary $< $@
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)$(OBJCOPY) -O binary $< $@
 
 $(BUILD_DIR)/$(TARGET).hex: $(BUILD_DIR)/$(TARGET).elf
-	@echo "  OBJCOPY $@"
-	@$(OBJCOPY) -O ihex $< $@
+	$(ECHO) "  OBJCOPY $@"
+	$(Q)$(OBJCOPY) -O ihex $< $@
 
 inspect: $(BUILD_DIR)/$(TARGET).bin
-	$(PYTHON) ../py_ref/firmware_analysis/inspect_firmware.py $<
+	$(Q)$(PYTHON) ../py_ref/firmware_analysis/inspect_firmware.py $<
 
 flash: $(BUILD_DIR)/$(TARGET).bin
-	cargo run --release --manifest-path ../xds110-et/Cargo.toml -- dfu-flash -f $< -r
+	$(Q)cargo run --release --manifest-path ../xds110-et/Cargo.toml -- dfu-flash -f $< -r
 
 clean:
-	rm -rf $(BUILD_DIR)
+	$(Q)rm -rf $(BUILD_DIR)

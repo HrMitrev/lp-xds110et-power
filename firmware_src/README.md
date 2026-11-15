@@ -62,7 +62,13 @@ make toolchain
 
 ### 2. Build Firmware
 ```bash
+# Concise output (default)
 make
+
+# Verbose output (prints full command lines)
+make V=1
+# or
+make VERBOSE=1
 ```
 Automatically downloads the required SDK components (if not already present) and generates:
 - `build/firmware.elf`
