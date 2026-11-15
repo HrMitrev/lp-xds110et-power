@@ -10,6 +10,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <string.h>
+#include <stdio.h>
 
 #include "ti/devices/msp432e4/inc/msp.h"
 #include "driverlib/driverlib.h"
@@ -25,9 +27,17 @@
 __attribute__((used, section(".rodata.version")))
 const uint8_t g_firmware_version[4] = { 0x01, 0x00, 0x00, 0x03 };
 
+/* Buffer to test newlib standard library operations */
+static char g_test_buffer[64];
+
 int main(void)
 {
     uint32_t sys_clock;
+
+    /* Exercise newlib-nano C standard library functions */
+    memset(g_test_buffer, 0xA5, sizeof(g_test_buffer));
+    snprintf(g_test_buffer, sizeof(g_test_buffer), "LP-XDS110ET FW %d.%d.%d", 3, 0, 1);
+    __asm volatile("" : : "r"(g_test_buffer) : "memory");
 
     /* Configure system clock to 120 MHz using 16 MHz external crystal and PLL */
     sys_clock = MAP_SysCtlClockFreqSet(

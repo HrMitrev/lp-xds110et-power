@@ -59,8 +59,10 @@ CFLAGS      = $(MCU_FLAGS) $(DEFINES) $(INCLUDES) \
               -ffunction-sections -fdata-sections \
               -std=c99
 
-# Linker options
+# Linker options (links against newlib-nano with nosys syscall stubs)
 LDFLAGS     = $(MCU_FLAGS) \
+              --specs=nano.specs \
+              --specs=nosys.specs \
               -T msp432e401y.ld \
               -nostartfiles \
               -Wl,--gc-sections \

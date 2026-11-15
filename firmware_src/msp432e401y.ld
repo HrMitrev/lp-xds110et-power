@@ -87,12 +87,4 @@ SECTIONS
         . = . + 0x1000; /* Minimum 4 KB heap */
         . = ALIGN(8);
     } > SRAM
-
-    /* Discard debugging info from standard libraries if not needed */
-    /DISCARD/ :
-    {
-        libc.a ( * )
-        libm.a ( * )
-        libgcc.a ( * )
-    }
 }
