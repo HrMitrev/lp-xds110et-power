@@ -39,7 +39,7 @@ firmware_src/
 ├── README.md                # Project documentation
 ├── scripts/
 │   ├── fetch_sdk.py         # Automated TI DriverLib & CMSIS downloader
-│   └── fetch_toolchain.py   # Standalone GCC 16 toolchain fetcher from MSYS2
+│   └── fetch_toolchain.py   # Standalone GCC 16 fetcher (MSYS2 binaries + Arch Linux libraries)
 ├── src/
 │   ├── main.c              # Application entry point using ROM DriverLib
 │   └── startup_gcc.c       # Cortex-M4 vector table & runtime init
