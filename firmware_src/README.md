@@ -22,11 +22,11 @@ The binary is designed to be flashed into the application partition via the XDS1
 ## Prerequisites
 
 1. **GNU Arm Embedded Toolchain (`arm-none-eabi-gcc`)**:
-   - `arm-none-eabi-gcc`, `arm-none-eabi-objcopy`, `arm-none-eabi-size` in your `PATH`.
+   - You can either use a system-installed toolchain or run `make toolchain` to fetch the standalone **GCC 16 (`arm-none-eabi-gcc 16.2.0`)** toolchain automatically.
 2. **GNU Make**:
    - Available via package manager or Scoop (`scoop install make`).
 3. **Python 3**:
-   - Used by the automated SDK fetcher script.
+   - Used by the SDK and toolchain fetcher scripts.
 
 ---
 
@@ -34,24 +34,33 @@ The binary is designed to be flashed into the application partition via the XDS1
 
 ```
 firmware_src/
-├── Makefile                 # Master Makefile
+├── Makefile                 # Master Makefile (autodetects local toolchain if present)
 ├── msp432e401y.ld           # GNU linker script (flash offset 0x4000, 256K SRAM)
 ├── README.md                # Project documentation
 ├── scripts/
-│   └── fetch_sdk.py         # Automated TI DriverLib & CMSIS downloader
+│   ├── fetch_sdk.py         # Automated TI DriverLib & CMSIS downloader
+│   └── fetch_toolchain.py   # Standalone GCC 16 toolchain fetcher from MSYS2
 ├── src/
 │   ├── main.c              # Application entry point using ROM DriverLib
 │   └── startup_gcc.c       # Cortex-M4 vector table & runtime init
-└── sdk/ (auto-downloaded)
-    ├── third_party/CMSIS/   # ARM CMSIS Core headers
-    └── ti/devices/msp432e4/ # Official DriverLib source & headers
+├── sdk/ (auto-downloaded)
+│   ├── third_party/CMSIS/   # ARM CMSIS Core headers
+│   └── ti/devices/msp432e4/ # Official DriverLib source & headers
+└── toolchain/ (optional)    # Standalone GCC 16 arm-none-eabi toolchain
 ```
 
 ---
 
 ## Build Commands
 
-### 1. Build Firmware
+### 1. Fetch GCC 16 Toolchain (Optional)
+Downloads and extracts the standalone GCC 16 toolchain (`16.2.0-1`) directly from MSYS2 UCRT64:
+```bash
+make toolchain
+```
+*(If present, `make` will automatically prioritize `firmware_src/toolchain/` over system PATH).*
+
+### 2. Build Firmware
 ```bash
 make
 ```
@@ -61,7 +70,7 @@ Automatically downloads the required SDK components (if not already present) and
 - `build/firmware.hex`
 - `build/firmware.map`
 
-### 2. Verify Binary
+### 3. Verify Binary
 Inspect the generated binary vector table and version markers using the analysis tool:
 ```bash
 make inspect

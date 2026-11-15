@@ -6,11 +6,22 @@ TARGET     ?= firmware
 BUILD_DIR   = build
 PYTHON     ?= python
 
-# Toolchain definitions
-CC          = arm-none-eabi-gcc
-OBJCOPY     = arm-none-eabi-objcopy
-OBJDUMP     = arm-none-eabi-objdump
-SIZE        = arm-none-eabi-size
+# Standalone toolchain path (if fetched locally)
+TOOLCHAIN_DIR ?= toolchain
+
+ifneq ($(wildcard $(TOOLCHAIN_DIR)/bin/arm-none-eabi-gcc.exe),)
+TOOLCHAIN_BIN := $(abspath $(TOOLCHAIN_DIR)/bin)
+export PATH   := $(TOOLCHAIN_BIN):$(PATH)
+CC            := $(TOOLCHAIN_BIN)/arm-none-eabi-gcc
+OBJCOPY       := $(TOOLCHAIN_BIN)/arm-none-eabi-objcopy
+OBJDUMP       := $(TOOLCHAIN_BIN)/arm-none-eabi-objdump
+SIZE          := $(TOOLCHAIN_BIN)/arm-none-eabi-size
+else
+CC            := arm-none-eabi-gcc
+OBJCOPY       := arm-none-eabi-objcopy
+OBJDUMP       := arm-none-eabi-objdump
+SIZE          := arm-none-eabi-size
+endif
 
 # Architecture & Hardware Floating-Point flags for Cortex-M4F
 MCU_FLAGS   = -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
@@ -51,7 +62,7 @@ DL_SRCS     = $(wildcard $(DL_DIR)/sysctl.c $(DL_DIR)/gpio.c $(DL_DIR)/cpu.c $(D
 SRCS        = $(APP_SRCS) $(DL_SRCS)
 OBJS        = $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 
-.PHONY: all clean fetch-sdk sdk inspect flash
+.PHONY: all clean fetch-sdk sdk fetch-toolchain toolchain inspect flash
 
 all: $(BUILD_DIR)/$(TARGET).bin $(BUILD_DIR)/$(TARGET).hex
 
@@ -66,6 +77,9 @@ check-sdk:
 
 fetch-sdk sdk:
 	$(PYTHON) scripts/fetch_sdk.py
+
+fetch-toolchain toolchain:
+	$(PYTHON) scripts/fetch_toolchain.py
 
 $(BUILD_DIR):
 	@mkdir -p $(BUILD_DIR)/src
