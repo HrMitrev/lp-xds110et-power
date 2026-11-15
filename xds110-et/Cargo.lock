@@ -3476,6 +3476,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2df906b07856748fa3f6e0ad0cbaa047052d4a7dd609e231c4f72cee8c36f31"
 
 [[package]]
+name = "twemoji-assets"
+version = "1.5.1+17.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6857896b4a287e70f8197ab8fb9d68b3c43bb7ae97595aceaf2d11c21b93d9e9"
+
+[[package]]
 name = "type-map"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4391,7 +4397,7 @@ checksum = "163b33ed8786455e2fa5d72f554057ce3f3182425434f756cd39c99839d88e23"
 
 [[package]]
 name = "xds110-et"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "chrono",
  "clap",
@@ -4400,6 +4406,7 @@ dependencies = [
  "eframe",
  "egui_plot",
  "rusb",
+ "twemoji-assets",
 ]
 
 [[package]]

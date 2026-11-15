@@ -298,11 +298,19 @@ impl eframe::App for EnergyTraceApp {
 
 /// Launch the eframe application window
 pub fn launch_gui(app: EnergyTraceApp) -> Result<(), Box<dyn std::error::Error>> {
+    let mut viewport = egui::ViewportBuilder::default()
+        .with_title("XDS110 EnergyTrace Power Monitor")
+        .with_inner_size([1100.0, 750.0])
+        .with_min_inner_size([650.0, 450.0]);
+
+    if let Ok(icon) =
+        eframe::icon_data::from_png_bytes(include_bytes!(concat!(env!("OUT_DIR"), "/icon.png")))
+    {
+        viewport = viewport.with_icon(icon);
+    }
+
     let native_options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title("XDS110 EnergyTrace Power Monitor")
-            .with_inner_size([1100.0, 750.0])
-            .with_min_inner_size([650.0, 450.0]),
+        viewport,
         ..Default::default()
     };
 
@@ -315,4 +323,27 @@ pub fn launch_gui(app: EnergyTraceApp) -> Result<(), Box<dyn std::error::Error>>
         }),
     )
     .map_err(|e| format!("GUI launch failed: {e}").into())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_embedded_app_icon() {
+        let icon_bytes = include_bytes!(concat!(env!("OUT_DIR"), "/icon.png"));
+        assert!(
+            !icon_bytes.is_empty(),
+            "Embedded icon PNG must not be empty"
+        );
+        let icon =
+            eframe::icon_data::from_png_bytes(icon_bytes).expect("Embedded icon must be valid PNG");
+        assert!(
+            icon.width > 0 && icon.height > 0,
+            "Icon dimensions must be positive"
+        );
+        assert_eq!(
+            icon.rgba.len(),
+            (icon.width * icon.height * 4) as usize,
+            "RGBA buffer length must match width * height * 4"
+        );
+    }
 }
