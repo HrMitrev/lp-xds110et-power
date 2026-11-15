@@ -56,9 +56,14 @@ impl<W: Write> WindowWriter<W> {
         }
     }
 
-    /// Add lost frames count to current window
-    pub fn add_lost_frames(&mut self, lost: u32) {
+    /// Add lost frames count to current window and advance the time axis.
+    pub fn add_lost_frames(&mut self, lost: u32) -> std::io::Result<()> {
+        if self.n > 0 {
+            self.flush_window()?;
+        }
         self.lost_in_window += lost;
+        self.start_sample += (lost as u64) * crate::config::SAMPLES_PER_FRAME as u64;
+        Ok(())
     }
 
     /// Advance time axis over a reconnect gap (in seconds)
@@ -110,6 +115,10 @@ impl<W: Write> WindowWriter<W> {
 
     /// Add a slice of samples, automatically flushing windows when `window_size` is reached.
     pub fn add_samples(&mut self, samples: &[Sample]) -> std::io::Result<()> {
+        if self.window_size == 1 {
+            return self.add_samples_raw(samples);
+        }
+
         let mut pos = 0;
         while pos < samples.len() {
             let room = (self.window_size - self.n) as usize;
@@ -136,6 +145,47 @@ impl<W: Write> WindowWriter<W> {
         Ok(())
     }
 
+    /// Optimized path for raw sample logging (1 sample per row, window_size == 1)
+    fn add_samples_raw(&mut self, samples: &[Sample]) -> std::io::Result<()> {
+        use std::fmt::Write as FmtWrite;
+        let mut batch_buf = String::with_capacity(32 * 1024);
+
+        for sample in samples {
+            if (self.rows_written & 0x1FF) == 0 || self.utc_cache.0 == i64::MIN {
+                let now = Utc::now();
+                if now.timestamp() != self.utc_cache.0 {
+                    self.utc_cache = (now.timestamp(), utc_now_string());
+                }
+            }
+
+            let time_whole = self.start_sample / (SAMPLE_RATE_HZ as u64);
+            let time_frac = ((self.start_sample % (SAMPLE_RATE_HZ as u64)) * 10_000_000)
+                / (SAMPLE_RATE_HZ as u64);
+            let cur_val = ((sample.adc as f64 - self.offset) * self.slope * 10.0).round() as i64;
+            let cur_whole = cur_val / 10;
+            let cur_frac = (cur_val % 10).abs();
+
+            let _ = write!(
+                batch_buf,
+                "{},\"{time_whole}.{time_frac:07}\",{},1,{},{},{},{}.00,{cur_whole}.{cur_frac},{cur_whole}.{cur_frac},{cur_whole}.{cur_frac},{:02x}\n",
+                self.rows_written,
+                self.utc_cache.1,
+                self.lost_in_window,
+                sample.adc,
+                sample.adc,
+                sample.adc,
+                sample.status
+            );
+
+            self.rows_written += 1;
+            self.start_sample += 1;
+            self.lost_in_window = 0;
+        }
+
+        self.writer.write_all(batch_buf.as_bytes())?;
+        Ok(())
+    }
+
     /// Flush buffered rows to the underlying writer.
     pub fn flush(&mut self) -> std::io::Result<()> {
         self.writer.flush()
@@ -147,9 +197,12 @@ impl<W: Write> WindowWriter<W> {
             return Ok(());
         }
 
-        let now = Utc::now();
-        if now.timestamp() != self.utc_cache.0 {
-            self.utc_cache = (now.timestamp(), utc_now_string());
+        // Avoid querying system clock (clock_gettime) on every single row when sampling at high rates
+        if (self.rows_written & 0x1FF) == 0 || self.utc_cache.0 == i64::MIN {
+            let now = Utc::now();
+            if now.timestamp() != self.utc_cache.0 {
+                self.utc_cache = (now.timestamp(), utc_now_string());
+            }
         }
         let time_s = self.start_sample as f64 / SAMPLE_RATE_HZ as f64;
         let avg_adc = self.adc_sum as f64 / self.n as f64;
@@ -199,7 +252,7 @@ pub fn create_csv_file(
         std::fs::create_dir_all(parent)?;
     }
     let file = File::create(path)?;
-    let mut writer = BufWriter::new(file);
+    let mut writer = BufWriter::with_capacity(1024 * 1024, file);
 
     WindowWriter::write_cal_comment(&mut writer, cal, cal.idx0_offset, slope, SAMPLE_RATE_HZ)?;
     writeln!(
@@ -220,6 +273,25 @@ pub fn create_csv_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_add_lost_frames_advances_time() {
+        let mut output = Vec::new();
+        let mut wr = WindowWriter::new(&mut output, 1, 0.0, 1.0);
+        let s = [Sample {
+            adc: 100,
+            status: 0,
+        }];
+        wr.add_samples(&s).unwrap(); // sample at t=0
+        wr.add_lost_frames(2).unwrap(); // 2 frames lost = 512 samples
+        wr.add_samples(&s).unwrap(); // sample at t = (1 + 512) / 256000
+        wr.flush().unwrap();
+        let text = String::from_utf8(output).unwrap();
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines.len(), 2);
+        assert!(lines[0].contains("\"0.0000000\""));
+        assert!(lines[1].contains("\"0.0020039\""));
+    }
 
     #[test]
     fn test_window_accumulation_and_decoupling() {

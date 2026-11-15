@@ -11,7 +11,7 @@ use rusb::{Context, DeviceHandle};
 use crate::config::{CMD_TIMEOUT_MS, DATA_IN_EP};
 
 const READ_TIMEOUT: Duration = Duration::from_millis(200);
-const CHANNEL_DEPTH: usize = 128;
+const CHANNEL_DEPTH: usize = 2048;
 
 pub type Chunk = Result<Vec<u8>, rusb::Error>;
 

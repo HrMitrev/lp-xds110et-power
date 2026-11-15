@@ -178,9 +178,11 @@ pub fn run_capture(
         return Err("rows_per_hour must be >= 1".into());
     }
     let window_size =
-        ((SAMPLE_RATE_HZ as f64 * 3600.0) / config.rows_per_hour as f64).round() as u64;
+        (((SAMPLE_RATE_HZ as f64 * 3600.0) / config.rows_per_hour as f64).round() as u64).max(1);
     let max_samples = (config.time_limit_sec > 0.0)
         .then(|| (config.time_limit_sec * SAMPLE_RATE_HZ as f64).round() as u64);
+    let time_limit =
+        (config.time_limit_sec > 0.0).then(|| Duration::from_secs_f64(config.time_limit_sec));
 
     let mut stats = CaptureStats::default();
     let mut writer: Option<WindowWriter<std::io::BufWriter<std::fs::File>>> = None;
@@ -199,6 +201,7 @@ pub fn run_capture(
         gui_tx: gui_tx.as_ref(),
         ctrl_rx: ctrl_rx.as_ref(),
         max_samples,
+        time_limit,
         slope: config.slope,
         run_start,
     };

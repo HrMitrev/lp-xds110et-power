@@ -56,6 +56,7 @@ pub struct SessionEnv<'a> {
     pub gui_tx: Option<&'a Sender<Vec<PlotPoint>>>,
     pub ctrl_rx: Option<&'a Receiver<ProbeControlCommand>>,
     pub max_samples: Option<u64>,
+    pub time_limit: Option<Duration>,
     pub slope: f64,
     pub run_start: Instant,
 }
@@ -70,18 +71,25 @@ pub fn stream_session<W: Write>(
 ) -> Result<bool, SessionError> {
     let reader = ReaderThread::spawn(probe.clone_handle());
     probe.cmd(CMD_START, &[], 2)?;
+    let stream_start = Instant::now();
 
     let mut parser = FrameParser::new();
     let mut decimator = GuiDecimator::new(stats.total_samples);
     let mut last_status = Instant::now();
+    let mut timeline_samples =
+        stats.total_samples + (stats.frames_lost as u64 * crate::config::SAMPLES_PER_FRAME as u64);
 
     while !env.stop_signal.load(Ordering::Relaxed) {
         handle_control_commands(probe, env.ctrl_rx);
 
-        if env
-            .max_samples
-            .is_some_and(|max| stats.total_samples >= max)
-        {
+        // Safety watchdog: abort if probe communication stalled far past target duration
+        if let Some(limit) = env.time_limit {
+            if stream_start.elapsed() >= limit + Duration::from_secs(5) {
+                return Ok(true);
+            }
+        }
+
+        if env.max_samples.is_some_and(|max| timeline_samples >= max) {
             return Ok(true);
         }
 
@@ -95,12 +103,17 @@ pub fn stream_session<W: Write>(
         for (lost, samples) in parser.parse_next_frames() {
             if lost > 0 {
                 stats.frames_lost += lost;
-                writer.add_lost_frames(lost);
+                let lost_samples = lost as u64 * crate::config::SAMPLES_PER_FRAME as u64;
+                timeline_samples += lost_samples;
+                writer.add_lost_frames(lost).map_err(SessionError::Log)?;
             }
 
             // Never take more samples than the requested capture length
             let take = match env.max_samples {
-                Some(max) => ((max - stats.total_samples) as usize).min(samples.len()),
+                Some(max) => {
+                    let remaining = max.saturating_sub(timeline_samples) as usize;
+                    remaining.min(samples.len())
+                }
                 None => samples.len(),
             };
             let taken = &samples[..take];
@@ -112,6 +125,8 @@ pub fn stream_session<W: Write>(
                     gui_batch.extend(decimator.push(s.adc, writer.offset, env.slope));
                 }
             }
+            timeline_samples += taken.len() as u64;
+
             if let (Some(tx), false) = (env.gui_tx, gui_batch.is_empty()) {
                 // A full channel means the GUI is behind; dropping a batch only thins the plot
                 let _ = tx.try_send(gui_batch);
@@ -119,7 +134,7 @@ pub fn stream_session<W: Write>(
 
             writer.add_samples(taken).map_err(SessionError::Log)?;
 
-            if take < samples.len() {
+            if env.max_samples.is_some_and(|max| timeline_samples >= max) {
                 return Ok(true);
             }
         }
