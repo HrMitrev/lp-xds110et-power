@@ -24,8 +24,11 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Query probe hardware info
+    /// Query probe hardware info and firmware version
     Info,
+
+    /// Query probe firmware version directly (Cmd 0x03)
+    Version,
 
     /// Send arbitrary raw command bytes to the probe (e.g. `cmd 46` or `cmd 1d 01 00 ...`)
     Cmd {

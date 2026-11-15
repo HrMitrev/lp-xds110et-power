@@ -24,8 +24,19 @@ const CTRL_CHANNEL_DEPTH: usize = 16;
 pub fn info() -> CmdResult {
     let probe = Xds110::open()?;
     probe.cmd(CMD_CONNECT, &[], 2)?;
+    let ver = probe.version()?;
     let (hw, extra) = probe.hw_info()?;
-    println!("HardwareInfo: 0x{hw:08x} 0x{extra:02x}");
+    println!("Firmware Version: {ver}");
+    println!("Hardware Info:    0x{hw:08x} (extra: 0x{extra:02x})");
+    probe.shutdown();
+    Ok(())
+}
+
+pub fn version() -> CmdResult {
+    let probe = Xds110::open()?;
+    probe.cmd(CMD_CONNECT, &[], 2)?;
+    let ver = probe.version()?;
+    println!("{ver}");
     probe.shutdown();
     Ok(())
 }
@@ -183,7 +194,9 @@ pub fn dfu_serial(serial: Option<String>, suffix_only: bool, reset: bool) -> Cmd
                 format!("{prefix}{s}")
             } else {
                 if s.len() != 8 {
-                    return Err(format!("Serial number must be exactly 8 characters, got '{}'", s).into());
+                    return Err(
+                        format!("Serial number must be exactly 8 characters, got '{}'", s).into(),
+                    );
                 }
                 s
             };

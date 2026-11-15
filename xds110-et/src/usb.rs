@@ -8,8 +8,8 @@ use std::time::{Duration, Instant};
 use crate::config::{CMD_IF, CMD_IN_EP, CMD_OUT_EP, CMD_TIMEOUT_MS, DATA_IF, DATA_IN_EP, PID, VID};
 use crate::protocol::{
     CMD_CALIBRATE, CMD_CLEANUP, CMD_CONNECT, CMD_DISCONNECT, CMD_HWINFO, CMD_SET_DIG,
-    CMD_SET_RANGE, CMD_SET_SRST, CMD_SETUP, CMD_STOP, Calibration, ProtocolError, decode_response,
-    encode_command,
+    CMD_SET_RANGE, CMD_SET_SRST, CMD_SETUP, CMD_STOP, CMD_VERSION, Calibration, ProbeVersion,
+    ProtocolError, decode_response, encode_command,
 };
 
 #[derive(Debug)]
@@ -71,15 +71,17 @@ impl Xds110 {
         let handle = Self::find_device(&context)?;
 
         // Ensure active configuration is set
-        if let Err(e) = handle.set_active_configuration(1) {
-            // Some platforms / OS drivers return Busy if already configured, which is fine
-            if e != rusb::Error::Busy {
-                // If it's not busy, check active config
-                let active = handle.active_configuration().unwrap_or(0);
-                if active == 0 {
-                    return Err(ProbeError::ConfigurationFailed(format!(
-                        "Failed to set configuration: {e}"
-                    )));
+        if handle.active_configuration().unwrap_or(0) != 1 {
+            if let Err(e) = handle.set_active_configuration(1) {
+                // Some platforms / OS drivers return Busy if already configured, which is fine
+                if e != rusb::Error::Busy {
+                    // If it's not busy, check active config
+                    let active = handle.active_configuration().unwrap_or(0);
+                    if active == 0 {
+                        return Err(ProbeError::ConfigurationFailed(format!(
+                            "Failed to set configuration: {e}"
+                        )));
+                    }
                 }
             }
         }
@@ -142,6 +144,12 @@ impl Xds110 {
                 _ => break,
             }
         }
+    }
+
+    /// Query probe firmware version and hardware ID (Cmd 0x03).
+    pub fn version(&self) -> Result<ProbeVersion, ProbeError> {
+        let resp = self.cmd(CMD_VERSION, &[], 2)?;
+        Ok(ProbeVersion::parse(&resp)?)
     }
 
     /// Query hardware info from the probe (Cmd 0x46).

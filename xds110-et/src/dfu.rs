@@ -185,8 +185,7 @@ impl DfuDevice {
         self.handle
             .read_control(0xA1, DFU_GETSTATUS, 0, 0, &mut buf, timeout)?;
         let status = buf[0];
-        let poll_timeout_ms =
-            (buf[1] as u32) | ((buf[2] as u32) << 8) | ((buf[3] as u32) << 16);
+        let poll_timeout_ms = (buf[1] as u32) | ((buf[2] as u32) << 8) | ((buf[3] as u32) << 16);
         let state = buf[4];
         let string_idx = buf[5];
         Ok(DfuStatus {
@@ -266,8 +265,16 @@ impl DfuDevice {
         let app_start = u32::from_le_bytes([buf[16], buf[17], buf[18], buf[19]]);
 
         let block_sz = if block_size > 0 { block_size } else { 16384 };
-        let flash_sz = if total_flash > 0 { total_flash } else { 0x100000 };
-        let app_addr = if app_start > 0 { app_start } else { APP_START_ADDR };
+        let flash_sz = if total_flash > 0 {
+            total_flash
+        } else {
+            0x100000
+        };
+        let app_addr = if app_start > 0 {
+            app_start
+        } else {
+            APP_START_ADDR
+        };
         let num_blocks = flash_sz / block_sz;
         let last_block_addr = (num_blocks - 1) * block_sz;
 
@@ -328,7 +335,12 @@ impl DfuDevice {
     }
 
     /// Program a flash memory region with provided data.
-    pub fn write_flash<F>(&self, start_addr: u32, data: &[u8], mut progress_cb: F) -> Result<(), DfuError>
+    pub fn write_flash<F>(
+        &self,
+        start_addr: u32,
+        data: &[u8],
+        mut progress_cb: F,
+    ) -> Result<(), DfuError>
     where
         F: FnMut(usize, usize),
     {
@@ -340,7 +352,7 @@ impl DfuDevice {
         self.send_command_packet(&cmd_prog)?;
 
         let mut offset = 0;
-        let mut block_seq = 2u16;
+        let mut block_seq = 1u16;
         let total = data.len();
 
         while offset < total {
@@ -447,9 +459,14 @@ impl DfuDevice {
     /// Reset the probe back into runtime mode (DFU_CMD_RESET = 0x07).
     pub fn reset_to_runtime(&self) -> Result<(), DfuError> {
         let cmd_reset = [DFU_CMD_RESET, 0, 0, 0, 0, 0, 0, 0];
-        let _ = self
-            .handle
-            .write_control(0x21, DFU_DNLOAD, 0, 0, &cmd_reset, Duration::from_millis(500));
+        let _ = self.handle.write_control(
+            0x21,
+            DFU_DNLOAD,
+            0,
+            0,
+            &cmd_reset,
+            Duration::from_millis(500),
+        );
         Ok(())
     }
 }
@@ -461,8 +478,9 @@ pub fn trigger_dfu_mode_switch() -> Result<(), DfuError> {
         .devices()?
         .iter()
         .find(|d| {
-            d.device_descriptor()
-                .is_ok_and(|desc| desc.vendor_id() == RUNTIME_VID && desc.product_id() == RUNTIME_PID)
+            d.device_descriptor().is_ok_and(|desc| {
+                desc.vendor_id() == RUNTIME_VID && desc.product_id() == RUNTIME_PID
+            })
         })
         .ok_or(DfuError::DeviceNotFound)?;
 
@@ -522,7 +540,10 @@ pub fn flash_firmware_file(path: &Path, reset_after: bool) -> Result<(), DfuErro
         eprint!("\rProgress: [{done}/{total}] {pct:.1}%");
     })?;
     eprintln!();
-    println!("Flashing complete in {:.2}s.", start.elapsed().as_secs_f64());
+    println!(
+        "Flashing complete in {:.2}s.",
+        start.elapsed().as_secs_f64()
+    );
 
     if reset_after {
         println!("Resetting probe back to runtime mode...");

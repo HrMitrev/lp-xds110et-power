@@ -26,6 +26,7 @@ fn main() -> commands::CmdResult {
 
     match cli.command {
         Some(Commands::Info) => commands::info(),
+        Some(Commands::Version) => commands::version(),
         Some(Commands::Cmd { bytes }) => commands::raw(&bytes),
         Some(Commands::Capture {
             time,

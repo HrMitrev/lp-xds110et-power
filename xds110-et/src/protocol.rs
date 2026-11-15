@@ -116,6 +116,46 @@ pub struct Calibration {
     pub idx1: f64,
 }
 
+/// Firmware version and hardware ID returned by CMD_VERSION (0x03)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ProbeVersion {
+    pub major: u8,
+    pub minor: u8,
+    pub patch: u8,
+    pub build: u8,
+    pub hw_id: u8,
+    pub extra: u8,
+}
+
+impl ProbeVersion {
+    pub fn parse(bytes: &[u8]) -> Result<Self, ProtocolError> {
+        if bytes.len() < 5 {
+            return Err(ProtocolError::InvalidResponse(format!(
+                "Version response too short: {} bytes (expected >= 5)",
+                bytes.len()
+            )));
+        }
+        Ok(Self {
+            major: bytes[3],
+            minor: bytes[2],
+            patch: bytes[1],
+            build: bytes[0],
+            hw_id: bytes[4],
+            extra: if bytes.len() >= 6 { bytes[5] } else { 0 },
+        })
+    }
+}
+
+impl fmt::Display for ProbeVersion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}.{}.{}.{:02x} (HW: 0x{:02x})",
+            self.major, self.minor, self.patch, self.build, self.hw_id
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -171,5 +211,17 @@ mod tests {
         assert_eq!(signed24(0x7FFFFF), 8388607);
         assert_eq!(signed24(0x800000), -8388608);
         assert_eq!(signed24(0xFFFFFF), -1);
+    }
+
+    #[test]
+    fn test_parse_probe_version() {
+        let bytes = [0x41, 0x00, 0x00, 0x03, 0x23, 0x00];
+        let ver = ProbeVersion::parse(&bytes).expect("parse version");
+        assert_eq!(ver.major, 3);
+        assert_eq!(ver.minor, 0);
+        assert_eq!(ver.patch, 0);
+        assert_eq!(ver.build, 0x41);
+        assert_eq!(ver.hw_id, 0x23);
+        assert_eq!(format!("{ver}"), "3.0.0.41 (HW: 0x23)");
     }
 }
