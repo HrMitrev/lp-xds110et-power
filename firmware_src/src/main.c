@@ -3,7 +3,7 @@
  *
  * Demonstrates:
  * - Direct ROM API table utilization (MAP_SysCtlClockFreqSet, MAP_GPIOPinWrite)
- * - Clock configuration (120 MHz via 25MHz crystal & PLL)
+ * - Clock configuration (120 MHz via 16 MHz crystal & PLL)
  * - Embedded CMD_VERSION protocol version marker (3.0.0.01)
  * - LED blink / super-loop execution
  */
@@ -29,9 +29,9 @@ int main(void)
 {
     uint32_t sys_clock;
 
-    /* Configure system clock to 120 MHz using 25 MHz external crystal and PLL */
+    /* Configure system clock to 120 MHz using 16 MHz external crystal and PLL */
     sys_clock = MAP_SysCtlClockFreqSet(
-        (SYSCTL_XTAL_25MHZ | SYSCTL_OSC_MAIN | SYSCTL_USE_PLL | SYSCTL_CFG_VCO_480),
+        (SYSCTL_XTAL_16MHZ | SYSCTL_OSC_MAIN | SYSCTL_USE_PLL | SYSCTL_CFG_VCO_480),
         120000000
     );
 
