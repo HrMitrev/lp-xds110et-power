@@ -212,9 +212,17 @@ def main():
     args = parser.parse_args()
     dest = args.dest.resolve()
     gcc_exe = dest / "bin" / "arm-none-eabi-gcc.exe"
+    ld_exe = dest / "bin" / "arm-none-eabi-ld.exe"
+    newlib_header = dest / "arm-none-eabi" / "include" / "stdio.h"
 
-    if gcc_exe.exists() and not args.force and not args.dry_run:
-        print(f"Toolchain already installed in: {dest}")
+    if (
+        gcc_exe.exists()
+        and ld_exe.exists()
+        and newlib_header.exists()
+        and not args.force
+        and not args.dry_run
+    ):
+        print(f"Complete toolchain (GCC, Binutils, Newlib) already installed in: {dest}")
         try:
             ver = subprocess.check_output(
                 [str(gcc_exe), "--version"], text=True
@@ -278,13 +286,49 @@ def main():
                 if not target_dll.exists():
                     shutil.copy2(dll, target_dll)
 
+    # Patch MSYS2 nano.specs files to fix '=include/newlib-nano' missing sysroot bug with -Wmissing-include-dirs
+    for specs_file in dest.rglob("nano.specs"):
+        try:
+            content = specs_file.read_text(encoding="latin1")
+            if "-isystem =/include/newlib-nano" in content:
+                specs_file.write_text(
+                    content.replace("-isystem =/include/newlib-nano", ""),
+                    encoding="latin1",
+                )
+        except Exception:
+            pass
+
+    all_ok = True
     if gcc_exe.exists():
-        res = subprocess.run([str(gcc_exe), "--version"], capture_output=True, text=True)
-        print("Success! Output:")
-        print(res.stdout.splitlines()[0])
-        print(f"\nToolchain ready at: {dest / 'bin'}")
+        res = subprocess.run(
+            [str(gcc_exe), "--version"], capture_output=True, text=True
+        )
+        print("  [OK] GCC:      ", res.stdout.splitlines()[0])
     else:
-        print(f"Error: {gcc_exe} was not found after extraction!")
+        print("  [FAIL] GCC:     arm-none-eabi-gcc.exe not found")
+        all_ok = False
+
+    if ld_exe.exists():
+        res = subprocess.run(
+            [str(ld_exe), "--version"], capture_output=True, text=True
+        )
+        print("  [OK] Binutils: ", res.stdout.splitlines()[0])
+    else:
+        print("  [FAIL] Binutils: arm-none-eabi-ld.exe not found")
+        all_ok = False
+
+    if newlib_header.exists():
+        print(
+            f"  [OK] Newlib:    C standard library headers found at {newlib_header.parent}"
+        )
+    else:
+        print(f"  [FAIL] Newlib:   {newlib_header} not found")
+        all_ok = False
+
+    if all_ok:
+        print(f"\nComplete toolchain ready at: {dest / 'bin'}")
+    else:
+        print("\nError: Toolchain verification failed.")
         sys.exit(1)
 
 
