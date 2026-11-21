@@ -14,6 +14,7 @@
 #include "driverlib/sysctl.h"
 #include "driverlib/systick.h"
 #include "driverlib/usb.h"
+#include "usb/usb_device.h"
 
 /*
  * Bootloader SVCall vector slot (index 11 = byte offset 0x2C in the preserved
@@ -49,6 +50,7 @@ void dfu_jump_enter(void)
 {
     board_led_green_set(false);
     board_led_red_set(false);
+    usb_device_disconnect();
 
     MAP_IntMasterDisable();
     MAP_SysTickIntDisable();
