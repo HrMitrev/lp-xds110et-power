@@ -98,7 +98,7 @@ SECTIONS
         PROVIDE(end = .);
         PROVIDE(_end = .);
         PROVIDE(__heap_start__ = .);
-        . = . + 0x1000; /* Minimum 4 KB heap */
+        . = . + 0x3000; /* Minimum 12 KB heap */
         . = ALIGN(8);
     } > SRAM
 
