@@ -20,10 +20,10 @@
 #define XDS_MAX_RESP_DATA_LEN (XDS_MAX_FRAME_SIZE - XDS_RESP_HEADER_SIZE)
 
 /* XDS110 command opcodes (verified against firmware_3.0.0.45.bin TBH table & OpenOCD xds110.c) */
-#define XDS_CMD_ECHO             0x00U
-#define XDS_CMD_CONNECT          0x01U
-#define XDS_CMD_DISCONNECT       0x02U
-#define XDS_CMD_VERSION          0x03U
+#define XDS_CMD_ECHO               0x00U
+#define XDS_CMD_CONNECT            0x01U
+#define XDS_CMD_DISCONNECT         0x02U
+#define XDS_CMD_VERSION            0x03U
 #define XDS_CMD_SET_TCK            0x04U
 #define XDS_CMD_SET_TRST           0x05U
 #define XDS_CMD_GET_TRST           0x06U

@@ -22,15 +22,15 @@
 #define XDS_MIN_SWD_CLOCK_HZ         10000U
 
 /* CMAPI register types and DP/AP addresses */
-#define XDS_DAP_AP        0U
-#define XDS_DAP_DP        1U
-#define XDS_DP_ABORT_REQ  0x00U /* DP Write A[3:2]=00 */
-#define XDS_DP_IDCODE_REQ SWD_REQ_RnW
-#define XDS_DP_SELECT_REQ SWD_REQ_A3
-#define XDS_DP_RDBUFF_REQ (SWD_REQ_RnW | SWD_REQ_A2 | SWD_REQ_A3)
-#define XDS_AP_CSW_ADDR   0x00U
-#define XDS_AP_TAR_ADDR   0x04U
-#define XDS_AP_DRW_ADDR   0x0CU
+#define XDS_DAP_AP           0U
+#define XDS_DAP_DP           1U
+#define XDS_DP_ABORT_REQ     0x00U /* DP Write A[3:2]=00 */
+#define XDS_DP_IDCODE_REQ    SWD_REQ_RnW
+#define XDS_DP_SELECT_REQ    SWD_REQ_A3
+#define XDS_DP_RDBUFF_REQ    (SWD_REQ_RnW | SWD_REQ_A2 | SWD_REQ_A3)
+#define XDS_AP_CSW_ADDR      0x00U
+#define XDS_AP_TAR_ADDR      0x04U
+#define XDS_AP_DRW_ADDR      0x0CU
 #define XDS_AP_CSW_CACHE_MAX 8U
 
 /* Raw SWD header byte flags used in OCD_DAP_REQUEST (0x3A) */
@@ -629,8 +629,8 @@ int32_t xds_swd_cmapi_read_mem(uint8_t access_size, uint8_t flags, uint8_t ap_nu
         }
 
         for (uint32_t i = 0U; i < count; i++) {
-            uint8_t wire_req = ((i + 1U) < count) ? (uint8_t)(SWD_REQ_APnDP | SWD_REQ_RnW | XDS_AP_DRW_ADDR)
-                                                  : XDS_DP_RDBUFF_REQ;
+            uint8_t wire_req =
+                ((i + 1U) < count) ? (uint8_t)(SWD_REQ_APnDP | SWD_REQ_RnW | XDS_AP_DRW_ADDR) : XDS_DP_RDBUFF_REQ;
             uint32_t word = 0U;
             ack = xds_swd_cmapi_xfer(wire_req, &word);
             if (ack != SWD_ACK_OK) {
@@ -758,8 +758,7 @@ int32_t xds_swd_saci_write(uint8_t ap_num, uint16_t word_count, const uint8_t *i
     return xds_swd_saci_poll_ctl(ap_num, XDS_SACI_REG_TXCTL, false);
 }
 
-int32_t xds_swd_saci_read(
-    uint8_t ap_num, uint16_t word_count, uint8_t *out_words, uint16_t out_max, uint16_t *out_len)
+int32_t xds_swd_saci_read(uint8_t ap_num, uint16_t word_count, uint8_t *out_words, uint16_t out_max, uint16_t *out_len)
 {
     *out_len = 0U;
     if (!g_xds_swd_active) {

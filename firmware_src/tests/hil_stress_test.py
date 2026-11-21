@@ -745,7 +745,7 @@ def main() -> int:
     parser.add_argument(
         "--expect-version",
         default=None,
-        help="Expected firmware version string (e.g. 3.0.0.02)",
+        help="Expected firmware version string (e.g. 3.0.0.45)",
     )
     parser.add_argument(
         "--blink-identify",

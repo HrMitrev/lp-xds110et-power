@@ -32,18 +32,6 @@ static uint8_t g_req_buf[XDS_MAX_FRAME_SIZE];
 static uint8_t g_resp_buf[XDS_MAX_FRAME_SIZE];
 static uint8_t g_loopback_buf[512];
 
-/* Temporary opcode trace ring for host-tool protocol discovery (opcode 0x70) */
-typedef struct {
-    uint8_t op;
-    uint8_t len;
-    int16_t err;
-    uint8_t a[4];
-} xds_trace_entry_t;
-
-#define XDS_TRACE_CAP 64U
-static xds_trace_entry_t g_trace[XDS_TRACE_CAP];
-static uint32_t g_trace_cnt = 0U;
-
 static uint16_t read_u16le(const uint8_t *src)
 {
     return (uint16_t)src[0] | ((uint16_t)src[1] << 8U);
@@ -203,9 +191,8 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
         bool has_csw = (args_len == 13U);
         uint32_t csw = has_csw ? read_u32le(&args[9]) : 0U;
         uint16_t byte_cnt = read_u16le(&args[7]);
-        err = xds_swd_cmapi_read_mem(
-            args[0], args[1], args[2], read_u32le(&args[3]), byte_cnt, has_csw, csw, resp_data, XDS_MAX_RESP_DATA_LEN,
-            &resp_len);
+        err = xds_swd_cmapi_read_mem(args[0], args[1], args[2], read_u32le(&args[3]), byte_cnt, has_csw, csw, resp_data,
+            XDS_MAX_RESP_DATA_LEN, &resp_len);
         break;
     }
 
@@ -378,8 +365,8 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
         bool has_csw = (args_len == 17U);
         uint32_t csw = has_csw ? read_u32le(&args[13]) : 0U;
         uint16_t byte_cnt = read_u16le(&args[11]);
-        err = xds_swd_cmapi_read_mem(args[0], args[1], args[2], read_u32le(&args[3]), byte_cnt, has_csw, csw,
-            resp_data, XDS_MAX_RESP_DATA_LEN, &resp_len);
+        err = xds_swd_cmapi_read_mem(args[0], args[1], args[2], read_u32le(&args[3]), byte_cnt, has_csw, csw, resp_data,
+            XDS_MAX_RESP_DATA_LEN, &resp_len);
         break;
     }
 
@@ -464,34 +451,10 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
         break;
     }
 
-    case 0x70U: {
-        uint32_t n = (g_trace_cnt > XDS_TRACE_CAP) ? XDS_TRACE_CAP : g_trace_cnt;
-        uint32_t start = (g_trace_cnt > XDS_TRACE_CAP) ? (g_trace_cnt - XDS_TRACE_CAP) : 0U;
-        for (uint32_t i = 0U; i < n; i++) {
-            memcpy(&resp_data[i * sizeof(xds_trace_entry_t)], &g_trace[(start + i) % XDS_TRACE_CAP],
-                sizeof(xds_trace_entry_t));
-        }
-        resp_len = (uint16_t)(n * sizeof(xds_trace_entry_t));
-        if ((args_len >= 1U) && (args[0] != 0U)) {
-            g_trace_cnt = 0U;
-        }
-        xds_send_response(XDS_ERR_OK, resp_len);
-        return;
-    }
-
     default:
         err = XDS_ERR_UNSUPPORTED;
         break;
     }
-
-    xds_trace_entry_t *te = &g_trace[g_trace_cnt % XDS_TRACE_CAP];
-    te->op = opcode;
-    te->len = (args_len > 255U) ? 255U : (uint8_t)args_len;
-    te->err = (int16_t)err;
-    for (uint32_t i = 0U; i < 4U; i++) {
-        te->a[i] = (i < args_len) ? args[i] : 0U;
-    }
-    g_trace_cnt++;
 
     xds_send_response(err, resp_len);
 }

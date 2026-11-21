@@ -11,7 +11,7 @@ Clean-room, bare-metal ARM Cortex-M4F open-source firmware for the **Texas Instr
   - Double-reset within 500 ms (via `.noinit` SRAM cookie) and XDS110 opcode `0x26` (`XDS_ENTER_DFU`) both cleanly tear down USB and re-enter the TI Flash DFU bootloader (`1CBE:00FF`).
 - **USB 2.1 High-Speed Composite Stack (`USB3300-EZK` ULPI PHY, `0451:BEF3`)**:
   - **Interfaces 0 / 1 (CDC0)**: Application UART (`UART0` on `PA0`/`PA1`, full-duplex, verified bit-exact up to **2,000,000 bps** concurrently with EnergyTrace).
-  - **Interface 2 (Vendor Bulk `0x02`/`0x83`)**: XDS110 `0x2A` command channel (session control, `nSRST`, DFU jump, EnergyTrace control, Target Aux GPIOs, and **native OpenOCD `interface/xds110.cfg` SWD**).
+  - **Interface 2 (Vendor Bulk `0x02`/`0x83`)**: XDS110 `0x2A` command channel (session control, `nSRST`, DFU jump, EnergyTrace control, Target Aux GPIOs, **OpenOCD `interface/xds110.cfg` SWD**, and **TI UniFlash `DSLite` SWD + `SEC_AP` SACI**).
   - **Interfaces 3 / 4 (CDC1)**: Auxiliary / SWO UART (`UART7` RX-only on `PC4`; `PC5` preserved for `U10` `XDS_TMS_DIR`).
   - **Interface 5 (Vendor Bulk `0x05`/`0x86`)**: **CMSIS-DAP v2.0.0 WinUSB Bulk** (`512 B` HS / `64 B` FS, 4-deep queues, USB 2.1 BOS + Microsoft OS 2.0 Descriptors for zero-driver WinUSB binding, Atomic Commands `0x7E`/`0x7F`, SWD).
   - **Interface 6 (Vendor Bulk `0x06`/`0x87`)**: EnergyTrace HDR 256 kS/s data stream (64 KiB ring buffer) + byte-reversal loopback self-test when idle.
@@ -21,7 +21,7 @@ Clean-room, bare-metal ARM Cortex-M4F open-source firmware for the **Texas Instr
   - Glitch-free control of `PF0` (`GPIO3`), `PF1` (`GPIO1`, `U49` dir `PJ0`), and `PF2` (`GPIO2`, `U49` dir `PJ1`), plus probe-identify LED blink (`0x80000010`).
 - **Dual SWD Debug Transports (DWT Cycle-Accurate SWCLK)**:
   - **CMSIS-DAP v2 WinUSB (Interface 5)**: Out-of-the-box support for **OpenOCD** (`interface/cmsis-dap.cfg`), **probe-rs**, and **pyOCD** — runs concurrently with EnergyTrace HDR (`Interface 2`/`6`) with zero USB contention.
-  - **Native XDS110 SWD (Interface 2)**: Drop-in compatibility with OpenOCD's **`interface/xds110.cfg`** (`0x04`, `0x05`, `0x07`, `0x0E`, `0x0F..0x12`, `0x15..0x1A`, `0x2B..0x2C`, `0x3A OCD_DAP_REQUEST`), including `connect_assert_srst` and ADIv5.2 Dormant-to-SWD wake. *(Note: `interface/xds110.cfg` claims Interface 2, so use `interface/cmsis-dap.cfg` when running EnergyTrace simultaneously.)*
+  - **Native XDS110 SWD (Interface 2)**: Drop-in compatibility with both OpenOCD's **`interface/xds110.cfg`** (`0x04..0x07`, `0x0E..0x12`, `0x15..0x1A`, `0x2B..0x2C`, `0x3A OCD_DAP_REQUEST`) and **TI UniFlash `DSLite`** (`0x09`, `0x13..0x14` `CMAPI_READ/WRITE_MEM`, `0x32`, `0x39`, `0x3D..0x3E` `CMAPI_*_MEM_64`, `0x45`, `0x49`, `0x50..0x51` `SEC_AP` SACI mailbox, `0x5A` `CMAPI_CONNECT_EX`, BCD version `3.0.0.45`), verified end-to-end on STM32G0 (`connect_assert_srst`) and TI CC2340R5 (`noConnectFlash` chip erase + program + verify + run). *(Note: `interface/xds110.cfg` and `DSLite` claim Interface 2, so use `interface/cmsis-dap.cfg` when running EnergyTrace simultaneously.)*
 
 ---
 
@@ -30,7 +30,7 @@ Clean-room, bare-metal ARM Cortex-M4F open-source firmware for the **Texas Instr
 | Memory Region | Address Range | Size | Description |
 |---|---|---|---|
 | **DFU Bootloader** | `0x0000_0000 - 0x0000_3FFF` | 16 KiB | Preserved primary TI USB DFU bootloader |
-| **Application Flash** | `0x0000_4000 - 0x000F_BFFF` | 992 KiB | **This firmware binary** (~22 KiB used) |
+| **Application Flash** | `0x0000_4000 - 0x000F_BFFF` | 992 KiB | **This firmware binary** (~24 KiB used) |
 | **Config / Serial** | `0x000F_C000 - 0x000F_FFFF` | 16 KiB | Factory 8-char serial number & config word |
 | **Internal SRAM** | `0x2000_0000 - 0x2003_FFFF` | 256 KiB | Data, BSS, Ring Buffers, uDMA & Stack |
 
@@ -47,7 +47,7 @@ firmware_src/
 │   ├── fetch_toolchain.py          # Optional standalone GCC 16 arm-none-eabi fetcher
 │   └── gen_compile_commands.py     # Generates compile_commands.json for clangd
 ├── src/
-│   ├── main.c                      # Super-loop, version (3.0.0.02), subsystem dispatch
+│   ├── main.c                      # Super-loop, BCD version (3.0.0.45), subsystem dispatch
 │   ├── startup_gcc.c               # Cortex-M4F vector table (CAN1 @ IRQ 39, USB0 @ IRQ 42)
 │   ├── board_lp_xds110et.h / .c    # LP-XDS110ET BSP (120 MHz PLL, LEDs, HW ID, nSRST, SysTick)
 │   ├── dfu_jump.h / .c             # Double-reset failsafe & safe DFU bootloader jump
