@@ -22,6 +22,12 @@ pub const CMD_CONNECT: u8 = 0x28;
 pub const CMD_SET_RANGE: u8 = 0x30;
 pub const CMD_SET_DIG: u8 = 0x31;
 pub const CMD_HWINFO: u8 = 0x46;
+/// OpenFW extension: query or switch probe mode (0x00 = Normal, 0x01 = BMP, 0xFF/empty = Query)
+pub const CMD_PROBE_MODE: u8 = 0x63;
+
+pub const PROBE_MODE_CAP_SWITCH: u8 = 1 << 0;
+pub const PROBE_MODE_CAP_GDB_SERVER: u8 = 1 << 1;
+pub const PROBE_MODE_CAP_DEFAULT_BMP: u8 = 1 << 2;
 
 /// Protocol frame magic byte '*'
 pub const MAGIC_BYTE: u8 = b'*';
@@ -156,6 +162,85 @@ impl fmt::Display for ProbeVersion {
     }
 }
 
+/// Runtime probe operating mode for CMD_PROBE_MODE (0x63)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum ProbeMode {
+    Normal = 0x00,
+    Bmp = 0x01,
+}
+
+impl ProbeMode {
+    pub fn from_byte(val: u8) -> Result<Self, ProtocolError> {
+        match val {
+            0x00 => Ok(Self::Normal),
+            0x01 => Ok(Self::Bmp),
+            other => Err(ProtocolError::InvalidResponse(format!(
+                "Unknown probe mode byte: 0x{other:02x}"
+            ))),
+        }
+    }
+}
+
+impl fmt::Display for ProbeMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Normal => write!(f, "normal"),
+            Self::Bmp => write!(f, "bmp"),
+        }
+    }
+}
+
+/// Status payload returned by CMD_PROBE_MODE (0x63): `[mode, caps]`
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ProbeModeStatus {
+    pub mode: ProbeMode,
+    pub caps: u8,
+}
+
+impl ProbeModeStatus {
+    pub fn parse(bytes: &[u8]) -> Result<Self, ProtocolError> {
+        if bytes.len() < 2 {
+            return Err(ProtocolError::InvalidResponse(format!(
+                "Probe mode response too short: {} bytes (expected >= 2)",
+                bytes.len()
+            )));
+        }
+        Ok(Self {
+            mode: ProbeMode::from_byte(bytes[0])?,
+            caps: bytes[1],
+        })
+    }
+
+    pub fn gdb_server_compiled(&self) -> bool {
+        (self.caps & PROBE_MODE_CAP_GDB_SERVER) != 0
+    }
+
+    pub fn default_is_bmp(&self) -> bool {
+        (self.caps & PROBE_MODE_CAP_DEFAULT_BMP) != 0
+    }
+}
+
+impl fmt::Display for ProbeModeStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let default_str = if self.default_is_bmp() {
+            "bmp"
+        } else {
+            "normal"
+        };
+        let gdb_str = if self.gdb_server_compiled() {
+            "ready"
+        } else {
+            "not compiled"
+        };
+        write!(
+            f,
+            "{} (default boot: {default_str}, BMP GDB server: {gdb_str}, caps: 0x{:02x})",
+            self.mode, self.caps
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -223,5 +308,25 @@ mod tests {
         assert_eq!(ver.build, 0x41);
         assert_eq!(ver.hw_id, 0x23);
         assert_eq!(format!("{ver}"), "3.0.0.41 (HW: 0x23)");
+    }
+
+    #[test]
+    fn test_parse_probe_mode_status() {
+        let status = ProbeModeStatus::parse(&[0x01, 0x07]).expect("parse mode");
+        assert_eq!(status.mode, ProbeMode::Bmp);
+        assert!(status.gdb_server_compiled());
+        assert!(status.default_is_bmp());
+        assert_eq!(
+            format!("{status}"),
+            "bmp (default boot: bmp, BMP GDB server: ready, caps: 0x07)"
+        );
+
+        let normal = ProbeModeStatus::parse(&[0x00, 0x01]).expect("parse normal");
+        assert_eq!(normal.mode, ProbeMode::Normal);
+        assert!(!normal.gdb_server_compiled());
+        assert!(!normal.default_is_bmp());
+
+        assert!(ProbeModeStatus::parse(&[0x00]).is_err());
+        assert!(ProbeModeStatus::parse(&[0x02, 0x01]).is_err());
     }
 }

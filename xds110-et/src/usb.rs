@@ -7,9 +7,9 @@ use std::time::{Duration, Instant};
 
 use crate::config::{CMD_IF, CMD_IN_EP, CMD_OUT_EP, CMD_TIMEOUT_MS, DATA_IF, DATA_IN_EP, PID, VID};
 use crate::protocol::{
-    CMD_CALIBRATE, CMD_CLEANUP, CMD_CONNECT, CMD_DISCONNECT, CMD_HWINFO, CMD_SET_DIG,
-    CMD_SET_RANGE, CMD_SET_SRST, CMD_SETUP, CMD_STOP, CMD_VERSION, Calibration, ProbeVersion,
-    ProtocolError, decode_response, encode_command,
+    CMD_CALIBRATE, CMD_CLEANUP, CMD_CONNECT, CMD_DISCONNECT, CMD_HWINFO, CMD_PROBE_MODE,
+    CMD_SET_DIG, CMD_SET_RANGE, CMD_SET_SRST, CMD_SETUP, CMD_STOP, CMD_VERSION, Calibration,
+    ProbeMode, ProbeModeStatus, ProbeVersion, ProtocolError, decode_response, encode_command,
 };
 
 #[derive(Debug)]
@@ -164,6 +164,18 @@ impl Xds110 {
         let hw_ver = u32::from_le_bytes([resp[0], resp[1], resp[2], resp[3]]);
         let extra = resp[4];
         Ok((hw_ver, extra))
+    }
+
+    /// Query current probe operating mode and capabilities (OpenFW Cmd 0x63).
+    pub fn probe_mode_get(&self) -> Result<ProbeModeStatus, ProbeError> {
+        let resp = self.cmd(CMD_PROBE_MODE, &[], 2)?;
+        Ok(ProbeModeStatus::parse(&resp)?)
+    }
+
+    /// Switch probe operating mode (OpenFW Cmd 0x63: 0x00 = Normal, 0x01 = BMP).
+    pub fn probe_mode_set(&self, mode: ProbeMode) -> Result<ProbeModeStatus, ProbeError> {
+        let resp = self.cmd(CMD_PROBE_MODE, &[mode as u8], 2)?;
+        Ok(ProbeModeStatus::parse(&resp)?)
     }
 
     /// Set up the EnergyTrace probe for streaming.

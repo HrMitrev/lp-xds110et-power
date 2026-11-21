@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 
 use crate::config;
 
@@ -22,6 +22,16 @@ pub struct Cli {
     pub command: Option<Commands>,
 }
 
+#[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ModeAction {
+    /// Normal XDS110 / CMSIS-DAP v2 / Aux UART mode
+    Normal,
+    /// Black Magic Debug Probe mode (CDC1 / ttyACM1 acts as GDB RSP server)
+    Bmp,
+    /// Query current probe operating mode and capabilities
+    Status,
+}
+
 #[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Query probe hardware info and firmware version
@@ -29,6 +39,13 @@ pub enum Commands {
 
     /// Query probe firmware version directly (Cmd 0x03)
     Version,
+
+    /// Query or switch OpenFW probe operating mode (normal, bmp, status) via Cmd 0x63
+    Mode {
+        /// Target mode or action (default: status)
+        #[arg(value_enum, default_value_t = ModeAction::Status)]
+        action: ModeAction,
+    },
 
     /// Send arbitrary raw command bytes to the probe (e.g. `cmd 46` or `cmd 1d 01 00 ...`)
     Cmd {

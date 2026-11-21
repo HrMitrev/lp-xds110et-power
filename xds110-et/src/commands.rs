@@ -9,9 +9,10 @@ use crossbeam_channel::bounded;
 
 use crate::capture::{self, CaptureConfig};
 use crate::cleanup::{ProbeExitGuard, register_exit_hooks};
+use crate::cli::ModeAction;
 use crate::csv_loader::load_csv_file;
 use crate::gui::{self, EnergyTraceApp};
-use crate::protocol::CMD_CONNECT;
+use crate::protocol::{CMD_CONNECT, ProbeMode};
 use crate::usb::Xds110;
 
 pub type CmdResult = Result<(), Box<dyn std::error::Error>>;
@@ -37,6 +38,18 @@ pub fn version() -> CmdResult {
     probe.cmd(CMD_CONNECT, &[], 2)?;
     let ver = probe.version()?;
     println!("{ver}");
+    probe.shutdown();
+    Ok(())
+}
+
+pub fn probe_mode(action: ModeAction) -> CmdResult {
+    let probe = Xds110::open()?;
+    let status = match action {
+        ModeAction::Status => probe.probe_mode_get()?,
+        ModeAction::Normal => probe.probe_mode_set(ProbeMode::Normal)?,
+        ModeAction::Bmp => probe.probe_mode_set(ProbeMode::Bmp)?,
+    };
+    println!("Probe Mode: {status}");
     probe.shutdown();
     Ok(())
 }
