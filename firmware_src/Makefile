@@ -78,10 +78,11 @@ APP_SRCS    = src/main.c src/startup_gcc.c src/board.c src/dfu_jump.c \
               src/gpio/aux_gpio.c \
               src/dap/cmsis_dap.c src/dap/swd.c
 DL_DIR      = sdk/ti/devices/msp432e4/driverlib
-DL_SRCS     = $(wildcard $(DL_DIR)/sysctl.c $(DL_DIR)/gpio.c $(DL_DIR)/cpu.c \
-                         $(DL_DIR)/interrupt.c $(DL_DIR)/fpu.c $(DL_DIR)/systick.c \
-                         $(DL_DIR)/usb.c $(DL_DIR)/ssi.c $(DL_DIR)/udma.c \
-                         $(DL_DIR)/uart.c)
+DL_SRCS     = $(DL_DIR)/sysctl.c $(DL_DIR)/gpio.c $(DL_DIR)/cpu.c \
+              $(DL_DIR)/interrupt.c $(DL_DIR)/fpu.c $(DL_DIR)/systick.c \
+              $(DL_DIR)/usb.c $(DL_DIR)/ssi.c $(DL_DIR)/udma.c \
+              $(DL_DIR)/uart.c
+SDK_STAMP   = $(DL_DIR)/driverlib.h
 
 FORMAT_FILES = $(wildcard src/*.c src/*.h src/*/*.c src/*/*.h)
 
@@ -89,18 +90,24 @@ SRCS        = $(APP_SRCS) $(DL_SRCS)
 OBJS        = $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 DEPS        = $(OBJS:.o=.d)
 
-.PHONY: all clean fetch-sdk sdk fetch-toolchain toolchain inspect flash clang-format compile-commands clangd-check test-hil test-swd
+.PHONY: all clean check-sdk fetch-sdk sdk fetch-toolchain toolchain inspect flash clang-format compile-commands clangd-check test-hil test-swd
 
 all: $(BUILD_DIR)/$(TARGET).bin $(BUILD_DIR)/$(TARGET).hex compile_commands.json
 
 # Ensure SDK is fetched before compiling
-$(OBJS): | $(BUILD_DIR) check-sdk
+$(OBJS): | $(BUILD_DIR) $(SDK_STAMP)
 
-check-sdk:
-	@if [ ! -f $(DL_DIR)/driverlib.h ]; then \
-		echo "SDK not found. Fetching MSP432E4 DriverLib..."; \
-		$(PYTHON) scripts/fetch_sdk.py; \
+$(SDK_STAMP):
+	$(ECHO) "SDK not found. Fetching MSP432E4 DriverLib..."
+	$(Q)$(PYTHON) scripts/fetch_sdk.py
+
+$(DL_SRCS): | $(SDK_STAMP)
+	@if [ ! -f $@ ]; then \
+		echo "Missing SDK source: $@"; \
+		exit 1; \
 	fi
+
+check-sdk: $(SDK_STAMP)
 
 fetch-sdk sdk:
 	$(Q)$(PYTHON) scripts/fetch_sdk.py
