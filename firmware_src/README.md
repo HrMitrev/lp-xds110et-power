@@ -82,11 +82,11 @@ firmware_src/
 ## Build, Flash & Test Commands
 
 ```bash
-# Build firmware (auto-fetches MSP432E4 DriverLib SDK and Black Magic Debug main)
+# Build firmware (auto-fetches MSP432E4 DriverLib SDK and Black Magic Debug pr/cc23xx; boots in BMP mode by default)
 make -C firmware_src
-# Optional: build without BMP or boot directly into BMP mode
+# Optional: boot in Normal XDS110/CMSIS-DAP mode or build without BMP
+make -C firmware_src BMP_DEFAULT_MODE=0
 make -C firmware_src BMP_ENABLE=0
-make -C firmware_src BMP_DEFAULT_MODE=1
 
 # Format & static analysis
 make -C firmware_src clang-format
@@ -117,10 +117,10 @@ openocd -f interface/xds110.cfg -c "transport select swd" -f target/stm32g0x.cfg
   --config cc2340r5.ccxml --setting "DebugPassword=Open Sesame!" \
   --setting "FlashEraseSetting=Chip Erase" --flash --verify --run image.hex
 
-# Black Magic Debug Probe (GDB RSP over CDC1 / ttyACM1, concurrent with EnergyTrace & ttyACM0)
-cargo run --release --manifest-path xds110-et/Cargo.toml -- mode bmp
-arm-none-eabi-gdb -ex "target extended-remote /dev/serial/by-id/usb-Texas_Instruments_XDS110*if03" \
-  -ex "monitor swd_scan" -ex "attach 1"
+# Black Magic Debug Probe (default boot mode; GDB RSP on /dev/ttyBmpGdb, UART/RTT on /dev/ttyBmpTarg)
+arm-none-eabi-gdb -ex "target extended-remote /dev/ttyBmpGdb" -ex "monitor swd_scan" -ex "attach 1"
+# Switch to Normal mode at runtime for OpenOCD / DSLite / probe-rs (zero USB re-enumeration):
+cargo run --release --manifest-path xds110-et/Cargo.toml -- mode normal
 
 # probe-rs / pyOCD (auto-detects CMSIS-DAP v2 WinUSB)
 probe-rs info --speed 2000

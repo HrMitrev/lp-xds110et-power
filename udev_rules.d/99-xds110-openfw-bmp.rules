@@ -1,0 +1,16 @@
+# Texas Instruments LP-XDS110ET (OpenFW + Black Magic Debug Probe)
+#
+# Symlinks:
+#   - CDC0 (USB interface 00 -> ttyACM0) -> /dev/ttyBmpTarg (Target App UART / RTT)
+#   - CDC1 (USB interface 03 -> ttyACM1) -> /dev/ttyBmpGdb  (Black Magic GDB Server)
+#
+# Install:
+#   sudo cp udev_rules.d/99-xds110-openfw-bmp.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules && sudo udevadm trigger
+
+ACTION!="add|change|bind", GOTO="xds110_openfw_bmp_end"
+
+SUBSYSTEM=="tty", ENV{ID_VENDOR_ID}=="0451", ENV{ID_MODEL_ID}=="bef3", ENV{ID_SERIAL}=="*OpenFW*", ENV{ID_USB_INTERFACE_NUM}=="00", SYMLINK+="ttyBmpTarg", SYMLINK+="ttyBmpTarg%E{ID_SERIAL_SHORT}", MODE="0666", TAG+="uaccess", ENV{ID_MM_PORT_IGNORE}="1"
+SUBSYSTEM=="tty", ENV{ID_VENDOR_ID}=="0451", ENV{ID_MODEL_ID}=="bef3", ENV{ID_SERIAL}=="*OpenFW*", ENV{ID_USB_INTERFACE_NUM}=="03", SYMLINK+="ttyBmpGdb", SYMLINK+="ttyBmpGdb%E{ID_SERIAL_SHORT}", MODE="0666", TAG+="uaccess", ENV{ID_MM_PORT_IGNORE}="1"
+
+LABEL="xds110_openfw_bmp_end"

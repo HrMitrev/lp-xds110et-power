@@ -15,14 +15,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* Global boot-time default mode macro (override with -DFW_DEFAULT_BMP_MODE=1) */
-#ifndef FW_DEFAULT_BMP_MODE
-#define FW_DEFAULT_BMP_MODE 0U
-#endif
-
-/* Set to 1 when the upstream Black Magic Debug core is linked in */
+/* Set to 1 when the Black Magic Debug core is linked in */
 #ifndef FW_BMP_GDB_COMPILED
 #define FW_BMP_GDB_COMPILED 0U
+#endif
+
+/* Global boot-time default mode macro (defaults to BMP when compiled in; override with -DFW_DEFAULT_BMP_MODE=0) */
+#ifndef FW_DEFAULT_BMP_MODE
+#define FW_DEFAULT_BMP_MODE FW_BMP_GDB_COMPILED
 #endif
 
 /* Wire values for XDS_CMD_PROBE_MODE (opcode 0x63) */

@@ -47,17 +47,23 @@ INCLUDES    = -Isrc \
               -Isdk/third_party/CMSIS/Include
 
 # Black Magic Debug Probe (BMP) build options
-#   BMP_ENABLE=1       Compile & link upstream Black Magic Debug GDB server (GPLv3)
-#   BMP_DEFAULT_MODE=0 Boot in Normal mode (0) or BMP mode on CDC1 (1)
+#   BMP_ENABLE=1       Compile & link Black Magic Debug GDB/RTT server (GPLv3)
+#   BMP_DEFAULT_MODE=1 Boot in BMP mode on CDC1 (1, default) or Normal mode (0)
 BMP_ENABLE       ?= 1
-BMP_DEFAULT_MODE ?= 0
+BMP_DEFAULT_MODE ?= 1
+
+ifeq ($(BMP_ENABLE),0)
+EFFECTIVE_BMP_DEFAULT_MODE := 0
+else
+EFFECTIVE_BMP_DEFAULT_MODE := $(BMP_DEFAULT_MODE)
+endif
 
 # Preprocessor defines
 DEFINES     = -Dgcc \
               -D__MSP432E401Y__ \
               -DTARGET_IS_MSP432E401Y \
               -DPART_MSP432E401Y \
-              -DFW_DEFAULT_BMP_MODE=$(BMP_DEFAULT_MODE) \
+              -DFW_DEFAULT_BMP_MODE=$(EFFECTIVE_BMP_DEFAULT_MODE) \
               -DFW_BMP_GDB_COMPILED=$(BMP_ENABLE)
 
 # Compiler options (size optimization, dead code stripping, standards compliance)
