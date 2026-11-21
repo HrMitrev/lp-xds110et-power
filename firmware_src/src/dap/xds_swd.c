@@ -37,11 +37,13 @@
 #define XDS_SWD_CMD_RNW (1U << 2U)
 
 /* WAIT retry count, SACI mailbox poll cap, and TCK cycle cap */
-#define XDS_SWD_WAIT_RETRIES   1000U
-#define XDS_SACI_POLL_RETRIES  50000U
-#define XDS_CYCLE_TCK_MAX      200000U
-#define XDS_SWD_TRAILING_CLKS  8U
-#define XDS_DP_ABORT_CLEAR_ALL 0x0000001EU
+#define XDS_SWD_WAIT_RETRIES    1000U
+#define XDS_SACI_POLL_RETRIES   50000U
+#define XDS_CYCLE_TCK_MAX       200000U
+#define XDS_SWD_TRAILING_CLKS   8U
+#define XDS_DP_ABORT_CLEAR_ALL  0x0000001EU
+#define XDS_DP_ABORT_DAP_AND_CL 0x0000001FU
+#define XDS_AP_CSW_SPROT_BIT    0x40000000U
 
 /* TI SEC-AP (SACI) mailbox register offsets */
 #define XDS_SACI_REG_TXD   0x00U
@@ -107,6 +109,39 @@ static uint8_t xds_swd_xfer_retry(uint8_t swd_req, uint32_t *data)
             break;
         }
     } while (retry-- > 0U);
+    return ack;
+}
+
+/*
+ * CMAPI SWD transfer with automatic sticky-error / WAIT-abort recovery
+ * (matching TI XDS110 CMAPI behavior so a single bus fault does not leave
+ * DP.CTRL/STAT.STICKYERR latched across subsequent AP/DP commands).
+ */
+static uint8_t xds_swd_cmapi_xfer(uint8_t swd_req, uint32_t *data)
+{
+    uint8_t ack = xds_swd_xfer_retry(swd_req, data);
+    bool is_dp_idcode_or_abort = ((swd_req & SWD_REQ_APnDP) == 0U) && ((swd_req & 0x0CU) == 0U);
+    bool is_dp_ctrlstat_read = (swd_req == (uint8_t)(SWD_REQ_RnW | SWD_REQ_A2));
+
+    if ((ack != SWD_ACK_OK) && (ack != SWD_ACK_WAIT) && (ack != SWD_ACK_FAULT) && !is_dp_idcode_or_abort) {
+        /* Protocol/parity glitch: read DPIDR once to resync and retry once */
+        uint32_t idcode = 0U;
+        (void)swd_transfer(XDS_DP_IDCODE_REQ, &idcode);
+        ack = xds_swd_xfer_retry(swd_req, data);
+    }
+
+    if ((ack == SWD_ACK_FAULT) && !is_dp_idcode_or_abort && !is_dp_ctrlstat_read) {
+        uint32_t stat = 0U;
+        uint32_t abort_val = XDS_DP_ABORT_CLEAR_ALL;
+        (void)swd_transfer((uint8_t)(SWD_REQ_RnW | SWD_REQ_A2), &stat);
+        (void)swd_transfer(XDS_DP_ABORT_REQ, &abort_val);
+        swd_idle_cycles(XDS_SWD_TRAILING_CLKS);
+    } else if ((ack == SWD_ACK_WAIT) && !is_dp_idcode_or_abort && !is_dp_ctrlstat_read) {
+        uint32_t abort_val = XDS_DP_ABORT_DAP_AND_CL;
+        (void)swd_transfer(XDS_DP_ABORT_REQ, &abort_val);
+        swd_idle_cycles(XDS_SWD_TRAILING_CLKS);
+    }
+
     return ack;
 }
 
@@ -211,7 +246,7 @@ static int32_t xds_swd_select_ap_bank(uint8_t ap_num, uint8_t addr)
     }
 
     uint32_t wval = sel;
-    uint8_t ack = xds_swd_xfer_retry(XDS_DP_SELECT_REQ, &wval);
+    uint8_t ack = xds_swd_cmapi_xfer(XDS_DP_SELECT_REQ, &wval);
     if (ack != SWD_ACK_OK) {
         g_xds_select_valid = false;
         return xds_swd_ack_to_err(ack);
@@ -419,12 +454,12 @@ int32_t xds_swd_cmapi_read_reg(uint8_t type, uint8_t ap_num, uint8_t addr, uint3
         if (sel_err != XDS_ERR_OK) {
             return sel_err;
         }
-        uint8_t ack = xds_swd_xfer_retry((uint8_t)(SWD_REQ_APnDP | SWD_REQ_RnW | reg_bits), NULL);
+        uint8_t ack = xds_swd_cmapi_xfer((uint8_t)(SWD_REQ_APnDP | SWD_REQ_RnW | reg_bits), NULL);
         if (ack != SWD_ACK_OK) {
             return xds_swd_ack_to_err(ack);
         }
         uint32_t val = 0U;
-        ack = xds_swd_xfer_retry(XDS_DP_RDBUFF_REQ, &val);
+        ack = xds_swd_cmapi_xfer(XDS_DP_RDBUFF_REQ, &val);
         if (ack != SWD_ACK_OK) {
             return xds_swd_ack_to_err(ack);
         }
@@ -434,7 +469,7 @@ int32_t xds_swd_cmapi_read_reg(uint8_t type, uint8_t ap_num, uint8_t addr, uint3
 
     if (type == XDS_DAP_DP) {
         uint32_t val = 0U;
-        uint8_t ack = xds_swd_xfer_retry((uint8_t)(SWD_REQ_RnW | reg_bits), &val);
+        uint8_t ack = xds_swd_cmapi_xfer((uint8_t)(SWD_REQ_RnW | reg_bits), &val);
         if (ack != SWD_ACK_OK) {
             return xds_swd_ack_to_err(ack);
         }
@@ -458,9 +493,16 @@ int32_t xds_swd_cmapi_write_reg(uint8_t type, uint8_t ap_num, uint8_t addr, uint
             return sel_err;
         }
         uint32_t wval = val;
-        uint8_t ack = xds_swd_xfer_retry((uint8_t)(SWD_REQ_APnDP | reg_bits), &wval);
+        uint8_t ack = xds_swd_cmapi_xfer((uint8_t)(SWD_REQ_APnDP | reg_bits), &wval);
         if (ack != SWD_ACK_OK) {
+            if ((addr == XDS_AP_CSW_ADDR) && (ap_num < XDS_AP_CSW_CACHE_MAX)) {
+                g_xds_csw_valid[ap_num] = false;
+            }
             return xds_swd_ack_to_err(ack);
+        }
+        if ((addr == XDS_AP_CSW_ADDR) && (ap_num < XDS_AP_CSW_CACHE_MAX)) {
+            g_xds_csw_cache[ap_num] = val;
+            g_xds_csw_valid[ap_num] = true;
         }
         swd_idle_cycles(XDS_SWD_TRAILING_CLKS);
         return XDS_ERR_OK;
@@ -468,7 +510,7 @@ int32_t xds_swd_cmapi_write_reg(uint8_t type, uint8_t ap_num, uint8_t addr, uint
 
     if (type == XDS_DAP_DP) {
         uint32_t wval = val;
-        uint8_t ack = xds_swd_xfer_retry(reg_bits, &wval);
+        uint8_t ack = xds_swd_cmapi_xfer(reg_bits, &wval);
         if (ack != SWD_ACK_OK) {
             return xds_swd_ack_to_err(ack);
         }
@@ -484,17 +526,18 @@ int32_t xds_swd_cmapi_write_reg(uint8_t type, uint8_t ap_num, uint8_t addr, uint
 }
 
 static int32_t xds_swd_prepare_mem_csw(
-    uint8_t ap_num, uint8_t access_size, bool addr_inc, bool has_csw, uint32_t csw_override)
+    uint8_t ap_num, uint8_t access_size, uint8_t flags, bool has_csw, uint32_t csw_override)
 {
     uint32_t base_csw = 0U;
-    if (has_csw) {
+    bool had_cached = (ap_num < XDS_AP_CSW_CACHE_MAX) && g_xds_csw_valid[ap_num];
+    if (had_cached) {
+        base_csw = g_xds_csw_cache[ap_num];
+    } else if (has_csw) {
         base_csw = csw_override;
         if (ap_num < XDS_AP_CSW_CACHE_MAX) {
             g_xds_csw_cache[ap_num] = base_csw;
             g_xds_csw_valid[ap_num] = true;
         }
-    } else if ((ap_num < XDS_AP_CSW_CACHE_MAX) && g_xds_csw_valid[ap_num]) {
-        base_csw = g_xds_csw_cache[ap_num];
     } else {
         int32_t r_err = xds_swd_cmapi_read_reg(XDS_DAP_AP, ap_num, XDS_AP_CSW_ADDR, &base_csw);
         if (r_err != XDS_ERR_OK) {
@@ -506,16 +549,37 @@ static int32_t xds_swd_prepare_mem_csw(
         }
     }
 
+    bool addr_inc = (flags & 0x01U) != 0U;
+    bool secure_prot = (flags & 0x02U) != 0U;
     uint32_t size_bits = (access_size == 4U) ? 2U : ((access_size == 2U) ? 1U : 0U);
-    uint32_t csw = (base_csw & ~0x3FU) | size_bits | (addr_inc ? 0x10U : 0U);
+    uint32_t csw = (base_csw & ~0x3FU) | XDS_AP_CSW_SPROT_BIT | size_bits | (addr_inc ? 0x10U : 0U);
+    if (secure_prot) {
+        csw &= ~XDS_AP_CSW_SPROT_BIT;
+    }
 
     int32_t sel_err = xds_swd_select_ap_bank(ap_num, XDS_AP_CSW_ADDR);
     if (sel_err != XDS_ERR_OK) {
         return sel_err;
     }
 
-    uint8_t ack = xds_swd_xfer_retry((uint8_t)(SWD_REQ_APnDP | XDS_AP_CSW_ADDR), &csw);
-    return xds_swd_ack_to_err(ack);
+    if (had_cached && (csw == g_xds_csw_cache[ap_num])) {
+        return XDS_ERR_OK;
+    }
+
+    uint32_t wval = csw;
+    uint8_t ack = xds_swd_cmapi_xfer((uint8_t)(SWD_REQ_APnDP | XDS_AP_CSW_ADDR), &wval);
+    if (ack != SWD_ACK_OK) {
+        if (ap_num < XDS_AP_CSW_CACHE_MAX) {
+            g_xds_csw_valid[ap_num] = false;
+        }
+        return xds_swd_ack_to_err(ack);
+    }
+
+    if (ap_num < XDS_AP_CSW_CACHE_MAX) {
+        g_xds_csw_cache[ap_num] = csw;
+        g_xds_csw_valid[ap_num] = true;
+    }
+    return XDS_ERR_OK;
 }
 
 int32_t xds_swd_cmapi_read_mem(uint8_t access_size, uint8_t flags, uint8_t ap_num, uint32_t addr, uint16_t byte_count,
@@ -534,7 +598,7 @@ int32_t xds_swd_cmapi_read_mem(uint8_t access_size, uint8_t flags, uint8_t ap_nu
     }
 
     bool addr_inc = (flags & 0x01U) != 0U;
-    int32_t err = xds_swd_prepare_mem_csw(ap_num, access_size, addr_inc, has_csw, csw_override);
+    int32_t err = xds_swd_prepare_mem_csw(ap_num, access_size, flags, has_csw, csw_override);
     if (err != XDS_ERR_OK) {
         return err;
     }
@@ -544,7 +608,7 @@ int32_t xds_swd_cmapi_read_mem(uint8_t access_size, uint8_t flags, uint8_t ap_nu
     while (off < byte_count) {
         /* Re-write TAR at start and at every 1 KiB ADIv5 auto-increment boundary */
         uint32_t tar = cur_addr;
-        uint8_t ack = xds_swd_xfer_retry((uint8_t)(SWD_REQ_APnDP | XDS_AP_TAR_ADDR), &tar);
+        uint8_t ack = xds_swd_cmapi_xfer((uint8_t)(SWD_REQ_APnDP | XDS_AP_TAR_ADDR), &tar);
         if (ack != SWD_ACK_OK) {
             return xds_swd_ack_to_err(ack);
         }
@@ -559,7 +623,7 @@ int32_t xds_swd_cmapi_read_mem(uint8_t access_size, uint8_t flags, uint8_t ap_nu
         uint32_t count = chunk_bytes / access_size;
 
         /* Post initial DRW read */
-        ack = xds_swd_xfer_retry((uint8_t)(SWD_REQ_APnDP | SWD_REQ_RnW | XDS_AP_DRW_ADDR), NULL);
+        ack = xds_swd_cmapi_xfer((uint8_t)(SWD_REQ_APnDP | SWD_REQ_RnW | XDS_AP_DRW_ADDR), NULL);
         if (ack != SWD_ACK_OK) {
             return xds_swd_ack_to_err(ack);
         }
@@ -568,7 +632,7 @@ int32_t xds_swd_cmapi_read_mem(uint8_t access_size, uint8_t flags, uint8_t ap_nu
             uint8_t wire_req = ((i + 1U) < count) ? (uint8_t)(SWD_REQ_APnDP | SWD_REQ_RnW | XDS_AP_DRW_ADDR)
                                                   : XDS_DP_RDBUFF_REQ;
             uint32_t word = 0U;
-            ack = xds_swd_xfer_retry(wire_req, &word);
+            ack = xds_swd_cmapi_xfer(wire_req, &word);
             if (ack != SWD_ACK_OK) {
                 return xds_swd_ack_to_err(ack);
             }
@@ -607,7 +671,7 @@ int32_t xds_swd_cmapi_write_mem(uint8_t access_size, uint8_t flags, uint8_t ap_n
     }
 
     bool addr_inc = (flags & 0x01U) != 0U;
-    int32_t err = xds_swd_prepare_mem_csw(ap_num, access_size, addr_inc, has_csw, csw_override);
+    int32_t err = xds_swd_prepare_mem_csw(ap_num, access_size, flags, has_csw, csw_override);
     if (err != XDS_ERR_OK) {
         return err;
     }
@@ -616,7 +680,7 @@ int32_t xds_swd_cmapi_write_mem(uint8_t access_size, uint8_t flags, uint8_t ap_n
     uint16_t off = 0U;
     while (off < byte_count) {
         uint32_t tar = cur_addr;
-        uint8_t ack = xds_swd_xfer_retry((uint8_t)(SWD_REQ_APnDP | XDS_AP_TAR_ADDR), &tar);
+        uint8_t ack = xds_swd_cmapi_xfer((uint8_t)(SWD_REQ_APnDP | XDS_AP_TAR_ADDR), &tar);
         if (ack != SWD_ACK_OK) {
             return xds_swd_ack_to_err(ack);
         }
@@ -642,7 +706,7 @@ int32_t xds_swd_cmapi_write_mem(uint8_t access_size, uint8_t flags, uint8_t ap_n
                 word = (uint32_t)in_data[off] << shift;
             }
 
-            ack = xds_swd_xfer_retry((uint8_t)(SWD_REQ_APnDP | XDS_AP_DRW_ADDR), &word);
+            ack = xds_swd_cmapi_xfer((uint8_t)(SWD_REQ_APnDP | XDS_AP_DRW_ADDR), &word);
             if (ack != SWD_ACK_OK) {
                 return xds_swd_ack_to_err(ack);
             }
