@@ -353,8 +353,27 @@ int32_t xds_swd_cmapi_connect(uint32_t *out_idcode)
         return xds_swd_ack_to_err(ack);
     }
 
+    /* Clear sticky errors and power up debug & system domains (matches TI CMAPI_CONNECT) */
+    uint32_t abort_val = XDS_DP_ABORT_CLEAR_ALL;
+    (void)xds_swd_xfer_retry(XDS_DP_ABORT_REQ, &abort_val);
+
+    uint32_t ctrl_req = 0x50000000U; /* CSYSPWRUPREQ | CDBGPWRUPREQ */
+    ack = xds_swd_xfer_retry(SWD_REQ_A2, &ctrl_req);
+    if (ack == SWD_ACK_OK) {
+        swd_idle_cycles(XDS_SWD_TRAILING_CLKS);
+        for (uint32_t i = 0U; i < 200U; i++) {
+            uint32_t stat = 0U;
+            if (xds_swd_xfer_retry((uint8_t)(SWD_REQ_RnW | SWD_REQ_A2), &stat) != SWD_ACK_OK) {
+                break;
+            }
+            if ((stat & 0xA0000000U) == 0xA0000000U) {
+                break;
+            }
+        }
+    }
+
     g_xds_cmapi_connected = true;
-    g_xds_select_valid = false;
+    xds_swd_clear_caches();
     *out_idcode = idcode;
     return XDS_ERR_OK;
 }
