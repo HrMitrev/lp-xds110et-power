@@ -6,10 +6,12 @@ Verifies:
   1. Probe enumeration & version / EnergyTrace HDR hardware info (xds110-et info)
   2. Target Aux GPIOs (opcodes 0x29 / 0x2A) across PF0..PF2 & U49 PJ0/PJ1 level
      shifters (requires a jumper bridging P10 pin 16 GPIO2 <-> pin 18 GPIO1)
-  3. Standalone UART0 (/dev/ttyACM0) loopback across baud rates & parity modes
+  3. CMSIS-DAP 1.0 HID transport (/dev/hidraw*) + host tool discovery
+     (probe-rs, pyocd, openocd when installed in PATH)
+  4. Standalone UART0 (/dev/ttyACM0) loopback across baud rates & parity modes
      (requires a jumper bridging P10 pin 7 XDS_TX <-> pin 9 XDS_RX)
-  4. Aux / SWO UART7 (/dev/ttyACM1) open, line coding, and non-blocking TX discard
-  5. Concurrent EnergyTrace HDR 256 kS/s capture + high-speed UART0 loopback
+  5. Aux / SWO UART7 (/dev/ttyACM1) open, line coding, and non-blocking TX discard
+  6. Concurrent EnergyTrace HDR 256 kS/s capture + high-speed UART0 loopback
      (verifies 0 lost EnergyTrace frames and 100% bit-exact UART transfers)
 
 Requires: python-pyusb (usb.core / usb.util) on Linux / WSL2.
@@ -42,6 +44,19 @@ XDS_CMD_GPIO_SET = 0x2A
 GPIO_SUBCMD_VALUE = 0x80000000
 GPIO_SUBCMD_DIR = 0x80000001
 GPIO_SUBCMD_BLINK_LED = 0x80000010
+
+# CMSIS-DAP v1 command IDs
+DAP_CMD_INFO = 0x00
+DAP_CMD_HOST_STATUS = 0x01
+DAP_CMD_CONNECT = 0x02
+DAP_CMD_DISCONNECT = 0x03
+DAP_CMD_TRANSFER_CONFIGURE = 0x04
+DAP_CMD_DELAY = 0x09
+DAP_CMD_RESET_TARGET = 0x0A
+DAP_CMD_SWJ_PINS = 0x10
+DAP_CMD_SWJ_CLOCK = 0x11
+DAP_CMD_SWD_CONFIGURE = 0x13
+DAP_HID_PKT_SIZE = 64
 
 BAUD_MAP = {
     9600: termios.B9600,
@@ -94,6 +109,53 @@ class XdsCmdUsb:
         resp_len = struct.unpack_from("<H", resp, 1)[0]
         err = struct.unpack_from("<i", resp, 3)[0]
         return err, resp[7 : 3 + resp_len]
+
+
+class CmsisDapHid:
+    """Linux hidraw transport for CMSIS-DAP 1.0 Interface 5 (64-byte HID reports)."""
+
+    def __init__(self, vid: int = XDS_VID, pid: int = XDS_PID):
+        self.path = self._find_hidraw_path(vid, pid)
+        self.fd = os.open(self.path, os.O_RDWR | os.O_NONBLOCK)
+
+    @staticmethod
+    def _find_hidraw_path(vid: int, pid: int) -> str:
+        hid_id_needle = f"{vid:08X}:{pid:08X}"
+        sys_hidraw = Path("/sys/class/hidraw")
+        if sys_hidraw.is_dir():
+            for entry in sorted(sys_hidraw.iterdir()):
+                uevent = entry / "device" / "uevent"
+                if not uevent.is_file():
+                    continue
+                text = uevent.read_text(errors="ignore").upper()
+                if hid_id_needle in text:
+                    return f"/dev/{entry.name}"
+        raise RuntimeError(f"CMSIS-DAP hidraw device for {vid:04x}:{pid:04x} not found under /sys/class/hidraw")
+
+    def close(self) -> None:
+        if self.fd >= 0:
+            os.close(self.fd)
+            self.fd = -1
+
+    def __enter__(self) -> "CmsisDapHid":
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        self.close()
+
+    def xfer(self, payload: bytes, timeout_s: float = 1.0) -> bytes:
+        if len(payload) > DAP_HID_PKT_SIZE:
+            raise ValueError("CMSIS-DAP HID packet exceeds 64 bytes")
+        # Leading 0x00 is the Linux hidraw report ID prefix for unnumbered reports
+        report = b"\x00" + payload.ljust(DAP_HID_PKT_SIZE, b"\x00")
+        os.write(self.fd, report)
+        rlist, _, _ = select.select([self.fd], [], [], timeout_s)
+        if not rlist:
+            raise RuntimeError(f"Timed out waiting for CMSIS-DAP response to cmd 0x{payload[0]:02X}")
+        resp = os.read(self.fd, DAP_HID_PKT_SIZE)
+        if len(resp) != DAP_HID_PKT_SIZE:
+            raise RuntimeError(f"Expected {DAP_HID_PKT_SIZE} B HID report, got {len(resp)} B")
+        return resp
 
 
 def resolve_xds110_et_cmd(override: str | None) -> list[str]:
@@ -269,8 +331,107 @@ def test_aux_gpio(blink_identify: bool) -> None:
             gpio_set(usb_dev, GPIO_SUBCMD_DIR, 0x07, 0x00)
 
 
+def test_cmsis_dap_hid() -> None:
+    print("\n=== 3. CMSIS-DAP 1.0 HID Transport & Host Tool Discovery ===")
+
+    def dap_info_str(dap: CmsisDapHid, info_id: int) -> str:
+        r = dap.xfer(bytes([DAP_CMD_INFO, info_id]))
+        if r[0] != DAP_CMD_INFO:
+            raise RuntimeError(f"Unexpected DAP_Info response cmd: 0x{r[0]:02X}")
+        n = r[1]
+        return r[2 : 2 + n].rstrip(b"\x00").decode("ascii", errors="replace")
+
+    with CmsisDapHid() as dap:
+        vendor = dap_info_str(dap, 0x01)
+        product = dap_info_str(dap, 0x02)
+        serial = dap_info_str(dap, 0x03)
+        dap_ver = dap_info_str(dap, 0x04)
+        prod_fw = dap_info_str(dap, 0x09)
+        caps = dap.xfer(bytes([DAP_CMD_INFO, 0xF0]))[2]
+        pkt_cnt = dap.xfer(bytes([DAP_CMD_INFO, 0xFE]))[2]
+        pkt_sz = struct.unpack_from("<H", dap.xfer(bytes([DAP_CMD_INFO, 0xFF])), 2)[0]
+        print(
+            f"  [HID {dap.path}] {vendor} / {product} (SN={serial}, DAP={dap_ver}, FW={prod_fw}, "
+            f"caps=0x{caps:02X}, pkts={pkt_cnt}x{pkt_sz}B)"
+        )
+        if (caps & 0x01) == 0 or pkt_cnt < 1 or pkt_sz != DAP_HID_PKT_SIZE:
+            raise RuntimeError(f"Invalid CMSIS-DAP capabilities/geometry: caps={caps:#x}, {pkt_cnt}x{pkt_sz}")
+
+        try:
+            # Connect SWD, configure clock/transfer/SWD, toggle SWJ pins, and disconnect
+            r_conn = dap.xfer(bytes([DAP_CMD_CONNECT, 0x01]))
+            if r_conn[0] != DAP_CMD_CONNECT or r_conn[1] != 0x01:
+                raise RuntimeError(f"DAP_Connect(SWD) failed: {r_conn[:4].hex()}")
+
+            # Verify clock=0 is rejected and clock=1MHz succeeds
+            r_clk0 = dap.xfer(struct.pack("<BI", DAP_CMD_SWJ_CLOCK, 0))
+            r_clk1 = dap.xfer(struct.pack("<BI", DAP_CMD_SWJ_CLOCK, 1_000_000))
+            if r_clk0[1] != 0xFF or r_clk1[1] != 0x00:
+                raise RuntimeError(f"DAP_SWJ_Clock check failed: clk0={r_clk0[1]:#x}, clk1={r_clk1[1]:#x}")
+
+            if dap.xfer(struct.pack("<BBHH", DAP_CMD_TRANSFER_CONFIGURE, 0, 100, 0))[1] != 0x00:
+                raise RuntimeError("DAP_TransferConfigure failed")
+            if dap.xfer(bytes([DAP_CMD_SWD_CONFIGURE, 0x00]))[1] != 0x00:
+                raise RuntimeError("DAP_SWD_Configure failed")
+            if dap.xfer(struct.pack("<BH", DAP_CMD_DELAY, 500))[1] != 0x00:
+                raise RuntimeError("DAP_Delay failed")
+            if dap.xfer(bytes([DAP_CMD_RESET_TARGET]))[1] != 0x00:
+                raise RuntimeError("DAP_ResetTarget failed")
+            if dap.xfer(bytes([DAP_CMD_HOST_STATUS, 0x00, 0x01]))[1] != 0x00:
+                raise RuntimeError("DAP_HostStatus failed")
+
+            # Drive SWCLK/SWDIO/nRESET low then high via DAP_SWJ_Pins and verify readback
+            r_lo = dap.xfer(struct.pack("<BBBI", DAP_CMD_SWJ_PINS, 0x00, 0x83, 0))
+            r_hi = dap.xfer(struct.pack("<BBBI", DAP_CMD_SWJ_PINS, 0x83, 0x83, 0))
+            if (r_lo[1] & 0x83) != 0x00 or (r_hi[1] & 0x83) != 0x83:
+                raise RuntimeError(f"DAP_SWJ_Pins toggle mismatch: lo=0x{r_lo[1]:02X}, hi=0x{r_hi[1]:02X}")
+
+            # 100-packet rapid HID round-trip latency check
+            t0 = time.monotonic()
+            for _ in range(100):
+                rr = dap.xfer(bytes([DAP_CMD_INFO, 0xF0]))
+                if rr[0] != DAP_CMD_INFO or rr[2] != caps:
+                    raise RuntimeError("HID round-trip burst mismatch")
+            dt_ms = (time.monotonic() - t0) * 1000.0
+            print(f"  [HID Commands  ] connect/clock/pins/100x burst OK ({dt_ms:.1f}ms, {dt_ms/100:.2f}ms/pkt)")
+        finally:
+            dap.xfer(bytes([DAP_CMD_HOST_STATUS, 0x00, 0x00]))
+            dap.xfer(bytes([DAP_CMD_DISCONNECT]))
+
+    # Host debugger discovery checks (run for each tool installed in PATH)
+    if shutil.which("probe-rs"):
+        p = subprocess.run(["probe-rs", "list"], capture_output=True, text=True, check=False)
+        out = (p.stdout + p.stderr).strip()
+        if p.returncode != 0 or "0451:bef3" not in out.lower() or "cmsis-dap" not in out.lower():
+            raise RuntimeError(f"probe-rs list did not discover CMSIS-DAP probe:\n{out}")
+        print(f"  [probe-rs list ] OK ({out.splitlines()[-1].strip()})")
+
+    if shutil.which("pyocd"):
+        p = subprocess.run(["pyocd", "list"], capture_output=True, text=True, check=False)
+        out = (p.stdout + p.stderr).strip()
+        if p.returncode != 0 or "openfw cmsis-dap" not in out.lower():
+            raise RuntimeError(f"pyocd list did not discover CMSIS-DAP probe:\n{out}")
+        print(f"  [pyocd list    ] OK ({out.splitlines()[-1].strip()})")
+
+    if shutil.which("openocd"):
+        p = subprocess.run(
+            [
+                "openocd",
+                "-c",
+                "adapter driver cmsis-dap; cmsis-dap backend hid; transport select swd; adapter speed 1000; init; shutdown",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        out = (p.stdout + p.stderr).strip()
+        if p.returncode != 0 or "CMSIS-DAP: Interface ready" not in out:
+            raise RuntimeError(f"openocd CMSIS-DAP HID init failed:\n{out}")
+        print("  [openocd       ] OK (CMSIS-DAP: Interface ready, SWD @ 1000 kHz)")
+
+
 def test_uart_standalone(app_uart: str) -> None:
-    print(f"\n=== 3. Standalone UART0 Loopback ({app_uart}) ===")
+    print(f"\n=== 4. Standalone UART0 Loopback ({app_uart}) ===")
 
     # Quick sanity echo first to detect missing RX<->TX loopback jumper
     fd = open_raw_serial(app_uart, 115200, "N")
@@ -311,7 +472,7 @@ def test_uart_standalone(app_uart: str) -> None:
 
 
 def test_aux_uart(aux_uart: str) -> None:
-    print(f"\n=== 4. Aux / SWO UART7 Non-Blocking Drain ({aux_uart}) ===")
+    print(f"\n=== 5. Aux / SWO UART7 Non-Blocking Drain ({aux_uart}) ===")
     fd = open_raw_serial(aux_uart, 115200, "N")
     payload = b"AUX_TX_DISCARD_TEST" * 100
     written = os.write(fd, payload)
@@ -322,7 +483,7 @@ def test_aux_uart(aux_uart: str) -> None:
 
 def test_concurrent_et_and_uart(xds_cmd: list[str], app_uart: str, duration_s: int, run_uart: bool) -> None:
     label = "Concurrent EnergyTrace HDR (256 kS/s) + UART0" if run_uart else "EnergyTrace HDR (256 kS/s)"
-    print(f"\n=== 5. {label} ({duration_s}s) ===")
+    print(f"\n=== 6. {label} ({duration_s}s) ===")
 
     with tempfile.NamedTemporaryFile(prefix="et_hil_", suffix=".csv", delete=False) as tmp:
         csv_path = tmp.name
@@ -385,6 +546,7 @@ def main() -> int:
     parser.add_argument("--expect-version", default=None, help="Expected firmware version string (e.g. 3.0.0.02)")
     parser.add_argument("--blink-identify", action="store_true", help="Also exercise 0x80000010 probe-identify LED blink")
     parser.add_argument("--skip-gpio", action="store_true", help="Skip Target Aux GPIO (0x29/0x2A) loopback tests")
+    parser.add_argument("--skip-dap", action="store_true", help="Skip CMSIS-DAP HID & host tool discovery tests")
     parser.add_argument("--skip-uart", action="store_true", help="Skip UART loopback tests")
     parser.add_argument("--skip-et", action="store_true", help="Skip EnergyTrace capture tests")
     args = parser.parse_args()
@@ -395,6 +557,8 @@ def main() -> int:
         test_probe_info(xds_cmd, args.expect_version)
         if not args.skip_gpio:
             test_aux_gpio(args.blink_identify)
+        if not args.skip_dap:
+            test_cmsis_dap_hid()
         if not args.skip_uart:
             test_uart_standalone(args.app_uart)
             test_aux_uart(args.aux_uart)
