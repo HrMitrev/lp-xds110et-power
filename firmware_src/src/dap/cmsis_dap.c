@@ -138,6 +138,14 @@ static uint8_t dap_swd_xfer_retry(uint8_t req, uint32_t *data)
     return ack;
 }
 
+/* Per ARM ADIv5 B4.2.3, ensure >= 8 trailing SWCLK cycles (SWDIO=0) after a final write */
+static void dap_swd_flush_trailing_write(void)
+{
+    if (g_dap_idle_cycles < 8U) {
+        swd_idle_cycles(8U - g_dap_idle_cycles);
+    }
+}
+
 /* ---- CMSIS-DAP Command Handlers ---- */
 
 static uint32_t dap_write_info_string(uint8_t *resp, uint32_t resp_max, const char *str)
@@ -279,6 +287,7 @@ static void dap_handle_transfer(const uint8_t *req, uint32_t req_max, uint8_t *r
     uint8_t resp_count = 0U;
     uint8_t resp_val = 0U;
     bool post_read = false;
+    bool last_was_write = false;
     uint8_t executed = 0U;
 
     resp[0] = DAP_CMD_TRANSFER;
@@ -291,6 +300,7 @@ static void dap_handle_transfer(const uint8_t *req, uint32_t req_max, uint8_t *r
             uint8_t xfer_req = req[req_off++];
 
             if ((xfer_req & DAP_TRANSFER_RnW) != 0U) {
+                last_was_write = false;
                 /* Read transfer */
                 if (post_read) {
                     if (((xfer_req & DAP_TRANSFER_APnDP) != 0U) && ((xfer_req & DAP_TRANSFER_MATCH_VAL) == 0U)) {
@@ -419,9 +429,11 @@ static void dap_handle_transfer(const uint8_t *req, uint32_t req_max, uint8_t *r
                 } else {
                     resp_val = dap_swd_xfer_retry(xfer_req, &wdata);
                     if (resp_val != SWD_ACK_OK) {
+                        last_was_write = false;
                         executed++;
                         break;
                     }
+                    last_was_write = true;
                 }
             }
 
@@ -439,6 +451,8 @@ static void dap_handle_transfer(const uint8_t *req, uint32_t req_max, uint8_t *r
                 }
                 resp_count++;
             }
+        } else if (last_was_write && (resp_val == SWD_ACK_OK)) {
+            dap_swd_flush_trailing_write();
         }
     }
 
@@ -519,6 +533,9 @@ static void dap_handle_transfer_block(const uint8_t *req, uint32_t req_max, uint
                 }
                 resp_count++;
             }
+            if ((resp_count > 0U) && (resp_val == SWD_ACK_OK)) {
+                dap_swd_flush_trailing_write();
+            }
         }
     }
 
@@ -544,6 +561,7 @@ static void dap_handle_write_abort(const uint8_t *req, uint8_t *resp)
 
     uint32_t abort_val = read_u32le(&req[2]);
     (void)swd_transfer(DAP_DP_ABORT_WRITE, &abort_val);
+    dap_swd_flush_trailing_write();
     resp[1] = DAP_STATUS_OK;
 }
 

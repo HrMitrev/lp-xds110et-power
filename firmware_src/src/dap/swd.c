@@ -126,7 +126,8 @@ void swd_connect(void)
     MAP_GPIOPinWrite(BOARD_TMS_DIR_PORT_BASE, BOARD_TMS_DIR_PIN, BOARD_TMS_DIR_PIN);
 
     const uint8_t out_pins = BOARD_JTAG_TCK_PIN | BOARD_JTAG_TMS_PIN | BOARD_JTAG_TDI_PIN;
-    MAP_GPIOPinWrite(BOARD_JTAG_PORT_BASE, out_pins, out_pins);
+    /* Idle SWCLK LOW per ARM ADIv5 SWD spec (also prevents latching BOOT0=1 on STM32G0) */
+    MAP_GPIOPinWrite(BOARD_JTAG_PORT_BASE, out_pins, BOARD_JTAG_TMS_PIN | BOARD_JTAG_TDI_PIN);
     MAP_GPIOPinTypeGPIOOutput(BOARD_JTAG_PORT_BASE, out_pins);
     MAP_GPIOPadConfigSet(BOARD_JTAG_PORT_BASE, out_pins, GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD);
 
@@ -229,6 +230,17 @@ void swd_sequence(uint32_t bit_count, const uint8_t *data)
         swd_write_bit(byte_val & 1U);
         byte_val >>= 1U;
     }
+    swd_clk_low();
+}
+
+void swd_idle_cycles(uint32_t count)
+{
+    swd_dio_dir_out();
+    for (uint32_t i = 0U; i < count; i++) {
+        swd_write_bit(0U);
+    }
+    swd_clk_low();
+    swd_dio_write(0U);
 }
 
 uint8_t swd_transfer(uint8_t request, uint32_t *data)
@@ -293,10 +305,11 @@ uint8_t swd_transfer(uint8_t request, uint32_t *data)
             swd_write_bit(tx_parity);
         }
 
-        /* 5. Append configured idle cycles with SWDIO LOW */
+        /* 5. Append configured idle cycles with SWDIO LOW, then park SWCLK LOW */
         for (uint32_t i = 0U; i < g_swd_idle_cycles; i++) {
             swd_write_bit(0U);
         }
+        swd_clk_low();
         swd_dio_write(0U);
         return ack;
     }
@@ -317,6 +330,7 @@ uint8_t swd_transfer(uint8_t request, uint32_t *data)
                 swd_write_bit(0U);
             }
         }
+        swd_clk_low();
         swd_dio_write(0U);
         return ack;
     }
@@ -326,6 +340,7 @@ uint8_t swd_transfer(uint8_t request, uint32_t *data)
         swd_clock_cycle();
     }
     swd_dio_dir_out();
+    swd_clk_low();
     swd_dio_write(0U);
     return ack;
 }

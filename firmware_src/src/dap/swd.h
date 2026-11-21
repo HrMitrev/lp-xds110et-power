@@ -56,6 +56,9 @@ void swd_pins_write(uint8_t pin_out, uint8_t pin_sel);
 /* Shift out bit_count (1..256) LSB-first bits on SWDIO (DAP_SWJ_Sequence) */
 void swd_sequence(uint32_t bit_count, const uint8_t *data);
 
+/* Clock count idle SWCLK cycles with SWDIO LOW (ensures trailing AP/DP writes commit) */
+void swd_idle_cycles(uint32_t count);
+
 /*
  * Execute a single SWD DP/AP read or write transaction.
  *   request: low 4 bits = [A3, A2, RnW, APnDP]
