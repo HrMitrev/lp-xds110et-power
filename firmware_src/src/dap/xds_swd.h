@@ -24,11 +24,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* XDS110 SWD API error codes (matching OpenOCD src/jtag/drivers/xds110.c) */
+/* XDS110 SWD API error codes (matching OpenOCD src/jtag/drivers/xds110.c & TI firmware) */
 #define XDS_ERR_SWD_WAIT     (-613)
 #define XDS_ERR_SWD_FAULT    (-614)
 #define XDS_ERR_SWD_PROTOCOL (-615)
 #define XDS_ERR_SWD_PARITY   (-616)
+#define XDS_ERR_SACI_TIMEOUT (-1141)
 
 /* Reset native XDS110 SWD session state */
 void xds_swd_init(void);
@@ -62,6 +63,11 @@ int32_t xds_swd_cmapi_read_mem(uint8_t access_size, uint8_t flags, uint8_t ap_nu
     bool has_csw, uint32_t csw_override, uint8_t *out_data, uint16_t out_max, uint16_t *out_len);
 int32_t xds_swd_cmapi_write_mem(uint8_t access_size, uint8_t flags, uint8_t ap_num, uint32_t addr, uint16_t byte_count,
     bool has_csw, uint32_t csw_override, const uint8_t *in_data);
+
+/* TI SEC-AP SACI mailbox word write / read (opcodes 0x50 / 0x51) */
+int32_t xds_swd_saci_write(uint8_t ap_num, uint16_t word_count, const uint8_t *in_words);
+int32_t xds_swd_saci_read(
+    uint8_t ap_num, uint16_t word_count, uint8_t *out_words, uint16_t out_max, uint16_t *out_len);
 
 /*
  * Execute a null-terminated batch of raw SWD read/write commands (opcode 0x3A).

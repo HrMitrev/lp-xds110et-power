@@ -143,7 +143,7 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
         }
         break;
 
-    case 0x06U: /* XDS_GET_TRST (1-byte pin status: 1 = deasserted/high) */
+    case XDS_CMD_GET_TRST:
         resp_data[0] = 1U;
         resp_len = 1U;
         break;
@@ -161,7 +161,7 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
         resp_len = 4U;
         break;
 
-    case 0x09U: /* XDS_JTAG_GOTO_STATE (no-op in SWD mode) */
+    case XDS_CMD_JTAG_GOTO_STATE:
         if (args_len < 8U) {
             err = XDS_ERR_INVALID_PARAM;
         }
@@ -370,25 +370,56 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
         err = xds_swd_ocd_dap_request(args, args_len, resp_data, XDS_MAX_RESP_DATA_LEN, &resp_len);
         break;
 
-    case 0x32U: /* XDS_SET_SUPPLY (no-op on LP-XDS110ET hw=0x23) */
+    case XDS_CMD_CMAPI_READ_MEM_64: {
+        if ((args_len != 13U) && (args_len != 17U)) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        bool has_csw = (args_len == 17U);
+        uint32_t csw = has_csw ? read_u32le(&args[13]) : 0U;
+        uint16_t byte_cnt = read_u16le(&args[11]);
+        err = xds_swd_cmapi_read_mem(args[0], args[1], args[2], read_u32le(&args[3]), byte_cnt, has_csw, csw,
+            resp_data, XDS_MAX_RESP_DATA_LEN, &resp_len);
+        break;
+    }
+
+    case XDS_CMD_CMAPI_WRITE_MEM_64: {
+        if (args_len < 13U) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        uint16_t byte_cnt = read_u16le(&args[11]);
+        uint16_t hdr_len = (uint16_t)(args_len - byte_cnt);
+        if ((byte_cnt > args_len) || ((hdr_len != 13U) && (hdr_len != 17U))) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        bool has_csw = (hdr_len == 17U);
+        uint32_t csw = has_csw ? read_u32le(&args[13]) : 0U;
+        err = xds_swd_cmapi_write_mem(
+            args[0], args[1], args[2], read_u32le(&args[3]), byte_cnt, has_csw, csw, &args[hdr_len]);
+        break;
+    }
+
+    case XDS_CMD_SET_SUPPLY:
         if (args_len < 5U) {
             err = XDS_ERR_INVALID_PARAM;
         }
         break;
 
-    case 0x39U: /* JTAG_SET_MODE_EX */
+    case XDS_CMD_JTAG_SET_MODE_EX:
         if (args_len < 1U) {
             err = XDS_ERR_INVALID_PARAM;
         }
         break;
 
-    case 0x45U: /* JTAG_SET_FREQ_EX */
+    case XDS_CMD_JTAG_SET_FREQ_EX:
         if (args_len < 4U) {
             err = XDS_ERR_INVALID_PARAM;
         }
         break;
 
-    case 0x49U: /* XDS_SET_OPTION / keepalive & LED options (subcmd 0..5) */
+    case XDS_CMD_SET_OPTION:
         if ((args_len < 8U) || (args[0] > 5U)) {
             err = XDS_ERR_INVALID_PARAM;
         }
@@ -396,6 +427,30 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
 
     case XDS_CMD_PING:
         break;
+
+    case XDS_CMD_SACI_WRITE: {
+        if (args_len < 3U) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        uint16_t word_cnt = read_u16le(&args[1]);
+        if ((uint32_t)args_len != (3U + ((uint32_t)word_cnt * 4U))) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        err = xds_swd_saci_write(args[0], word_cnt, &args[3]);
+        break;
+    }
+
+    case XDS_CMD_SACI_READ: {
+        if (args_len < 3U) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        uint16_t word_cnt = read_u16le(&args[1]);
+        err = xds_swd_saci_read(args[0], word_cnt, resp_data, XDS_MAX_RESP_DATA_LEN, &resp_len);
+        break;
+    }
 
     case XDS_CMD_CMAPI_CONNECT_EX: {
         uint32_t idcode = 0U;

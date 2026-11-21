@@ -36,11 +36,18 @@
 /* Raw SWD header byte flags used in OCD_DAP_REQUEST (0x3A) */
 #define XDS_SWD_CMD_RNW (1U << 2U)
 
-/* WAIT retry count and TCK cycle cap */
+/* WAIT retry count, SACI mailbox poll cap, and TCK cycle cap */
 #define XDS_SWD_WAIT_RETRIES   1000U
+#define XDS_SACI_POLL_RETRIES  50000U
 #define XDS_CYCLE_TCK_MAX      200000U
 #define XDS_SWD_TRAILING_CLKS  8U
 #define XDS_DP_ABORT_CLEAR_ALL 0x0000001EU
+
+/* TI SEC-AP (SACI) mailbox register offsets */
+#define XDS_SACI_REG_TXD   0x00U
+#define XDS_SACI_REG_TXCTL 0x04U
+#define XDS_SACI_REG_RXD   0x08U
+#define XDS_SACI_REG_RXCTL 0x0CU
 
 static bool g_xds_swd_active = false;
 static bool g_xds_cmapi_connected = false;
@@ -297,8 +304,7 @@ int32_t xds_swd_connect(void)
     }
 
     g_xds_swd_active = true;
-    g_xds_select_valid = false;
-    g_xds_select_cache = 0U;
+    xds_swd_clear_caches();
     return XDS_ERR_OK;
 }
 
@@ -312,7 +318,7 @@ int32_t xds_swd_disconnect(void)
     g_xds_swd_active = false;
     g_xds_cmapi_connected = false;
     g_xds_cmapi_acquired = false;
-    g_xds_select_valid = false;
+    xds_swd_clear_caches();
     return XDS_ERR_OK;
 }
 
@@ -648,6 +654,71 @@ int32_t xds_swd_cmapi_write_mem(uint8_t access_size, uint8_t flags, uint8_t ap_n
     }
 
     swd_idle_cycles(XDS_SWD_TRAILING_CLKS);
+    return XDS_ERR_OK;
+}
+
+static int32_t xds_swd_saci_poll_ctl(uint8_t ap_num, uint8_t ctl_reg, bool expect_bit0_set)
+{
+    for (uint32_t i = 0U; i < XDS_SACI_POLL_RETRIES; i++) {
+        uint32_t ctl = 0U;
+        int32_t err = xds_swd_cmapi_read_reg(XDS_DAP_AP, ap_num, ctl_reg, &ctl);
+        if (err != XDS_ERR_OK) {
+            return err;
+        }
+        bool bit0 = (ctl & 1U) != 0U;
+        if (bit0 == expect_bit0_set) {
+            return XDS_ERR_OK;
+        }
+    }
+    return XDS_ERR_SACI_TIMEOUT;
+}
+
+int32_t xds_swd_saci_write(uint8_t ap_num, uint16_t word_count, const uint8_t *in_words)
+{
+    if (!g_xds_swd_active) {
+        return XDS_ERR_SWD_PROTOCOL;
+    }
+
+    for (uint16_t i = 0U; i < word_count; i++) {
+        int32_t err = xds_swd_saci_poll_ctl(ap_num, XDS_SACI_REG_TXCTL, false);
+        if (err != XDS_ERR_OK) {
+            return err;
+        }
+        uint32_t word = read_u32le(&in_words[(uint32_t)i * 4U]);
+        err = xds_swd_cmapi_write_reg(XDS_DAP_AP, ap_num, XDS_SACI_REG_TXD, word);
+        if (err != XDS_ERR_OK) {
+            return err;
+        }
+    }
+
+    return xds_swd_saci_poll_ctl(ap_num, XDS_SACI_REG_TXCTL, false);
+}
+
+int32_t xds_swd_saci_read(
+    uint8_t ap_num, uint16_t word_count, uint8_t *out_words, uint16_t out_max, uint16_t *out_len)
+{
+    *out_len = 0U;
+    if (!g_xds_swd_active) {
+        return XDS_ERR_SWD_PROTOCOL;
+    }
+    if (((uint32_t)word_count * 4U) > (uint32_t)out_max) {
+        return XDS_ERR_INVALID_PARAM;
+    }
+
+    for (uint16_t i = 0U; i < word_count; i++) {
+        int32_t err = xds_swd_saci_poll_ctl(ap_num, XDS_SACI_REG_RXCTL, true);
+        if (err != XDS_ERR_OK) {
+            return err;
+        }
+        uint32_t word = 0U;
+        err = xds_swd_cmapi_read_reg(XDS_DAP_AP, ap_num, XDS_SACI_REG_RXD, &word);
+        if (err != XDS_ERR_OK) {
+            return err;
+        }
+        write_u32le(&out_words[(uint32_t)i * 4U], word);
+    }
+
+    *out_len = (uint16_t)(word_count * 4U);
     return XDS_ERR_OK;
 }
 
