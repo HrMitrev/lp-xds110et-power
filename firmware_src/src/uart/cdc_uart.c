@@ -5,9 +5,10 @@
  *   - UART0 (PA0 = XDS_RX, PA1 = XDS_TX) <-> CDC 0 (App UART, full-duplex)
  *   - UART7 (PC4 = XDS_SWO, RX-only)     <-> CDC 1 (Aux / SWO UART)
  *
- * Interrupts (UART0_IRQn, UART7_IRQn) run at priority 4 (below EnergyTrace
- * GPIOB = 1 and SSI1/USB0 = 2) so UART traffic never preempts 256 kS/s
- * EnergyTrace HDR streaming.
+ * Interrupts (UART0_IRQn, UART7_IRQn) run at priority 1 (same as GPIOB, above
+ * SSI1/USB0 = 2) because each ISR only drains/fills the 16-byte UART FIFO into
+ * local lock-free rings (< 1 us) without touching USB0 or SSI1, preventing
+ * high-baud RX FIFO overruns during 256 kS/s EnergyTrace USB transfers.
  */
 
 #include "cdc_uart.h"
@@ -25,7 +26,7 @@
 #include "usb/usb_device.h"
 
 /* Power-of-two ring buffer sizes */
-#define CDC_UART_RX_RING_SIZE 1024U
+#define CDC_UART_RX_RING_SIZE 2048U
 #define CDC_UART_TX_RING_SIZE 512U
 #define CDC_UART_PUMP_CHUNK   256U
 
@@ -34,8 +35,28 @@
 #define CDC_UART_MIN_BAUD     300U
 #define CDC_UART_MAX_BAUD     12000000U
 
-/* Lower priority than EnergyTrace GPIOB (1) and SSI1/USB0 (2) */
-#define CDC_UART_IRQ_PRIO 4U
+/* Same priority as GPIOB (1), above SSI1/USB0 (2); ISRs touch only local rings */
+#define CDC_UART_IRQ_PRIO 1U
+
+/*
+ * Short (< 1 us) BASEPRI critical section masking priority >= CDC_UART_IRQ_PRIO.
+ * Prevents lower-priority SSI1/USB0 (prio 2) from preempting main() while UART0
+ * is masked, eliminating hardware RX FIFO overruns at >= 921.6 kbps.
+ */
+static inline uint32_t uart_crit_enter(void)
+{
+    uint32_t prev = __get_BASEPRI();
+    uint32_t mask = CDC_UART_IRQ_PRIO << (8U - __NVIC_PRIO_BITS);
+    if ((prev == 0U) || (mask < prev)) {
+        __set_BASEPRI(mask);
+    }
+    return prev;
+}
+
+static inline void uart_crit_exit(uint32_t prev)
+{
+    __set_BASEPRI(prev);
+}
 
 typedef struct {
     uint8_t *buf;
@@ -194,7 +215,7 @@ static void cdc_uart_apply_line_coding(uint8_t port, const usb_cdc_line_coding_t
     NVIC_DisableIRQ(irqn);
 
     MAP_UARTConfigSetExpClk(base, board_get_sys_clock_hz(), baud, cfg);
-    MAP_UARTFIFOLevelSet(base, UART_FIFO_TX2_8, UART_FIFO_RX4_8);
+    MAP_UARTFIFOLevelSet(base, UART_FIFO_TX2_8, UART_FIFO_RX2_8);
     MAP_UARTTxIntModeSet(base, UART_TXINT_MODE_FIFO);
     MAP_UARTRxErrorClear(base);
     MAP_UARTIntClear(base, UART_INT_RX | UART_INT_RT | UART_INT_TX);
@@ -354,12 +375,12 @@ bool cdc_uart_poll(void)
             for (uint32_t i = 0U; i < got; i++) {
                 uart_ring_push_byte(&g_uart0_tx_ring, chunk_buf[i]);
             }
-            NVIC_DisableIRQ(UART0_IRQn);
+            uint32_t crit = uart_crit_enter();
             uart0_tx_fill_fifo();
             if (uart_ring_used(&g_uart0_tx_ring) > 0U) {
                 MAP_UARTIntEnable(BOARD_APP_UART_BASE, UART_INT_TX);
             }
-            NVIC_EnableIRQ(UART0_IRQn);
+            uart_crit_exit(crit);
             did_work = true;
         }
     }

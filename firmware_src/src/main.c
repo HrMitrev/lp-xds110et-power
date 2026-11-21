@@ -22,9 +22,9 @@
 
 /*
  * Firmware version marker matching XDS_VERSION (CMD 0x03) wire format:
- * [build=0x01, patch=0x00, minor=0x00, major=0x03] = 3.0.0.01
+ * [build=0x02, patch=0x00, minor=0x00, major=0x03] = 3.0.0.02
  */
-__attribute__((used, section(".rodata.version"))) const uint8_t g_firmware_version[4] = {0x01U, 0x00U, 0x00U, 0x03U};
+__attribute__((used, section(".rodata.version"))) const uint8_t g_firmware_version[4] = {0x02U, 0x00U, 0x00U, 0x03U};
 
 int main(void)
 {

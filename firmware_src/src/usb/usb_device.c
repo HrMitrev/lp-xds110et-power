@@ -148,6 +148,29 @@ static volatile uint16_t g_cdc_ctrl_state[USB_CDC_PORT_COUNT] = {0U, 0U};
 static const uint32_t g_cdc_out_ep[USB_CDC_PORT_COUNT] = {USB_EP_1, USB_EP_4};
 static const uint32_t g_cdc_in_ep[USB_CDC_PORT_COUNT] = {USB_EP_2, USB_EP_5};
 
+/* Shared NVIC priority for USB0 and EnergyTrace SSI1 (must match et_hdr.c) */
+#define USB_IRQ_PRIO 2U
+
+/*
+ * Nestable critical section masking USB0 (prio 2) and SSI1 (prio 2) via
+ * Cortex-M4 BASEPRI while keeping higher-priority GPIOB/UART0/UART7 (prio 1)
+ * completely unmasked.
+ */
+static inline uint32_t usb_crit_enter(void)
+{
+    uint32_t prev = __get_BASEPRI();
+    uint32_t mask = USB_IRQ_PRIO << (8U - __NVIC_PRIO_BITS);
+    if ((prev == 0U) || (mask < prev)) {
+        __set_BASEPRI(mask);
+    }
+    return prev;
+}
+
+static inline void usb_crit_exit(uint32_t prev)
+{
+    __set_BASEPRI(prev);
+}
+
 /* ---- Ring buffer helpers ---- */
 
 static inline uint32_t ring_used(const usb_ring_t *ring)
@@ -772,6 +795,7 @@ void usb_device_init(const uint8_t fw_version[4])
         USB_INTEP_0 | USB_INTEP_DEV_OUT_1 | USB_INTEP_DEV_IN_2 | USB_INTEP_DEV_OUT_2 | USB_INTEP_DEV_IN_3 |
             USB_INTEP_DEV_OUT_4 | USB_INTEP_DEV_IN_5 | USB_INTEP_DEV_OUT_6 | USB_INTEP_DEV_IN_7);
 
+    NVIC_SetPriority(USB0_IRQn, USB_IRQ_PRIO);
     NVIC_ClearPendingIRQ(USB0_IRQn);
     NVIC_EnableIRQ(USB0_IRQn);
 
@@ -813,21 +837,21 @@ uint32_t usb_cmd_rx_peek(uint8_t *dst, uint32_t len)
 
 uint32_t usb_cmd_rx_read(uint8_t *dst, uint32_t len)
 {
-    NVIC_DisableIRQ(USB0_IRQn);
+    uint32_t crit = usb_crit_enter();
     uint32_t got = ring_pop(&g_cmd_rx_ring, dst, len);
     /* Drain any packet held by NAK back-pressure now that space freed up */
     if (MAP_USBEndpointDataAvail(USB0_BASE, USB_EP_2) > 0U) {
         usb_handle_bulk_out(USB_EP_2, &g_cmd_rx_ring);
     }
-    NVIC_EnableIRQ(USB0_IRQn);
+    usb_crit_exit(crit);
     return got;
 }
 
 void usb_cmd_rx_flush(void)
 {
-    NVIC_DisableIRQ(USB0_IRQn);
+    uint32_t crit = usb_crit_enter();
     ring_reset(&g_cmd_rx_ring);
-    NVIC_EnableIRQ(USB0_IRQn);
+    usb_crit_exit(crit);
 }
 
 uint32_t usb_cmd_tx_space(void)
@@ -837,13 +861,13 @@ uint32_t usb_cmd_tx_space(void)
 
 uint32_t usb_cmd_tx_write(const uint8_t *src, uint32_t len)
 {
-    NVIC_DisableIRQ(USB0_IRQn);
+    uint32_t crit = usb_crit_enter();
     uint32_t written = ring_push(&g_cmd_tx_ring, src, len);
     if ((written > 0U) && ((written % g_bulk_mps) == 0U)) {
         g_cmd_tx_need_zlp = true;
     }
     usb_kick_bulk_in(USB_EP_3, &g_cmd_tx_ring, &g_cmd_tx_busy, &g_cmd_tx_need_zlp, USB_BULK_MPS_HS);
-    NVIC_EnableIRQ(USB0_IRQn);
+    usb_crit_exit(crit);
     return written;
 }
 
@@ -854,12 +878,12 @@ uint32_t usb_data_rx_available(void)
 
 uint32_t usb_data_rx_read(uint8_t *dst, uint32_t len)
 {
-    NVIC_DisableIRQ(USB0_IRQn);
+    uint32_t crit = usb_crit_enter();
     uint32_t got = ring_pop(&g_data_rx_ring, dst, len);
     if (MAP_USBEndpointDataAvail(USB0_BASE, USB_EP_6) > 0U) {
         usb_handle_bulk_out(USB_EP_6, &g_data_rx_ring);
     }
-    NVIC_EnableIRQ(USB0_IRQn);
+    usb_crit_exit(crit);
     return got;
 }
 
@@ -870,18 +894,18 @@ uint32_t usb_data_tx_space(void)
 
 uint32_t usb_data_tx_write(const uint8_t *src, uint32_t len)
 {
-    NVIC_DisableIRQ(USB0_IRQn);
+    uint32_t crit = usb_crit_enter();
     uint32_t written = ring_push(&g_data_tx_ring, src, len);
     usb_kick_bulk_in(USB_EP_7, &g_data_tx_ring, &g_data_tx_busy, NULL, USB_BULK_MPS_HS);
-    NVIC_EnableIRQ(USB0_IRQn);
+    usb_crit_exit(crit);
     return written;
 }
 
 void usb_data_tx_flush(void)
 {
-    NVIC_DisableIRQ(USB0_IRQn);
+    uint32_t crit = usb_crit_enter();
     ring_reset(&g_data_tx_ring);
-    NVIC_EnableIRQ(USB0_IRQn);
+    usb_crit_exit(crit);
 }
 
 uint32_t usb_cdc_rx_available(uint8_t port)
@@ -897,13 +921,13 @@ uint32_t usb_cdc_rx_read(uint8_t port, uint8_t *dst, uint32_t len)
     if (port >= USB_CDC_PORT_COUNT) {
         return 0U;
     }
-    NVIC_DisableIRQ(USB0_IRQn);
+    uint32_t crit = usb_crit_enter();
     uint32_t got = ring_pop(&g_cdc_rx_rings[port], dst, len);
     uint32_t ep = g_cdc_out_ep[port];
     if (MAP_USBEndpointDataAvail(USB0_BASE, ep) > 0U) {
         usb_handle_bulk_out(ep, &g_cdc_rx_rings[port]);
     }
-    NVIC_EnableIRQ(USB0_IRQn);
+    usb_crit_exit(crit);
     return got;
 }
 
@@ -920,10 +944,10 @@ uint32_t usb_cdc_tx_write(uint8_t port, const uint8_t *src, uint32_t len)
     if (port >= USB_CDC_PORT_COUNT) {
         return 0U;
     }
-    NVIC_DisableIRQ(USB0_IRQn);
+    uint32_t crit = usb_crit_enter();
     uint32_t written = ring_push(&g_cdc_tx_rings[port], src, len);
     usb_kick_bulk_in(g_cdc_in_ep[port], &g_cdc_tx_rings[port], &g_cdc_tx_busy[port], NULL, USB_CDC_IN_FIFO_BYTES);
-    NVIC_EnableIRQ(USB0_IRQn);
+    usb_crit_exit(crit);
     return written;
 }
 
@@ -932,13 +956,13 @@ bool usb_cdc_take_line_coding(uint8_t port, usb_cdc_line_coding_t *out_coding)
     if (port >= USB_CDC_PORT_COUNT) {
         return false;
     }
-    NVIC_DisableIRQ(USB0_IRQn);
+    uint32_t crit = usb_crit_enter();
     bool changed = g_cdc_coding_dirty[port];
     if (changed) {
         g_cdc_coding_dirty[port] = false;
         *out_coding = g_cdc_coding[port];
     }
-    NVIC_EnableIRQ(USB0_IRQn);
+    usb_crit_exit(crit);
     return changed;
 }
 
@@ -947,9 +971,9 @@ void usb_cdc_get_line_coding(uint8_t port, usb_cdc_line_coding_t *out_coding)
     if (port >= USB_CDC_PORT_COUNT) {
         return;
     }
-    NVIC_DisableIRQ(USB0_IRQn);
+    uint32_t crit = usb_crit_enter();
     *out_coding = g_cdc_coding[port];
-    NVIC_EnableIRQ(USB0_IRQn);
+    usb_crit_exit(crit);
 }
 
 bool usb_cdc_is_dtr_asserted(uint8_t port)

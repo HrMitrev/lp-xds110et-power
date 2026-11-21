@@ -57,6 +57,7 @@ CFLAGS      = $(MCU_FLAGS) $(DEFINES) $(INCLUDES) \
               -Os -g3 -Wall -Wextra \
               -Wno-unused-parameter -Wno-old-style-declaration \
               -ffunction-sections -fdata-sections \
+              -MMD -MP \
               -std=c99
 
 # Linker options (links against newlib-nano with nosys syscall stubs)
@@ -84,8 +85,9 @@ FORMAT_FILES = $(wildcard src/*.c src/*.h src/*/*.c src/*/*.h)
 
 SRCS        = $(APP_SRCS) $(DL_SRCS)
 OBJS        = $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
+DEPS        = $(OBJS:.o=.d)
 
-.PHONY: all clean fetch-sdk sdk fetch-toolchain toolchain inspect flash clang-format compile-commands clangd-check
+.PHONY: all clean fetch-sdk sdk fetch-toolchain toolchain inspect flash clang-format compile-commands clangd-check test-hil
 
 all: $(BUILD_DIR)/$(TARGET).bin $(BUILD_DIR)/$(TARGET).hex compile_commands.json
 
@@ -153,5 +155,10 @@ clangd-check cc-check: compile_commands.json
 		$(CLANGD) --compile-commands-dir=. --tweaks= --log=error --check=$$f || exit 1; \
 	done
 
+test-hil:
+	$(Q)$(PYTHON) tests/hil_stress_test.py
+
 clean:
 	$(Q)rm -rf $(BUILD_DIR) compile_commands.json
+
+-include $(DEPS)

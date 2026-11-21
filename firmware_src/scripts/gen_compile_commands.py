@@ -100,17 +100,18 @@ def generate(fw_dir: Path) -> list[dict]:
         cc = tokens[0]
         if cc not in sys_includes_cache:
             mcu_flags = [
-                t for t in tokens[1:]
-                if re.match(r"^-(mcpu|mthumb|mfpu|mfloat-abi)", t)
+                t for t in tokens[1:] if re.match(r"^-(mcpu|mthumb|mfpu|mfloat-abi)", t)
             ]
             sys_includes_cache[cc] = query_gcc_system_includes(cc, mcu_flags)
 
         clang_args = build_clang_arguments(tokens, sys_includes_cache[cc])
-        entries.append({
-            "directory": str(fw_dir),
-            "file": str((fw_dir / src_rel).resolve()),
-            "arguments": clang_args,
-        })
+        entries.append(
+            {
+                "directory": str(fw_dir),
+                "file": str((fw_dir / src_rel).resolve()),
+                "arguments": clang_args,
+            }
+        )
 
     out_path = fw_dir / "compile_commands.json"
     out_path.write_text(json.dumps(entries, indent=2) + "\n")
@@ -118,7 +119,11 @@ def generate(fw_dir: Path) -> list[dict]:
 
 
 def main() -> None:
-    fw_dir = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent
+    fw_dir = (
+        Path(sys.argv[1]).resolve()
+        if len(sys.argv) > 1
+        else Path(__file__).resolve().parent.parent
+    )
     entries = generate(fw_dir)
     print(f"Generated {fw_dir / 'compile_commands.json'} ({len(entries)} entries)")
 

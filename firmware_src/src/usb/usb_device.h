@@ -20,7 +20,7 @@
 #define USB_DATA_RX_BUF_SIZE 2048U
 #define USB_DATA_TX_BUF_SIZE 65536U
 #define USB_CDC_RX_BUF_SIZE  2048U
-#define USB_CDC_TX_BUF_SIZE  2048U
+#define USB_CDC_TX_BUF_SIZE  8192U
 
 /* CDC port indices */
 #define USB_CDC_PORT_APP   0U
