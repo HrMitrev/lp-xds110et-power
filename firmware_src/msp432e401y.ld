@@ -17,7 +17,10 @@ MEMORY
 /* Initial stack pointer at top of SRAM (0x20040000) */
 __stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
 
-ENTRY(ResetISR)
+/* Preserved TI USB DFU bootloader forced-update entry vector (SVCall slot @ 0x2C) */
+PROVIDE(__dfu_bootloader_entry_vec = 0x0000002C);
+
+ENTRY(reset_isr)
 
 SECTIONS
 {
@@ -76,6 +79,16 @@ SECTIONS
         . = ALIGN(4);
         __bss_end__ = .;
         _ebss = .;
+    } > SRAM
+
+    /* Uninitialized section preserved across warm resets (e.g., DFU double-reset cookie) */
+    .noinit (NOLOAD) :
+    {
+        . = ALIGN(4);
+        __noinit_start__ = .;
+        *(.noinit*)
+        . = ALIGN(4);
+        __noinit_end__ = .;
     } > SRAM
 
     /* User heap and stack space check */

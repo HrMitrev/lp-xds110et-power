@@ -69,14 +69,18 @@ LDFLAGS     = $(MCU_FLAGS) \
               -Wl,-Map=$(BUILD_DIR)/$(TARGET).map
 
 # Source files
-APP_SRCS    = src/main.c src/startup_gcc.c
+APP_SRCS    = src/main.c src/startup_gcc.c src/board.c src/dfu_jump.c
 DL_DIR      = sdk/ti/devices/msp432e4/driverlib
-DL_SRCS     = $(wildcard $(DL_DIR)/sysctl.c $(DL_DIR)/gpio.c $(DL_DIR)/cpu.c $(DL_DIR)/interrupt.c)
+DL_SRCS     = $(wildcard $(DL_DIR)/sysctl.c $(DL_DIR)/gpio.c $(DL_DIR)/cpu.c \
+                         $(DL_DIR)/interrupt.c $(DL_DIR)/fpu.c $(DL_DIR)/systick.c \
+                         $(DL_DIR)/usb.c)
+
+FORMAT_FILES = $(wildcard src/*.c src/*.h src/*/*.c src/*/*.h)
 
 SRCS        = $(APP_SRCS) $(DL_SRCS)
 OBJS        = $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 
-.PHONY: all clean fetch-sdk sdk fetch-toolchain toolchain inspect flash
+.PHONY: all clean fetch-sdk sdk fetch-toolchain toolchain inspect flash clang-format
 
 all: $(BUILD_DIR)/$(TARGET).bin $(BUILD_DIR)/$(TARGET).hex
 
@@ -123,6 +127,10 @@ inspect: $(BUILD_DIR)/$(TARGET).bin
 
 flash: $(BUILD_DIR)/$(TARGET).bin
 	$(Q)cargo run --release --manifest-path ../xds110-et/Cargo.toml -- dfu-flash -f $< -r
+
+clang-format:
+	$(ECHO) "  FMT   $(FORMAT_FILES)"
+	$(Q)uvx clang-format@latest -i $(FORMAT_FILES)
 
 clean:
 	$(Q)rm -rf $(BUILD_DIR)
