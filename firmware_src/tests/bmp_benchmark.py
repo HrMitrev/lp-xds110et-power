@@ -94,7 +94,147 @@ def _is_xds110_openfw(info) -> bool:
     return "0451:BEF3" in hwid or ("VID_0451" in hwid and "PID_BEF3" in hwid)
 
 
-def discover_bmp_ports(serial_filter: str | None = None) -> tuple[str | None, str | None]:
+def _discover_windows_ports_stdlib(
+    serial_filter: str | None = None,
+) -> tuple[str | None, str | None]:
+    """Windows stdlib fallback when pyserial is unavailable."""
+    gdb_port: str | None = None
+    rtt_port: str | None = None
+
+    # 1. Query present PnP Ports via PowerShell (accurate for currently connected devices)
+    ps_script = (
+        "Get-PnpDevice -Class Ports -PresentOnly -ErrorAction SilentlyContinue | "
+        "Where-Object { $_.InstanceId -match 'VID_0451&PID_BEF3' } | "
+        "ForEach-Object { "
+        "$parent = (Get-PnpDeviceProperty -InstanceId $_.InstanceId "
+        "-KeyName DEVPKEY_Device_Parent -ErrorAction SilentlyContinue).Data; "
+        '"$($_.InstanceId)|$($_.FriendlyName)|$parent" '
+        "}"
+    )
+    entries: list[tuple[int | None, str, str]] = []
+    try:
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_script],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if proc.returncode == 0:
+            for line in proc.stdout.splitlines():
+                parts = line.strip().split("|")
+                if len(parts) < 2:
+                    continue
+                inst_id, friendly = parts[0], parts[1]
+                parent = parts[2] if len(parts) >= 3 else ""
+                if (
+                    serial_filter
+                    and serial_filter.lower() not in (inst_id + " " + parent).lower()
+                ):
+                    continue
+                m_com = re.search(r"\b(COM\d+)\b", friendly, re.IGNORECASE)
+                if not m_com:
+                    continue
+                m_mi = re.search(r"MI_([0-9A-F]{2})", inst_id, re.IGNORECASE)
+                ifnum = int(m_mi.group(1), 16) if m_mi else None
+                entries.append((ifnum, m_com.group(1).upper(), friendly))
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+    # 2. Registry fallback if PowerShell/CIM is unavailable
+    if not entries:
+        try:
+            import winreg  # type: ignore[import-not-found]
+
+            active_coms: set[str] = set()
+            with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DEVICEMAP\SERIALCOMM"
+            ) as key:
+                idx = 0
+                while True:
+                    try:
+                        _, val, _ = winreg.EnumValue(key, idx)
+                        if isinstance(val, str) and val.upper().startswith("COM"):
+                            active_coms.add(val.upper())
+                        idx += 1
+                    except OSError:
+                        break
+
+            usb_root = r"SYSTEM\CurrentControlSet\Enum\USB"
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, usb_root) as usb_key:
+                idx = 0
+                while True:
+                    try:
+                        subname = winreg.EnumKey(usb_key, idx)
+                        idx += 1
+                    except OSError:
+                        break
+                    upper_sub = subname.upper()
+                    if "VID_0451" not in upper_sub or "PID_BEF3" not in upper_sub:
+                        continue
+                    m_mi = re.search(r"MI_([0-9A-F]{2})", upper_sub)
+                    ifnum = int(m_mi.group(1), 16) if m_mi else None
+                    with winreg.OpenKey(usb_key, subname) as dev_key:
+                        didx = 0
+                        while True:
+                            try:
+                                inst = winreg.EnumKey(dev_key, didx)
+                                didx += 1
+                            except OSError:
+                                break
+                            if (
+                                serial_filter
+                                and serial_filter.lower() not in inst.lower()
+                            ):
+                                continue
+                            try:
+                                with winreg.OpenKey(
+                                    dev_key, f"{inst}\\Device Parameters"
+                                ) as dp_key:
+                                    port_name, _ = winreg.QueryValueEx(
+                                        dp_key, "PortName"
+                                    )
+                                if (
+                                    isinstance(port_name, str)
+                                    and port_name.upper() in active_coms
+                                ):
+                                    friendly = ""
+                                    try:
+                                        with winreg.OpenKey(dev_key, inst) as ikey:
+                                            friendly, _ = winreg.QueryValueEx(
+                                                ikey, "FriendlyName"
+                                            )
+                                    except OSError:
+                                        pass
+                                    entries.append(
+                                        (ifnum, port_name.upper(), str(friendly))
+                                    )
+                            except OSError:
+                                continue
+        except OSError:
+            pass
+
+    openfw_entries = [e for e in entries if "openfw" in e[2].lower()]
+    candidates = openfw_entries or entries
+
+    for ifnum, com, _ in candidates:
+        if ifnum == 3 and not gdb_port:
+            gdb_port = com
+        elif ifnum == 0 and not rtt_port:
+            rtt_port = com
+
+    if (not gdb_port or not rtt_port) and len(candidates) >= 2:
+        ordered = sorted(candidates, key=lambda e: int(e[1][3:]))
+        if not rtt_port:
+            rtt_port = ordered[0][1]
+        if not gdb_port:
+            gdb_port = ordered[1][1]
+
+    return gdb_port, rtt_port
+
+
+def discover_bmp_ports(
+    serial_filter: str | None = None,
+) -> tuple[str | None, str | None]:
     """Return (gdb_port, rtt_port) for LP-XDS110ET OpenFW BMP on Linux or Windows."""
     gdb_port: str | None = None
     rtt_port: str | None = None
@@ -133,7 +273,10 @@ def discover_bmp_ports(serial_filter: str | None = None) -> tuple[str | None, st
         for info in list_ports.comports():
             if not _is_xds110_openfw(info):
                 continue
-            if serial_filter and serial_filter.lower() not in (info.serial_number or "").lower():
+            if (
+                serial_filter
+                and serial_filter.lower() not in (info.serial_number or "").lower()
+            ):
                 continue
             xds_ports.append(info)
 
@@ -159,6 +302,14 @@ def discover_bmp_ports(serial_filter: str | None = None) -> tuple[str | None, st
                 rtt_port = ordered[0].device
             if not gdb_port:
                 gdb_port = ordered[1].device
+
+    # 3. Windows stdlib fallback (PowerShell Get-PnpDevice / winreg) when pyserial is unavailable
+    if sys.platform == "win32" and (not gdb_port or not rtt_port):
+        fb_gdb, fb_rtt = _discover_windows_ports_stdlib(serial_filter)
+        if not gdb_port:
+            gdb_port = fb_gdb
+        if not rtt_port:
+            rtt_port = fb_rtt
 
     return gdb_port, rtt_port
 
@@ -196,7 +347,11 @@ def run_flash_once(
     verify: bool,
     timeout_s: float,
 ) -> BenchResult:
-    label = "default (4 MHz)" if freq_hz is None else ("max (freq 0)" if freq_hz == 0 else f"{freq_hz / 1e6:.2f} MHz")
+    label = (
+        "default (4 MHz)"
+        if freq_hz is None
+        else ("max (freq 0)" if freq_hz == 0 else f"{freq_hz / 1e6:.2f} MHz")
+    )
     cmd = [
         gdb_bin,
         "-nx",
@@ -207,7 +362,9 @@ def run_flash_once(
     ]
     if freq_hz is not None:
         cmd.extend(["-ex", f"monitor frequency {freq_hz}"])
-    cmd.extend(["-ex", "monitor frequency", "-ex", "monitor swd_scan", "-ex", "attach 1"])
+    cmd.extend(
+        ["-ex", "monitor frequency", "-ex", "monitor swd_scan", "-ex", "attach 1"]
+    )
     if password:
         cmd.extend(["-ex", f"monitor pass {password}"])
     cmd.extend(["-ex", "load"])
@@ -270,7 +427,9 @@ def run_rtt_capture(
     password: str | None,
 ) -> tuple[str, bytes]:
     if serial is None:
-        raise RuntimeError("pyserial is required for RTT capture (pip install pyserial).")
+        raise RuntimeError(
+            "pyserial is required for RTT capture (pip install pyserial)."
+        )
 
     rtt_bytes = bytearray()
     stop_evt = threading.Event()
@@ -335,7 +494,9 @@ def run_rtt_capture(
     time.sleep(0.4)
 
     try:
-        out, _ = proc.communicate("monitor rtt status\nmonitor rtt disable\ndetach\nquit\n", timeout=8)
+        out, _ = proc.communicate(
+            "monitor rtt status\nmonitor rtt disable\ndetach\nquit\n", timeout=8
+        )
     except subprocess.TimeoutExpired:
         proc.kill()
         out, _ = proc.communicate()
@@ -344,7 +505,9 @@ def run_rtt_capture(
     th.join(timeout=2)
 
     if reader_err:
-        raise RuntimeError(f"RTT port {rtt_port} error: {reader_err[0]}") from reader_err[0]
+        raise RuntimeError(
+            f"RTT port {rtt_port} error: {reader_err[0]}"
+        ) from reader_err[0]
 
     return out, bytes(rtt_bytes)
 
@@ -434,7 +597,11 @@ def main() -> int:
     args = parser.parse_args()
 
     using_default_hex = args.firmware is None
-    firmware = (DEFAULT_BENCH_HEX if using_default_hex else args.firmware).expanduser().resolve()
+    firmware = (
+        (DEFAULT_BENCH_HEX if using_default_hex else args.firmware)
+        .expanduser()
+        .resolve()
+    )
     if not firmware.is_file():
         print(f"ERROR: Firmware file not found: {firmware}", file=sys.stderr)
         return 2
@@ -473,9 +640,17 @@ def main() -> int:
             )
             results.append(res)
             freq_str = f"{res.freq_hz / 1e6:.2f} MHz" if res.freq_hz else res.label
-            rate_str = f"{res.transfer_kbs:.1f} KB/s" if res.transfer_kbs is not None else "n/a"
+            rate_str = (
+                f"{res.transfer_kbs:.1f} KB/s"
+                if res.transfer_kbs is not None
+                else "n/a"
+            )
             size_str = f"{res.load_bytes:,} B" if res.load_bytes is not None else "n/a"
-            ver_str = "SKIP" if res.verify_ok is None else ("PASS" if res.verify_ok else "FAIL")
+            ver_str = (
+                "SKIP"
+                if res.verify_ok is None
+                else ("PASS" if res.verify_ok else "FAIL")
+            )
             run_tag = f" [run {run_idx}/{args.runs}]" if args.runs > 1 else ""
             print(
                 f"\n[{freq_str}{run_tag}] target={res.target_line or '?'} | "
@@ -487,10 +662,17 @@ def main() -> int:
             elif args.verbose:
                 print(res.raw_output)
 
-    run_rtt = (not args.no_rtt) and (args.rtt_seconds > 0) and (args.rtt or not using_default_hex)
+    run_rtt = (
+        (not args.no_rtt)
+        and (args.rtt_seconds > 0)
+        and (args.rtt or not using_default_hex)
+    )
     if run_rtt:
         if not rtt_port:
-            print("\n[RTT] Skipped: could not detect Target/RTT port (pass --rtt-port).", file=sys.stderr)
+            print(
+                "\n[RTT] Skipped: could not detect Target/RTT port (pass --rtt-port).",
+                file=sys.stderr,
+            )
         else:
             print(f"\n=== RTT Capture ({args.rtt_seconds:.1f} s on {rtt_port}) ===")
             gdb_out, rtt_data = run_rtt_capture(

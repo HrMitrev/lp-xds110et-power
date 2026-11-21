@@ -46,7 +46,9 @@ SHA256_COPY_RE = re.compile(r'value=["\']([0-9a-fA-F]{64})["\']')
 VERSION_RE = re.compile(r"/(\d+\.\d+\.\d+\.\d+)/")
 
 
-def _http_request(url: str, headers: dict[str, str] | None = None) -> urllib.request.Request:
+def _http_request(
+    url: str, headers: dict[str, str] | None = None
+) -> urllib.request.Request:
     req_headers = {"User-Agent": USER_AGENT}
     if headers:
         req_headers.update(headers)
@@ -61,7 +63,9 @@ def _parse_version(url: str) -> tuple[tuple[int, ...], str | None]:
     return tuple(int(part) for part in ver_str.split(".")), ver_str
 
 
-def discover_latest_package(page_url: str = DOWNLOAD_PAGE_URL) -> tuple[str, str | None, str | None]:
+def discover_latest_package(
+    page_url: str = DOWNLOAD_PAGE_URL,
+) -> tuple[str, str | None, str | None]:
     """Fetch the TI download page and return (download_url, version, sha256)."""
     print(f"Fetching latest SDK metadata from {page_url}...")
     with urllib.request.urlopen(_http_request(page_url), timeout=HTTP_TIMEOUT) as resp:
@@ -177,7 +181,9 @@ class _RangeSource:
         return data
 
 
-def _open_http_range_source(url: str, expected_sha256: str | None) -> _RangeSource | None:
+def _open_http_range_source(
+    url: str, expected_sha256: str | None
+) -> _RangeSource | None:
     """Probe HTTP Range support; returns a _RangeSource or None if unsupported."""
     req = _http_request(url, headers={"Range": "bytes=0-0"})
     try:
@@ -383,7 +389,9 @@ def extract_sdk_from_cookfs(source: _RangeSource, dest_dir: Path) -> int:
     for rel_path, chunks in sorted(selected.items()):
         target_path = (dest_resolved / rel_path).resolve()
         if dest_resolved not in target_path.parents:
-            raise RuntimeError(f"Refusing to write outside destination directory: {rel_path}")
+            raise RuntimeError(
+                f"Refusing to write outside destination directory: {rel_path}"
+            )
         target_path.parent.mkdir(parents=True, exist_ok=True)
         with target_path.open("wb") as out_f:
             for _, triples in chunks:
@@ -431,7 +439,9 @@ def fetch_sdk(dest_dir: Path, force: bool = False) -> None:
                     tmp.seek(offset)
                     return tmp.read(length)
 
-                count = extract_sdk_from_cookfs(_RangeSource(total_size, _read_file), staging_dir)
+                count = extract_sdk_from_cookfs(
+                    _RangeSource(total_size, _read_file), staging_dir
+                )
 
         if not is_sdk_present(staging_dir):
             raise RuntimeError("Extracted SDK is missing expected header files")

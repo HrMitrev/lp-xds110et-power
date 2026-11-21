@@ -109,7 +109,9 @@ def test_swd_target(
             p.returncode != 0
             or "SRAM_RW: 0xdeadbeef 0xcafebabe 0x12345678 0xa5a55a5a" not in out
         ):
-            raise RuntimeError(f"OpenOCD CMSIS-DAP SWD target verification failed:\n{out}")
+            raise RuntimeError(
+                f"OpenOCD CMSIS-DAP SWD target verification failed:\n{out}"
+            )
         dpidr_line = next(
             (line.strip() for line in out.splitlines() if "SWD DPIDR" in line), "SWD OK"
         )
@@ -147,9 +149,12 @@ def test_swd_target(
             p_xds.returncode != 0
             or "SRAM_RW: 0xdeadbeef 0xcafebabe 0x12345678 0xa5a55a5a" not in xds_out
         ):
-            raise RuntimeError(f"OpenOCD native xds110.cfg SWD verification failed:\n{xds_out}")
+            raise RuntimeError(
+                f"OpenOCD native xds110.cfg SWD verification failed:\n{xds_out}"
+            )
         xds_dpidr = next(
-            (line.strip() for line in xds_out.splitlines() if "SWD DPIDR" in line), "SWD OK"
+            (line.strip() for line in xds_out.splitlines() if "SWD DPIDR" in line),
+            "SWD OK",
         )
         print(
             f"  [openocd XDS110] OK ({xds_dpidr}, connect_assert_srst + {dump_size // 1024} KiB flash verify + SRAM R/W, {dt_xds * 1000:.0f}ms)"

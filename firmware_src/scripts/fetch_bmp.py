@@ -7,7 +7,9 @@ the `pr/cc23xx` branch into firmware_src/third_party/blackmagic/.
 """
 
 import argparse
+import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -24,6 +26,24 @@ def is_bmp_present(dest_dir: Path) -> bool:
         and (dest_dir / "src" / "target" / "cortexm.c").is_file()
         and (dest_dir / "src" / "include" / "general.h").is_file()
     )
+
+
+def _clear_readonly_and_retry(func, path, _exc) -> None:
+    """rmtree error handler: clear the read-only flag (e.g. git pack files on Windows) and retry."""
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
+
+def _rmtree(path: Path, ignore_errors: bool = False) -> None:
+    """Remove a directory tree, including read-only files."""
+    try:
+        if sys.version_info >= (3, 12):
+            shutil.rmtree(path, onexc=_clear_readonly_and_retry)
+        else:
+            shutil.rmtree(path, onerror=_clear_readonly_and_retry)
+    except OSError:
+        if not ignore_errors:
+            raise
 
 
 def _run_git(args: list[str], cwd: Path | None = None) -> str:
@@ -47,10 +67,14 @@ def fetch_bmp(
             rev = ""
             if (dest_dir / ".git").exists():
                 try:
-                    rev = f" ({_run_git(['rev-parse', '--short', 'HEAD'], cwd=dest_dir)})"
+                    rev = (
+                        f" ({_run_git(['rev-parse', '--short', 'HEAD'], cwd=dest_dir)})"
+                    )
                 except subprocess.CalledProcessError:
                     pass
-            print(f"Black Magic Debug sources already exist in {dest_dir}{rev}. Skipping download.")
+            print(
+                f"Black Magic Debug sources already exist in {dest_dir}{rev}. Skipping download."
+            )
             return
 
         if not (dest_dir / ".git").exists():
@@ -63,7 +87,9 @@ def fetch_bmp(
         if depth > 0:
             fetch_args.insert(1, f"--depth={depth}")
         _run_git(fetch_args, cwd=dest_dir)
-        _run_git(["checkout", "FETCH_HEAD" if ref else f"origin/{branch}"], cwd=dest_dir)
+        _run_git(
+            ["checkout", "FETCH_HEAD" if ref else f"origin/{branch}"], cwd=dest_dir
+        )
         if recurse_submodules:
             _run_git(["submodule", "update", "--init", "--recursive"], cwd=dest_dir)
         rev = _run_git(["rev-parse", "--short", "HEAD"], cwd=dest_dir)
@@ -100,11 +126,13 @@ def fetch_bmp(
 
         rev = _run_git(["rev-parse", "--short", "HEAD"], cwd=staging_dir)
         if dest_dir.exists():
-            shutil.rmtree(dest_dir)
+            _rmtree(dest_dir)
         staging_dir.rename(dest_dir)
-        print(f"Black Magic Debug ({branch} @ {rev}) successfully fetched to {dest_dir}.")
+        print(
+            f"Black Magic Debug ({branch} @ {rev}) successfully fetched to {dest_dir}."
+        )
     finally:
-        shutil.rmtree(staging_parent, ignore_errors=True)
+        _rmtree(staging_parent, ignore_errors=True)
 
 
 def main() -> int:
