@@ -75,7 +75,8 @@ APP_SRCS    = src/main.c src/startup_gcc.c src/board.c src/dfu_jump.c \
               src/protocol/xds_cmd.c \
               src/energytrace/et_hdr.c \
               src/uart/cdc_uart.c \
-              src/gpio/aux_gpio.c
+              src/gpio/aux_gpio.c \
+              src/dap/cmsis_dap.c
 DL_DIR      = sdk/ti/devices/msp432e4/driverlib
 DL_SRCS     = $(wildcard $(DL_DIR)/sysctl.c $(DL_DIR)/gpio.c $(DL_DIR)/cpu.c \
                          $(DL_DIR)/interrupt.c $(DL_DIR)/fpu.c $(DL_DIR)/systick.c \

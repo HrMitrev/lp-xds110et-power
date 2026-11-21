@@ -404,8 +404,8 @@ static void usb_patch_bulk_mps(uint8_t *cfg_desc, uint16_t total_len, uint16_t b
 
 void usb_descriptors_init(const uint8_t fw_version[4], const char *serial_ascii)
 {
-    char product_buf[48];
-    snprintf(product_buf, sizeof(product_buf), "XDS110 (%02u.%02u.%02u.%02u) OpenFW", (unsigned)fw_version[3],
+    char product_buf[56];
+    snprintf(product_buf, sizeof(product_buf), "XDS110 (%02u.%02u.%02u.%02u) OpenFW CMSIS-DAP", (unsigned)fw_version[3],
         (unsigned)fw_version[2], (unsigned)fw_version[1], (unsigned)fw_version[0]);
 
     usb_encode_utf16le_string(g_str_manufacturer, sizeof(g_str_manufacturer), "Texas Instruments");

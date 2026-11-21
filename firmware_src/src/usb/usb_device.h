@@ -3,9 +3,11 @@
  *
  * Uses MSP432E4 DriverLib (MAP_USB*) exclusively for ULPI PHY setup, EP0
  * enumeration, Bulk 0 (XDS110 CMD: OUT 0x02 / IN 0x83), Bulk 1
- * (EnergyTrace Data: OUT 0x06 / IN 0x87), and dual CDC ACM Virtual COM Ports:
+ * (EnergyTrace Data: OUT 0x06 / IN 0x87), dual CDC ACM Virtual COM Ports:
  *   - CDC 0 (App UART): OUT 0x01 / IN 0x82 / INT 0x81 (IF 0/1)
  *   - CDC 1 (Aux/SWO):  OUT 0x04 / IN 0x85 / INT 0x84 (IF 3/4)
+ * and HID CMSIS-DAP 1.0:
+ *   - HID (CMSIS-DAP):  OUT 0x05 / IN 0x86 (IF 5, 64-byte packets)
  */
 
 #ifndef USB_DEVICE_H
@@ -21,6 +23,10 @@
 #define USB_DATA_TX_BUF_SIZE 65536U
 #define USB_CDC_RX_BUF_SIZE  2048U
 #define USB_CDC_TX_BUF_SIZE  8192U
+
+/* HID CMSIS-DAP 1.0 fixed-size packet queue parameters */
+#define USB_HID_PKT_SIZE    64U
+#define USB_HID_QUEUE_DEPTH 4U
 
 /* CDC port indices */
 #define USB_CDC_PORT_APP   0U
@@ -68,5 +74,11 @@ uint32_t usb_cdc_tx_write(uint8_t port, const uint8_t *src, uint32_t len);
 bool usb_cdc_take_line_coding(uint8_t port, usb_cdc_line_coding_t *out_coding);
 void usb_cdc_get_line_coding(uint8_t port, usb_cdc_line_coding_t *out_coding);
 bool usb_cdc_is_dtr_asserted(uint8_t port);
+
+/* HID CMSIS-DAP 1.0 interface (Interrupt OUT 0x05, Interrupt IN 0x86) */
+bool usb_hid_rx_available(void);
+bool usb_hid_rx_pop(uint8_t out_pkt[USB_HID_PKT_SIZE]);
+bool usb_hid_tx_space(void);
+bool usb_hid_tx_push(const uint8_t pkt[USB_HID_PKT_SIZE]);
 
 #endif /* USB_DEVICE_H */

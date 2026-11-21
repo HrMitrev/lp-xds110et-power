@@ -47,7 +47,10 @@
 #define USB_CDC_SET_CONTROL_LINE_STATE 0x22U
 #define USB_CDC_SEND_BREAK             0x23U
 #define USB_CDC_LINE_CODING_LEN        7U
+#define USB_HID_GET_IDLE               0x02U
+#define USB_HID_GET_PROTOCOL           0x03U
 #define USB_HID_SET_IDLE               0x0AU
+#define USB_HID_SET_PROTOCOL           0x0BU
 
 /* USB3300 ULPI PHY register addresses */
 #define ULPI_REG_FUNC_CTRL 0x04U
@@ -58,8 +61,8 @@
  *   0..63      EP0 Control (64 B, fixed hardware)
  *   64..79     CDC0 INT IN  0x81 (16 B)
  *   80..95     CDC1 INT IN  0x84 (16 B)
- *   128..191   Reserved for HID OUT 0x05 (64 B, Phase 4)
- *   192..255   Reserved for HID IN  0x86 (64 B, Phase 4)
+ *   128..191   HID OUT      0x05 (64 B, CMSIS-DAP 1.0)
+ *   192..255   HID IN       0x86 (64 B, CMSIS-DAP 1.0)
  *   256..767   CMD OUT      0x02 (512 B)
  *   768..1279  CMD IN       0x83 (512 B)
  *   1280..1791 DATA IN      0x87 (512 B)
@@ -72,6 +75,8 @@
  */
 #define USB_FIFO_ADDR_CDC0_INT 64U
 #define USB_FIFO_ADDR_CDC1_INT 80U
+#define USB_FIFO_ADDR_HID_OUT  128U
+#define USB_FIFO_ADDR_HID_IN   192U
 #define USB_FIFO_ADDR_CMD_OUT  256U
 #define USB_FIFO_ADDR_CMD_IN   768U
 #define USB_FIFO_ADDR_DATA_IN  1280U
@@ -117,6 +122,16 @@ static usb_ring_t g_cdc_tx_rings[USB_CDC_PORT_COUNT] = {
     {g_cdc_tx_storage[1], USB_CDC_TX_BUF_SIZE - 1U, 0U, 0U},
 };
 
+/* HID CMSIS-DAP 1.0 packet queues (64-byte fixed reports) */
+static uint8_t g_hid_rx_queue[USB_HID_QUEUE_DEPTH][USB_HID_PKT_SIZE];
+static uint8_t g_hid_tx_queue[USB_HID_QUEUE_DEPTH][USB_HID_PKT_SIZE];
+static volatile uint8_t g_hid_rx_head = 0U;
+static volatile uint8_t g_hid_rx_tail = 0U;
+static volatile uint8_t g_hid_rx_count = 0U;
+static volatile uint8_t g_hid_tx_head = 0U;
+static volatile uint8_t g_hid_tx_tail = 0U;
+static volatile uint8_t g_hid_tx_count = 0U;
+
 /* Device & endpoint state */
 static volatile bool g_usb_configured = false;
 static volatile bool g_usb_high_speed = true;
@@ -125,6 +140,7 @@ static volatile bool g_cmd_tx_busy = false;
 static volatile bool g_cmd_tx_need_zlp = false;
 static volatile bool g_data_tx_busy = false;
 static volatile bool g_cdc_tx_busy[USB_CDC_PORT_COUNT] = {false, false};
+static volatile bool g_hid_tx_busy = false;
 
 static ep0_state_t g_ep0_state = EP0_STATE_IDLE;
 static uint8_t g_pending_addr = 0U;
@@ -344,11 +360,70 @@ static void usb_configure_endpoints(void)
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_5, mps, USB_EP_MODE_BULK | USB_EP_DEV_IN);
     MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_5, USB_FIFO_ADDR_CDC1_IN, fifo_cdc_in, USB_EP_DEV_IN);
 
+    /* HID CMSIS-DAP 1.0 Interrupt OUT (EP5, 0x05) & IN (EP6, 0x86) */
+    MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_5, USB_HID_INT_MPS, USB_EP_MODE_INT | USB_EP_DEV_OUT);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_5, USB_FIFO_ADDR_HID_OUT, USB_FIFO_SZ_64, USB_EP_DEV_OUT);
+
+    MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_6, USB_HID_INT_MPS, USB_EP_MODE_INT | USB_EP_DEV_IN);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_6, USB_FIFO_ADDR_HID_IN, USB_FIFO_SZ_64, USB_EP_DEV_IN);
+
     g_cmd_tx_busy = false;
     g_cmd_tx_need_zlp = false;
     g_data_tx_busy = false;
     g_cdc_tx_busy[0] = false;
     g_cdc_tx_busy[1] = false;
+    g_hid_tx_busy = false;
+}
+
+/* ---- HID Interrupt IN/OUT Packet Queue Helpers ---- */
+
+static void hid_queues_reset(void)
+{
+    g_hid_rx_head = 0U;
+    g_hid_rx_tail = 0U;
+    g_hid_rx_count = 0U;
+    g_hid_tx_head = 0U;
+    g_hid_tx_tail = 0U;
+    g_hid_tx_count = 0U;
+    g_hid_tx_busy = false;
+}
+
+static void usb_kick_hid_in(void)
+{
+    if (!g_usb_configured || g_hid_tx_busy || (g_hid_tx_count == 0U)) {
+        return;
+    }
+
+    uint8_t tail = g_hid_tx_tail;
+    g_hid_tx_tail = (uint8_t)((tail + 1U) % USB_HID_QUEUE_DEPTH);
+    g_hid_tx_count--;
+    g_hid_tx_busy = true;
+
+    MAP_USBEndpointDataPut(USB0_BASE, USB_EP_6, g_hid_tx_queue[tail], USB_HID_PKT_SIZE);
+    MAP_USBEndpointDataSend(USB0_BASE, USB_EP_6, USB_TRANS_IN);
+}
+
+static void usb_handle_hid_out(void)
+{
+    uint32_t avail = MAP_USBEndpointDataAvail(USB0_BASE, USB_EP_5);
+    if (avail == 0U) {
+        MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_5, false);
+        return;
+    }
+
+    /* Hold packet in hardware FIFO (USB NAK flow control) if queue is full */
+    if (g_hid_rx_count >= USB_HID_QUEUE_DEPTH) {
+        return;
+    }
+
+    uint8_t head = g_hid_rx_head;
+    memset(g_hid_rx_queue[head], 0, USB_HID_PKT_SIZE);
+    uint32_t read_len = (avail > USB_HID_PKT_SIZE) ? USB_HID_PKT_SIZE : avail;
+    MAP_USBEndpointDataGet(USB0_BASE, USB_EP_5, g_hid_rx_queue[head], &read_len);
+    MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_5, false);
+
+    g_hid_rx_head = (uint8_t)((head + 1U) % USB_HID_QUEUE_DEPTH);
+    g_hid_rx_count++;
 }
 
 /* ---- Bulk IN/OUT Pump Helpers ---- */
@@ -580,8 +655,27 @@ static void ep0_handle_class_request(const uint8_t setup[8])
         g_ep0_state = EP0_STATE_IDLE;
         break;
 
+    case USB_HID_GET_IDLE:
+        if (w_index != USB_IF_CMSIS_HID) {
+            ep0_stall();
+            break;
+        }
+        g_ep0_status_buf[0] = 0U;
+        ep0_start_tx(g_ep0_status_buf, 1U, w_length);
+        break;
+
+    case USB_HID_GET_PROTOCOL:
+        if (w_index != USB_IF_CMSIS_HID) {
+            ep0_stall();
+            break;
+        }
+        g_ep0_status_buf[0] = 1U; /* Report protocol */
+        ep0_start_tx(g_ep0_status_buf, 1U, w_length);
+        break;
+
     case USB_CDC_SEND_BREAK:
     case USB_HID_SET_IDLE:
+    case USB_HID_SET_PROTOCOL:
         MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, true);
         g_ep0_state = EP0_STATE_IDLE;
         break;
@@ -684,6 +778,7 @@ void usb0_irq_handler(void)
         ring_reset(&g_cdc_rx_rings[1]);
         ring_reset(&g_cdc_tx_rings[0]);
         ring_reset(&g_cdc_tx_rings[1]);
+        hid_queues_reset();
 
         g_usb_high_speed = (MAP_USBDevSpeedGet(USB0_BASE) == USB_HIGH_SPEED);
         g_bulk_mps = g_usb_high_speed ? USB_BULK_MPS_HS : USB_BULK_MPS_FS;
@@ -698,6 +793,7 @@ void usb0_irq_handler(void)
         g_cdc_tx_busy[1] = false;
         g_cdc_ctrl_state[0] = 0U;
         g_cdc_ctrl_state[1] = 0U;
+        hid_queues_reset();
     }
 
     if ((ep_status & USB_INTEP_0) != 0U) {
@@ -744,6 +840,16 @@ void usb0_irq_handler(void)
         g_cdc_tx_busy[USB_CDC_PORT_AUX] = false;
         usb_kick_bulk_in(
             USB_EP_5, &g_cdc_tx_rings[USB_CDC_PORT_AUX], &g_cdc_tx_busy[USB_CDC_PORT_AUX], NULL, USB_CDC_IN_FIFO_BYTES);
+    }
+
+    /* HID — CMSIS-DAP 1.0 (OUT 0x05 / IN 0x86) */
+    if ((ep_status & USB_INTEP_DEV_OUT_5) != 0U) {
+        usb_handle_hid_out();
+    }
+
+    if ((ep_status & USB_INTEP_DEV_IN_6) != 0U) {
+        g_hid_tx_busy = false;
+        usb_kick_hid_in();
     }
 }
 
@@ -793,7 +899,8 @@ void usb_device_init(const uint8_t fw_version[4])
         USB0_BASE, USB_INTCTRL_RESET | USB_INTCTRL_DISCONNECT | USB_INTCTRL_SUSPEND | USB_INTCTRL_RESUME);
     MAP_USBIntEnableEndpoint(USB0_BASE,
         USB_INTEP_0 | USB_INTEP_DEV_OUT_1 | USB_INTEP_DEV_IN_2 | USB_INTEP_DEV_OUT_2 | USB_INTEP_DEV_IN_3 |
-            USB_INTEP_DEV_OUT_4 | USB_INTEP_DEV_IN_5 | USB_INTEP_DEV_OUT_6 | USB_INTEP_DEV_IN_7);
+            USB_INTEP_DEV_OUT_4 | USB_INTEP_DEV_IN_5 | USB_INTEP_DEV_OUT_5 | USB_INTEP_DEV_OUT_6 | USB_INTEP_DEV_IN_6 |
+            USB_INTEP_DEV_IN_7);
 
     NVIC_SetPriority(USB0_IRQn, USB_IRQ_PRIO);
     NVIC_ClearPendingIRQ(USB0_IRQn);
@@ -813,6 +920,7 @@ void usb_device_disconnect(void)
     g_cdc_tx_busy[1] = false;
     g_cdc_ctrl_state[0] = 0U;
     g_cdc_ctrl_state[1] = 0U;
+    hid_queues_reset();
 }
 
 bool usb_device_is_configured(void)
@@ -982,4 +1090,54 @@ bool usb_cdc_is_dtr_asserted(uint8_t port)
         return false;
     }
     return (g_cdc_ctrl_state[port] & 0x0001U) != 0U;
+}
+
+bool usb_hid_rx_available(void)
+{
+    return (g_hid_rx_count > 0U);
+}
+
+bool usb_hid_rx_pop(uint8_t out_pkt[USB_HID_PKT_SIZE])
+{
+    uint32_t crit = usb_crit_enter();
+    if (g_hid_rx_count == 0U) {
+        usb_crit_exit(crit);
+        return false;
+    }
+
+    uint8_t tail = g_hid_rx_tail;
+    memcpy(out_pkt, g_hid_rx_queue[tail], USB_HID_PKT_SIZE);
+    g_hid_rx_tail = (uint8_t)((tail + 1U) % USB_HID_QUEUE_DEPTH);
+    g_hid_rx_count--;
+
+    /* Drain any HID OUT report held in hardware FIFO by NAK back-pressure */
+    if (MAP_USBEndpointDataAvail(USB0_BASE, USB_EP_5) > 0U) {
+        usb_handle_hid_out();
+    }
+
+    usb_crit_exit(crit);
+    return true;
+}
+
+bool usb_hid_tx_space(void)
+{
+    return (g_hid_tx_count < USB_HID_QUEUE_DEPTH);
+}
+
+bool usb_hid_tx_push(const uint8_t pkt[USB_HID_PKT_SIZE])
+{
+    uint32_t crit = usb_crit_enter();
+    if (g_hid_tx_count >= USB_HID_QUEUE_DEPTH) {
+        usb_crit_exit(crit);
+        return false;
+    }
+
+    uint8_t head = g_hid_tx_head;
+    memcpy(g_hid_tx_queue[head], pkt, USB_HID_PKT_SIZE);
+    g_hid_tx_head = (uint8_t)((head + 1U) % USB_HID_QUEUE_DEPTH);
+    g_hid_tx_count++;
+
+    usb_kick_hid_in();
+    usb_crit_exit(crit);
+    return true;
 }
