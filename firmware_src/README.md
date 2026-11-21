@@ -73,6 +73,8 @@ firmware_src/
 │       ├── cmsis_dap.h / .c        # CMSIS-DAP v2.0.0 WinUSB Bulk + Atomic Commands (0x7E/0x7F)
 │       └── xds_swd.h / .c          # Native XDS110 Interface 2 SWD (CMAPI + SACI + OpenOCD 0x3A)
 └── tests/
+    ├── bmp_benchmark.py            # Cross-platform (Linux/Windows) BMP flash & RTT benchmark
+    ├── cc23xx_bench_64k.hex        # Default 64 KiB random + CC23xx CCFG benchmark image
     ├── hil_stress_test.py          # Probe HIL suite (info, Aux GPIO, DAPv2/BOS, UART0/7, ET)
     └── swd_target_test.py          # Live SWD target suite (OpenOCD DAPv2 & xds110, probe-rs, pyocd, ET coex)
 ```
