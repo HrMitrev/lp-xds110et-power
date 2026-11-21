@@ -1,9 +1,9 @@
 /*
  * swd.c - ARM ADIv5.2 Serial Wire Debug (SWD) bit-bang engine for LP-XDS110ET.
  *
- * Uses MSP432E4 DriverLib (MAP_GPIO*) for atomic bit-masked pin writes/reads,
- * CMSIS GPIOA->DIR for fast single-cycle SWDIO turnaround, and Cortex-M4
- * DWT->CYCCNT for cycle-accurate SWCLK half-period pacing.
+ * Uses MSP432E4 DriverLib bit-masked GPIO writes (HWREG) and CMSIS GPIOA->DIR
+ * for high-speed single-instruction SWCLK/SWDIO toggling (up to ~10 MHz) with
+ * calibrated cycle pacing for exact SWCLK frequency control.
  */
 
 #include "swd.h"
@@ -14,27 +14,32 @@
 #include "driverlib/gpio.h"
 #include "driverlib/rom.h"
 #include "driverlib/rom_map.h"
+#include "driverlib/types.h"
 
-/* Approximate fixed GPIO call overhead per SWCLK half-cycle at 120 MHz */
-#define SWD_GPIO_OVERHEAD_CYCLES 16U
+/* Bit-masked MSP432E4 GPIO data register addresses (single-instruction access) */
+#define SWD_REG_TCK     (BOARD_JTAG_PORT_BASE + ((uint32_t)BOARD_JTAG_TCK_PIN << 2U))
+#define SWD_REG_TMS     (BOARD_JTAG_PORT_BASE + ((uint32_t)BOARD_JTAG_TMS_PIN << 2U))
+#define SWD_REG_TCK_TMS (BOARD_JTAG_PORT_BASE + ((uint32_t)(BOARD_JTAG_TCK_PIN | BOARD_JTAG_TMS_PIN) << 2U))
+#define SWD_REG_TMS_DIR (BOARD_TMS_DIR_PORT_BASE + ((uint32_t)BOARD_TMS_DIR_PIN << 2U))
+
+/* Fixed loop + GPIO overhead per SWCLK half-cycle at 120 MHz (-O2 fast path) */
+#define SWD_GPIO_OVERHEAD_CYCLES 6U
+#define SWD_DELAY_LOOP_CYCLES    4U
 #define SWD_DEFAULT_CLOCK_HZ     1000000U
 
-static uint32_t g_swd_half_cycles = 44U;
+static uint32_t g_swd_half_loops = 13U;
 static uint8_t g_swd_turnaround = 1U;
 static bool g_swd_data_phase = false;
 static uint8_t g_swd_idle_cycles = 0U;
 
-static inline void swd_delay_half(void)
+static inline __attribute__((always_inline)) void swd_delay_half(uint32_t loops)
 {
-    uint32_t cycles = g_swd_half_cycles;
-    if (cycles > 0U) {
-        uint32_t start = DWT->CYCCNT;
-        while ((uint32_t)(DWT->CYCCNT - start) < cycles) {
-        }
+    for (uint32_t i = 0U; i < loops; i++) {
+        __NOP();
     }
 }
 
-static inline uint32_t swd_parity32(uint32_t val)
+static inline __attribute__((always_inline)) uint32_t swd_parity32(uint32_t val)
 {
     val ^= val >> 16U;
     val ^= val >> 8U;
@@ -43,65 +48,62 @@ static inline uint32_t swd_parity32(uint32_t val)
     return (0x6996U >> val) & 1U;
 }
 
-static inline void swd_clk_low(void)
+static inline __attribute__((always_inline)) void swd_clk_low(void)
 {
-    MAP_GPIOPinWrite(BOARD_JTAG_PORT_BASE, BOARD_JTAG_TCK_PIN, 0U);
+    HWREG(SWD_REG_TCK) = 0U;
 }
 
-static inline void swd_clk_high(void)
+static inline __attribute__((always_inline)) void swd_dio_write(uint32_t bit)
 {
-    MAP_GPIOPinWrite(BOARD_JTAG_PORT_BASE, BOARD_JTAG_TCK_PIN, BOARD_JTAG_TCK_PIN);
+    HWREG(SWD_REG_TMS) = (bit != 0U) ? BOARD_JTAG_TMS_PIN : 0U;
 }
 
-static inline void swd_dio_write(uint32_t bit)
-{
-    MAP_GPIOPinWrite(BOARD_JTAG_PORT_BASE, BOARD_JTAG_TMS_PIN, (bit != 0U) ? BOARD_JTAG_TMS_PIN : 0U);
-}
-
-static inline uint32_t swd_dio_read(void)
-{
-    return (MAP_GPIOPinRead(BOARD_JTAG_PORT_BASE, BOARD_JTAG_TMS_PIN) != 0U) ? 1U : 0U;
-}
-
-static inline void swd_dio_dir_out(void)
+static inline __attribute__((always_inline)) void swd_dio_dir_out(void)
 {
     /* Switch U10 TMS_DIR HIGH (A->B) BEFORE enabling MCU output on PA3 */
-    MAP_GPIOPinWrite(BOARD_TMS_DIR_PORT_BASE, BOARD_TMS_DIR_PIN, BOARD_TMS_DIR_PIN);
+    HWREG(SWD_REG_TMS_DIR) = BOARD_TMS_DIR_PIN;
     GPIOA->DIR |= BOARD_JTAG_TMS_PIN;
 }
 
-static inline void swd_dio_dir_in(void)
+static inline __attribute__((always_inline)) void swd_dio_dir_in(void)
 {
     /* Release PA3 to input BEFORE switching U10 TMS_DIR LOW (B->A) */
     GPIOA->DIR &= ~BOARD_JTAG_TMS_PIN;
-    MAP_GPIOPinWrite(BOARD_TMS_DIR_PORT_BASE, BOARD_TMS_DIR_PIN, 0U);
+    HWREG(SWD_REG_TMS_DIR) = 0U;
 }
 
-static inline void swd_write_bit(uint32_t bit)
+static inline __attribute__((always_inline)) void swd_write_bit(uint32_t bit, uint32_t loops)
 {
-    swd_clk_low();
-    swd_dio_write(bit);
-    swd_delay_half();
-    swd_clk_high();
-    swd_delay_half();
+    uint32_t dio = (bit != 0U) ? BOARD_JTAG_TMS_PIN : 0U;
+    HWREG(SWD_REG_TCK_TMS) = dio;
+    swd_delay_half(loops);
+    HWREG(SWD_REG_TCK_TMS) = dio | BOARD_JTAG_TCK_PIN;
+    swd_delay_half(loops);
 }
 
-static inline uint32_t swd_read_bit(void)
+static inline __attribute__((always_inline)) uint32_t swd_read_bit(uint32_t loops)
 {
-    swd_clk_low();
-    swd_delay_half();
-    uint32_t bit = swd_dio_read();
-    swd_clk_high();
-    swd_delay_half();
+    HWREG(SWD_REG_TCK) = 0U;
+    if (loops == 0U) {
+        /* ~30 ns settling margin for U10 level shifter & target T_do at max speed */
+        __NOP();
+        __NOP();
+        __NOP();
+    } else {
+        swd_delay_half(loops);
+    }
+    uint32_t bit = (HWREG(SWD_REG_TMS) != 0U) ? 1U : 0U;
+    HWREG(SWD_REG_TCK) = BOARD_JTAG_TCK_PIN;
+    swd_delay_half(loops);
     return bit;
 }
 
-static inline void swd_clock_cycle(void)
+static inline __attribute__((always_inline)) void swd_clock_cycle(uint32_t loops)
 {
-    swd_clk_low();
-    swd_delay_half();
-    swd_clk_high();
-    swd_delay_half();
+    HWREG(SWD_REG_TCK) = 0U;
+    swd_delay_half(loops);
+    HWREG(SWD_REG_TCK) = BOARD_JTAG_TCK_PIN;
+    swd_delay_half(loops);
 }
 
 /* ---- Public API ---- */
@@ -156,9 +158,9 @@ void swd_set_clock_hz(uint32_t clock_hz)
     uint32_t sys_clk = board_get_sys_clock_hz();
     uint32_t half_cycles = sys_clk / (2U * clock_hz);
     if (half_cycles > SWD_GPIO_OVERHEAD_CYCLES) {
-        g_swd_half_cycles = half_cycles - SWD_GPIO_OVERHEAD_CYCLES;
+        g_swd_half_loops = (half_cycles - SWD_GPIO_OVERHEAD_CYCLES) / SWD_DELAY_LOOP_CYCLES;
     } else {
-        g_swd_half_cycles = 0U;
+        g_swd_half_loops = 0U;
     }
 }
 
@@ -216,8 +218,9 @@ void swd_pins_write(uint8_t pin_out, uint8_t pin_sel)
     }
 }
 
-void swd_sequence(uint32_t bit_count, const uint8_t *data)
+__attribute__((optimize("O2"))) void swd_sequence(uint32_t bit_count, const uint8_t *data)
 {
+    uint32_t loops = g_swd_half_loops;
     swd_dio_dir_out();
 
     uint32_t byte_val = 0U;
@@ -225,24 +228,27 @@ void swd_sequence(uint32_t bit_count, const uint8_t *data)
         if ((i & 7U) == 0U) {
             byte_val = *data++;
         }
-        swd_write_bit(byte_val & 1U);
+        swd_write_bit(byte_val & 1U, loops);
         byte_val >>= 1U;
     }
     swd_clk_low();
 }
 
-void swd_idle_cycles(uint32_t count)
+__attribute__((optimize("O2"))) void swd_idle_cycles(uint32_t count)
 {
+    uint32_t loops = g_swd_half_loops;
     swd_dio_dir_out();
     for (uint32_t i = 0U; i < count; i++) {
-        swd_write_bit(0U);
+        swd_write_bit(0U, loops);
     }
     swd_clk_low();
     swd_dio_write(0U);
 }
 
-uint8_t swd_transfer(uint8_t request, uint32_t *data)
+__attribute__((optimize("O2"))) uint8_t swd_transfer(uint8_t request, uint32_t *data)
 {
+    uint32_t loops = g_swd_half_loops;
+
     /* 1. Build and transmit 8-bit SWD packet header (LSB first) */
     uint32_t req4 = request & 0x0FU;
     uint32_t parity = swd_parity32(req4);
@@ -250,34 +256,51 @@ uint8_t swd_transfer(uint8_t request, uint32_t *data)
 
     swd_dio_dir_out();
     for (uint32_t i = 0U; i < 8U; i++) {
-        swd_write_bit(hdr & 1U);
+        swd_write_bit(hdr & 1U, loops);
         hdr >>= 1U;
     }
 
     /* 2. Turnaround: Probe -> Target */
     swd_dio_dir_in();
     for (uint32_t i = 0U; i < g_swd_turnaround; i++) {
-        swd_clock_cycle();
+        swd_clock_cycle(loops);
     }
 
     /* 3. Receive 3-bit ACK (LSB first) */
     uint8_t ack = 0U;
-    ack |= (uint8_t)(swd_read_bit() << 0U);
-    ack |= (uint8_t)(swd_read_bit() << 1U);
-    ack |= (uint8_t)(swd_read_bit() << 2U);
+    ack |= (uint8_t)(swd_read_bit(loops) << 0U);
+    ack |= (uint8_t)(swd_read_bit(loops) << 1U);
+    ack |= (uint8_t)(swd_read_bit(loops) << 2U);
 
     if (ack == SWD_ACK_OK) {
         if ((request & SWD_REQ_RnW) != 0U) {
             /* 4a. Read 32-bit word + parity bit (LSB first) */
             uint32_t val = 0U;
-            for (uint32_t i = 0U; i < 32U; i++) {
-                val |= (swd_read_bit() << i);
+            if (loops == 0U) {
+                for (uint32_t i = 0U; i < 32U; i++) {
+                    HWREG(SWD_REG_TCK) = 0U;
+                    __NOP();
+                    __NOP();
+                    __NOP();
+                    uint32_t bit = HWREG(SWD_REG_TMS);
+                    HWREG(SWD_REG_TCK) = BOARD_JTAG_TCK_PIN;
+                    val = (val >> 1U) | (bit << 28U); /* BOARD_JTAG_TMS_PIN == bit 3 */
+                }
+            } else {
+                for (uint32_t i = 0U; i < 32U; i++) {
+                    HWREG(SWD_REG_TCK) = 0U;
+                    swd_delay_half(loops);
+                    uint32_t bit = HWREG(SWD_REG_TMS);
+                    HWREG(SWD_REG_TCK) = BOARD_JTAG_TCK_PIN;
+                    val = (val >> 1U) | (bit << 28U);
+                    swd_delay_half(loops);
+                }
             }
-            uint32_t rx_parity = swd_read_bit();
+            uint32_t rx_parity = swd_read_bit(loops);
 
             /* Turnaround: Target -> Probe */
             for (uint32_t i = 0U; i < g_swd_turnaround; i++) {
-                swd_clock_cycle();
+                swd_clock_cycle(loops);
             }
             swd_dio_dir_out();
 
@@ -290,22 +313,33 @@ uint8_t swd_transfer(uint8_t request, uint32_t *data)
         } else {
             /* 4b. Turnaround: Target -> Probe, then write 32-bit word + parity */
             for (uint32_t i = 0U; i < g_swd_turnaround; i++) {
-                swd_clock_cycle();
+                swd_clock_cycle(loops);
             }
             swd_dio_dir_out();
 
             uint32_t val = (data != NULL) ? *data : 0U;
             uint32_t tx_parity = swd_parity32(val);
-            for (uint32_t i = 0U; i < 32U; i++) {
-                swd_write_bit(val & 1U);
-                val >>= 1U;
+            if (loops == 0U) {
+                for (uint32_t i = 0U; i < 32U; i++) {
+                    uint32_t dio = (val & 1U) ? BOARD_JTAG_TMS_PIN : 0U;
+                    HWREG(SWD_REG_TCK_TMS) = dio;
+                    __NOP();
+                    __NOP();
+                    HWREG(SWD_REG_TCK_TMS) = dio | BOARD_JTAG_TCK_PIN;
+                    val >>= 1U;
+                }
+            } else {
+                for (uint32_t i = 0U; i < 32U; i++) {
+                    swd_write_bit(val & 1U, loops);
+                    val >>= 1U;
+                }
             }
-            swd_write_bit(tx_parity);
+            swd_write_bit(tx_parity, loops);
         }
 
         /* 5. Append configured idle cycles with SWDIO LOW, then park SWCLK LOW */
         for (uint32_t i = 0U; i < g_swd_idle_cycles; i++) {
-            swd_write_bit(0U);
+            swd_write_bit(0U, loops);
         }
         swd_clk_low();
         swd_dio_write(0U);
@@ -316,16 +350,16 @@ uint8_t swd_transfer(uint8_t request, uint32_t *data)
     if ((ack == SWD_ACK_WAIT) || (ack == SWD_ACK_FAULT)) {
         if (g_swd_data_phase && ((request & SWD_REQ_RnW) != 0U)) {
             for (uint32_t i = 0U; i < 33U; i++) {
-                swd_clock_cycle();
+                swd_clock_cycle(loops);
             }
         }
         for (uint32_t i = 0U; i < g_swd_turnaround; i++) {
-            swd_clock_cycle();
+            swd_clock_cycle(loops);
         }
         swd_dio_dir_out();
         if (g_swd_data_phase && ((request & SWD_REQ_RnW) == 0U)) {
             for (uint32_t i = 0U; i < 33U; i++) {
-                swd_write_bit(0U);
+                swd_write_bit(0U, loops);
             }
         }
         swd_clk_low();
@@ -335,7 +369,7 @@ uint8_t swd_transfer(uint8_t request, uint32_t *data)
 
     /* Protocol error (e.g. 0x07 no target): clock out 33 dummy cycles and reclaim SWDIO */
     for (uint32_t i = 0U; i < (33U + g_swd_turnaround); i++) {
-        swd_clock_cycle();
+        swd_clock_cycle(loops);
     }
     swd_dio_dir_out();
     swd_clk_low();

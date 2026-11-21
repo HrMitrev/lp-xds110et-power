@@ -112,18 +112,19 @@ static uint8_t xds_swd_xfer_retry(uint8_t swd_req, uint32_t *data)
     return ack;
 }
 
-/*
- * CMAPI SWD transfer with automatic sticky-error / WAIT-abort recovery
- * (matching TI XDS110 CMAPI behavior so a single bus fault does not leave
- * DP.CTRL/STAT.STICKYERR latched across subsequent AP/DP commands).
- */
-static uint8_t xds_swd_cmapi_xfer(uint8_t swd_req, uint32_t *data)
+static uint8_t xds_swd_cmapi_xfer_slow(uint8_t swd_req, uint32_t *data, uint8_t ack)
 {
-    uint8_t ack = xds_swd_xfer_retry(swd_req, data);
+    if (ack == SWD_ACK_WAIT) {
+        ack = xds_swd_xfer_retry(swd_req, data);
+    }
+    if (ack == SWD_ACK_OK) {
+        return SWD_ACK_OK;
+    }
+
     bool is_dp_idcode_or_abort = ((swd_req & SWD_REQ_APnDP) == 0U) && ((swd_req & 0x0CU) == 0U);
     bool is_dp_ctrlstat_read = (swd_req == (uint8_t)(SWD_REQ_RnW | SWD_REQ_A2));
 
-    if ((ack != SWD_ACK_OK) && (ack != SWD_ACK_WAIT) && (ack != SWD_ACK_FAULT) && !is_dp_idcode_or_abort) {
+    if ((ack != SWD_ACK_WAIT) && (ack != SWD_ACK_FAULT) && !is_dp_idcode_or_abort) {
         /* Protocol/parity glitch: read DPIDR once to resync and retry once */
         uint32_t idcode = 0U;
         (void)swd_transfer(XDS_DP_IDCODE_REQ, &idcode);
@@ -143,6 +144,20 @@ static uint8_t xds_swd_cmapi_xfer(uint8_t swd_req, uint32_t *data)
     }
 
     return ack;
+}
+
+/*
+ * Fast-path CMAPI SWD transfer with automatic sticky-error / WAIT-abort recovery
+ * (matching TI XDS110 CMAPI behavior so a single bus fault does not leave
+ * DP.CTRL/STAT.STICKYERR latched across subsequent AP/DP commands).
+ */
+static inline uint8_t xds_swd_cmapi_xfer(uint8_t swd_req, uint32_t *data)
+{
+    uint8_t ack = swd_transfer(swd_req, data);
+    if (ack == SWD_ACK_OK) {
+        return SWD_ACK_OK;
+    }
+    return xds_swd_cmapi_xfer_slow(swd_req, data, ack);
 }
 
 static void xds_swd_send_jtag_to_swd(void)
@@ -704,13 +719,18 @@ int32_t xds_swd_cmapi_write_mem(uint8_t access_size, uint8_t flags, uint8_t ap_n
     return XDS_ERR_OK;
 }
 
-static int32_t xds_swd_saci_poll_ctl(uint8_t ap_num, uint8_t ctl_reg, bool expect_bit0_set)
+static int32_t xds_swd_saci_poll_ctl(uint8_t ctl_reg, bool expect_bit0_set)
 {
+    uint8_t req = (uint8_t)(SWD_REQ_APnDP | SWD_REQ_RnW | (ctl_reg & 0x0CU));
     for (uint32_t i = 0U; i < XDS_SACI_POLL_RETRIES; i++) {
+        uint8_t ack = xds_swd_cmapi_xfer(req, NULL);
+        if (ack != SWD_ACK_OK) {
+            return xds_swd_ack_to_err(ack);
+        }
         uint32_t ctl = 0U;
-        int32_t err = xds_swd_cmapi_read_reg(XDS_DAP_AP, ap_num, ctl_reg, &ctl);
-        if (err != XDS_ERR_OK) {
-            return err;
+        ack = xds_swd_cmapi_xfer(XDS_DP_RDBUFF_REQ, &ctl);
+        if (ack != SWD_ACK_OK) {
+            return xds_swd_ack_to_err(ack);
         }
         bool bit0 = (ctl & 1U) != 0U;
         if (bit0 == expect_bit0_set) {
@@ -726,19 +746,25 @@ int32_t xds_swd_saci_write(uint8_t ap_num, uint16_t word_count, const uint8_t *i
         return XDS_ERR_SWD_PROTOCOL;
     }
 
+    /* All SEC-AP SACI mailbox registers (TXD/TXCTL/RXD/RXCTL) live in AP bank 0x00 */
+    int32_t err = xds_swd_select_ap_bank(ap_num, XDS_SACI_REG_TXD);
+    if (err != XDS_ERR_OK) {
+        return err;
+    }
+
     for (uint16_t i = 0U; i < word_count; i++) {
-        int32_t err = xds_swd_saci_poll_ctl(ap_num, XDS_SACI_REG_TXCTL, false);
+        err = xds_swd_saci_poll_ctl(XDS_SACI_REG_TXCTL, false);
         if (err != XDS_ERR_OK) {
             return err;
         }
         uint32_t word = read_u32le(&in_words[(uint32_t)i * 4U]);
-        err = xds_swd_cmapi_write_reg(XDS_DAP_AP, ap_num, XDS_SACI_REG_TXD, word);
-        if (err != XDS_ERR_OK) {
-            return err;
+        uint8_t ack = xds_swd_cmapi_xfer((uint8_t)(SWD_REQ_APnDP | XDS_SACI_REG_TXD), &word);
+        if (ack != SWD_ACK_OK) {
+            return xds_swd_ack_to_err(ack);
         }
     }
 
-    return xds_swd_saci_poll_ctl(ap_num, XDS_SACI_REG_TXCTL, false);
+    return xds_swd_saci_poll_ctl(XDS_SACI_REG_TXCTL, false);
 }
 
 int32_t xds_swd_saci_read(uint8_t ap_num, uint16_t word_count, uint8_t *out_words, uint16_t out_max, uint16_t *out_len)
@@ -751,15 +777,24 @@ int32_t xds_swd_saci_read(uint8_t ap_num, uint16_t word_count, uint8_t *out_word
         return XDS_ERR_INVALID_PARAM;
     }
 
+    int32_t err = xds_swd_select_ap_bank(ap_num, XDS_SACI_REG_RXD);
+    if (err != XDS_ERR_OK) {
+        return err;
+    }
+
     for (uint16_t i = 0U; i < word_count; i++) {
-        int32_t err = xds_swd_saci_poll_ctl(ap_num, XDS_SACI_REG_RXCTL, true);
+        err = xds_swd_saci_poll_ctl(XDS_SACI_REG_RXCTL, true);
         if (err != XDS_ERR_OK) {
             return err;
         }
+        uint8_t ack = xds_swd_cmapi_xfer((uint8_t)(SWD_REQ_APnDP | SWD_REQ_RnW | XDS_SACI_REG_RXD), NULL);
+        if (ack != SWD_ACK_OK) {
+            return xds_swd_ack_to_err(ack);
+        }
         uint32_t word = 0U;
-        err = xds_swd_cmapi_read_reg(XDS_DAP_AP, ap_num, XDS_SACI_REG_RXD, &word);
-        if (err != XDS_ERR_OK) {
-            return err;
+        ack = xds_swd_cmapi_xfer(XDS_DP_RDBUFF_REQ, &word);
+        if (ack != SWD_ACK_OK) {
+            return xds_swd_ack_to_err(ack);
         }
         write_u32le(&out_words[(uint32_t)i * 4U], word);
     }
