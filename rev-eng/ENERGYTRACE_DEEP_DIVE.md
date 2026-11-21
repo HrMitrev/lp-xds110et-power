@@ -113,7 +113,10 @@ Instead of taking a CPU interrupt every 3.9 µs (256,000 IRQs/sec), TI chains **
    - Bytes `4..5`: `u16le 0x0000` (0 digital bytes)
    - Bytes `6..1029`: `256 × 4-byte` raw `ADS127L01` SPI frames:
      - Bytes `0..2`: **Signed 24-bit big-endian two's-complement ADC code** (`val = (b0<<16)|(b1<<8)|b2; if val >= 0x800000: val -= 0x1000000`).
-     - Byte `3`: Raw 4th byte clocked from `ADS127L01 DOUT` (8-bit ADC STATUS/flags byte; low nibble is always `0x0` in hardware mode; ignored by firmware calibration and optional for current calculation).
+     - Byte `3`: Raw 4th byte clocked from `ADS127L01 DOUT` (8-bit ADC status word in default `CRCB = 0` mode, mathematically verified against live hardware):
+       - **Bits `[7:4]`**: **CRC-4-ITU** computed MSB-first over the 24-bit ADC word (`bytes 0..2`), polynomial $x^4 + x + 1$ (`0x3`), init `0x0`, xorout `0x0`.
+       - **Bit `[3]` (`INP`)**: Input out-of-range / saturation monitor (`0` = normal, `1` = analog input exceeded $\pm V_{\text{REF}}$).
+       - **Bits `[2:0]`**: Reserved (`000`).
 3. **Analog + Digital Packet** (`dig_en == 2`, EnergyTrace++, **`1030 + N` bytes**):
    - Byte `0`: `0x6A`
    - Byte `1`: `u8 seq`

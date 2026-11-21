@@ -80,8 +80,14 @@ idx1 ~ 40.2 mA point; these are the rows of TI's "Point ADC Value,currentNA" tab
 ## Sample stream (bulk IN 0x87, interface 6 "Data Port") - VERIFIED
 - After `1f`, a 3-byte message `35 80 bb` (0x35, u16le 48000), then fixed 1030-byte transfers:
   `68 | seq u8 | u16le 0x0400 | u16 0 | 256 x u32be`.
-- Each u32be sample: bits 31..8 = raw ADC (20 bit), bits 7..0 = status byte (0xd0, 0x30, 0x70, 0x40, 0xf0 seen; meaning unknown).
-- Rate: 256 kS/s (3.9 us/sample), 256 samples per transfer, ~1 transfer/ms.
+- Each `u32be` sample is the raw 32-bit SPI output word from the onboard **ADS127L01** 24-bit delta-sigma ADC (hardware mode, `CRCB = 0`):
+  - **Bits `31..8`**: Signed 24-bit two's-complement ADC conversion data (MSB first).
+  - **Bits `7..0`**: **ADS127L01 8-bit status byte** (verified against live hardware samples):
+    - **Bits `7..4`**: 4-bit **CRC-4-ITU** computed MSB-first over the 24-bit ADC word (`bits 31..8`), polynomial $x^4 + x + 1$ (`0x3`), init `0x0`, xorout `0x0`.
+    - **Bit `3` (`INP`)**: Input out-of-range / saturation monitor (`0` = in range, `1` = differential analog input exceeded $\pm V_{\text{REF}}$).
+    - **Bits `2..0`**: Reserved (`000` in default `CRCB = 0` mode).
+    - Because bits `2..0` are always `0` and bit `3` is `0` under normal load, healthy samples always have low nibble `0x0` (e.g., `0x10`, `0x20`, ..., `0xf0`).
+- Rate: 256 kS/s (3.90625 us/sample = `8.192 MHz / OSR 32`), 256 samples per transfer, ~1 transfer/ms.
 - `decode_stream.py` reproduces TI's `et_raw.csv` ADC and status columns: 569344/569344 samples match.
 
 ## ADC -> current (from et_raw.csv)
@@ -107,9 +113,10 @@ If tshark isn't installed, the pcap (link type 249) can be parsed directly: USBP
 `<HQIHBHHBBI` (len, irpId, status, function, info bit0=completion, bus, device, endpoint, transfer type, dataLen).
 
 ## Open items
-- Meaning of the status byte, and the 3rd `05`/`09` connect-time commands.
+- ~~Meaning of the status byte~~ — **SOLVED**: ADS127L01 8-bit status word (`bits 7..4` = CRC-4-ITU over 24-bit ADC word, `bit 3` = `INP` out-of-range flag, `bits 2..0` = `000`).
+- ~~The 3rd `05`/`09` connect-time commands~~ — **SOLVED**: `0x05` = `XDS_SetTrst` (arg `2` probes unsupported mode, returns `-122`); `0x09` = `XDS_JtagGotoState(target_state, path)`.
+- ~~Whether the repeated Stop/Cleanup (-644) in stune has any purpose~~ — **SOLVED**: Harmless; `ET_Cleanup` clears the firmware's EnergyTrace vtable so subsequent `Stop`/`Cleanup` return `-644` (`ET_ERR_NOT_INITIALIZED`).
 - Exact piecewise ADC->nA slope derivation from the calibration points.
-- Whether the repeated Stop/Cleanup (-644) in stune has any purpose.
 
 ## info
 ID : 0451:bef3
@@ -127,7 +134,7 @@ Sample stream
 • After a 3-byte  35 80 bb  message, each transfer is 1030 bytes.
 It has a 6-byte header ( 0x68 , a sequence byte, length  0x0400 , then two zero bytes)
 followed by 256 big-endian 32-bit samples.
-• Each sample holds the raw ADC value in the top 24 bits (20 bits used) and a status byte in the low 8.
+• Each sample holds the raw signed 24-bit ADS127L01 ADC value in the top 24 bits and the ADS127L01 status byte (CRC-4-ITU in bits 7..4, `INP` out-of-range flag in bit 3, `000` in bits 2..0) in the low 8.
 • That works out to 256 kS/s.
 
 Calibration
