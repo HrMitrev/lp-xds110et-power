@@ -81,7 +81,7 @@ FORMAT_FILES = $(wildcard src/*.c src/*.h src/*/*.c src/*/*.h)
 SRCS        = $(APP_SRCS) $(DL_SRCS)
 OBJS        = $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 
-.PHONY: all clean fetch-sdk sdk fetch-toolchain toolchain inspect flash clang-format compile-commands
+.PHONY: all clean fetch-sdk sdk fetch-toolchain toolchain inspect flash clang-format compile-commands clangd-check
 
 all: $(BUILD_DIR)/$(TARGET).bin $(BUILD_DIR)/$(TARGET).hex compile_commands.json
 
@@ -140,6 +140,14 @@ compile_commands.json: Makefile scripts/gen_compile_commands.py
 compile-commands:
 	$(ECHO) "  CDB   compile_commands.json"
 	$(Q)$(PYTHON) scripts/gen_compile_commands.py .
+
+CLANGD ?= clangd
+
+clangd-check cc-check: compile_commands.json
+	$(Q)for f in $(FORMAT_FILES); do \
+		echo "  CHECK $$f"; \
+		$(CLANGD) --compile-commands-dir=. --tweaks= --log=error --check=$$f || exit 1; \
+	done
 
 clean:
 	$(Q)rm -rf $(BUILD_DIR) compile_commands.json
