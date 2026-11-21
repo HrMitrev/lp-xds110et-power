@@ -48,9 +48,9 @@ INCLUDES    = -Isrc \
 
 # Black Magic Debug Probe (BMP) build options
 #   BMP_ENABLE=1       Compile & link Black Magic Debug GDB/RTT server (GPLv3)
-#   BMP_DEFAULT_MODE=1 Boot in BMP mode on CDC1 (1, default) or Normal mode (0)
+#   BMP_DEFAULT_MODE=0 Boot in Normal mode (0, default; auto-switches to BMP on GDB packet) or BMP mode (1)
 BMP_ENABLE       ?= 1
-BMP_DEFAULT_MODE ?= 1
+BMP_DEFAULT_MODE ?= 0
 
 ifeq ($(BMP_ENABLE),0)
 EFFECTIVE_BMP_DEFAULT_MODE := 0

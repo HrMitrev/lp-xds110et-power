@@ -113,14 +113,13 @@ int main(void)
 
     while (1) {
         bool did_work = xds_cmd_poll();
+        if (bmp_mode_poll()) {
+            did_work = true;
+        }
         if (cdc_uart_poll()) {
             did_work = true;
         }
-        if (bmp_mode_is_active()) {
-            if (bmp_mode_poll()) {
-                did_work = true;
-            }
-        } else {
+        if (!bmp_mode_is_active()) {
             if (cmsis_dap_poll()) {
                 did_work = true;
             }

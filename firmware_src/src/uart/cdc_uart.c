@@ -407,7 +407,8 @@ bool cdc_uart_poll(void)
         }
     }
 
-    /* 4. In Normal mode, drain & discard CDC1 OUT (UART7 on LP-XDS110ET is RX-only on PC4) */
+#if (FW_BMP_GDB_COMPILED == 0)
+    /* 4. In Normal mode without BMP auto-detect, drain & discard CDC1 OUT (UART7 is RX-only) */
     if (!bmp_active) {
         uint32_t cdc1_avail = usb_cdc_rx_available(USB_CDC_PORT_AUX);
         if (cdc1_avail > 0U) {
@@ -416,6 +417,7 @@ bool cdc_uart_poll(void)
             did_work = true;
         }
     }
+#endif
 
     return did_work;
 }

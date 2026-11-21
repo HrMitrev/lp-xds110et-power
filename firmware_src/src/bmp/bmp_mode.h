@@ -20,9 +20,9 @@
 #define FW_BMP_GDB_COMPILED 0U
 #endif
 
-/* Global boot-time default mode macro (defaults to BMP when compiled in; override with -DFW_DEFAULT_BMP_MODE=0) */
+/* Global boot-time default mode macro (defaults to Normal; override with -DFW_DEFAULT_BMP_MODE=1) */
 #ifndef FW_DEFAULT_BMP_MODE
-#define FW_DEFAULT_BMP_MODE FW_BMP_GDB_COMPILED
+#define FW_DEFAULT_BMP_MODE 0U
 #endif
 
 /* Wire values for XDS_CMD_PROBE_MODE (opcode 0x63) */
@@ -63,11 +63,16 @@ bool bmp_rtt_is_active(void);
 int32_t bmp_mode_set(uint8_t mode);
 
 /*
- * Cooperative super-loop poll when BMP mode is active:
- *   - Returns false immediately when idle (no DTR or no pending RX bytes and target
- *     not running), allowing main() to execute __WFI().
- *   - Otherwise processes target polling and/or one GDB RSP packet while pumping
- *     app_background_poll() so EnergyTrace HDR, UART0, and XDS CMD 0x63 never stall.
+ * Cooperative super-loop poll for the BMP subsystem:
+ *   - In PROBE_MODE_NORMAL (when BMP is compiled in): inspects incoming CDC1
+ *     (ttyBmpGdb) bytes and automatically switches to PROBE_MODE_BMP as soon as
+ *     a valid GDB RSP ($...#XX) or BMP remote handshake (!GA# / !HA#) packet
+ *     is recognized, preserving the triggering packet for immediate handling.
+ *     Non-GDB traffic on CDC1 OUT is drained and discarded.
+ *   - In PROBE_MODE_BMP: returns false immediately when idle (no DTR or no
+ *     pending RX bytes and target not running) so main() can __WFI(); otherwise
+ *     processes target polling and/or one GDB RSP packet while pumping the
+ *     registered background callback.
  */
 bool bmp_mode_poll(void);
 

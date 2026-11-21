@@ -1059,6 +1059,14 @@ uint32_t usb_cdc_rx_available(uint8_t port)
     return ring_used(&s_usb.cdc[port].rx_ring);
 }
 
+uint32_t usb_cdc_rx_peek(uint8_t port, uint8_t *dst, uint32_t len)
+{
+    if (port >= USB_CDC_PORT_COUNT) {
+        return 0U;
+    }
+    return ring_peek(&s_usb.cdc[port].rx_ring, dst, len);
+}
+
 uint32_t usb_cdc_rx_read(uint8_t port, uint8_t *dst, uint32_t len)
 {
     if (port >= USB_CDC_PORT_COUNT) {

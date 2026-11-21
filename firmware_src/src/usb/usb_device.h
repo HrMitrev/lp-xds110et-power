@@ -69,6 +69,7 @@ void usb_data_tx_flush(void);
 
 /* CDC ACM Virtual COM Ports (port = USB_CDC_PORT_APP or USB_CDC_PORT_AUX) */
 uint32_t usb_cdc_rx_available(uint8_t port);
+uint32_t usb_cdc_rx_peek(uint8_t port, uint8_t *dst, uint32_t len);
 uint32_t usb_cdc_rx_read(uint8_t port, uint8_t *dst, uint32_t len);
 void usb_cdc_rx_flush(uint8_t port);
 uint32_t usb_cdc_tx_space(uint8_t port);
