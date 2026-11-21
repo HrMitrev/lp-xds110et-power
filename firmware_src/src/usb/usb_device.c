@@ -36,56 +36,56 @@
 #define USB_REQ_TYPE_MASK      0x60U
 #define USB_REQ_TYPE_STANDARD  0x00U
 #define USB_REQ_TYPE_CLASS     0x20U
+#define USB_REQ_TYPE_VENDOR    0x40U
+#define USB_REQ_DIR_IN_MASK    0x80U
 #define USB_REQ_RECIPIENT_MASK 0x1FU
 #define USB_REQ_RECIPIENT_DEV  0x00U
 #define USB_REQ_RECIPIENT_IF   0x01U
 #define USB_REQ_RECIPIENT_EP   0x02U
 
-/* CDC ACM & HID class requests */
+/* CDC ACM class requests */
 #define USB_CDC_SET_LINE_CODING        0x20U
 #define USB_CDC_GET_LINE_CODING        0x21U
 #define USB_CDC_SET_CONTROL_LINE_STATE 0x22U
 #define USB_CDC_SEND_BREAK             0x23U
 #define USB_CDC_LINE_CODING_LEN        7U
-#define USB_HID_GET_IDLE               0x02U
-#define USB_HID_GET_PROTOCOL           0x03U
-#define USB_HID_SET_IDLE               0x0AU
-#define USB_HID_SET_PROTOCOL           0x0BU
 
 /* USB3300 ULPI PHY register addresses */
 #define ULPI_REG_FUNC_CTRL 0x04U
 #define ULPI_REG_IF_CTRL   0x07U
 
 /*
- * MSP432E4 USB0 4,096-byte FIFO RAM layout (all addresses 8-byte aligned):
+ * MSP432E4 USB0 4,096-byte FIFO RAM layout (all addresses naturally aligned):
  *   0..63      EP0 Control (64 B, fixed hardware)
  *   64..79     CDC0 INT IN  0x81 (16 B)
  *   80..95     CDC1 INT IN  0x84 (16 B)
- *   128..191   HID OUT      0x05 (64 B, CMSIS-DAP 1.0)
- *   192..255   HID IN       0x86 (64 B, CMSIS-DAP 1.0)
- *   256..767   CMD OUT      0x02 (512 B)
- *   768..1279  CMD IN       0x83 (512 B)
- *   1280..1791 DATA IN      0x87 (512 B)
- *   1792..2303 DATA OUT     0x06 (512 B)
- *   2304..2815 CDC0 OUT     0x01 (512 B)
- *   2816..3327 CDC1 OUT     0x04 (512 B)
- *   3328..3583 CDC0 IN      0x82 (256 B, software-capped <=256 B/pkt)
- *   3584..3839 CDC1 IN      0x85 (256 B, software-capped <=256 B/pkt)
- * Total used: 3,840 / 4,096 bytes.
+ *   96..127    CDC1 IN      0x85 (32 B, software-capped <=32 B/pkt)
+ *   128..255   CDC0 IN      0x82 (128 B, software-capped <=128 B/pkt)
+ *   256..511   CMD IN       0x83 (256 B, software-capped <=256 B/pkt)
+ *   512..1023  CMD OUT      0x02 (512 B)
+ *   1024..1535 DATA IN      0x87 (512 B, EnergyTrace streaming)
+ *   1536..2047 DATA OUT     0x06 (512 B)
+ *   2048..2559 CDC0 OUT     0x01 (512 B)
+ *   2560..3071 CDC1 OUT     0x04 (512 B)
+ *   3072..3583 DAP v2 OUT   0x05 (512 B, CMSIS-DAP v2 WinUSB)
+ *   3584..4095 DAP v2 IN    0x86 (512 B, CMSIS-DAP v2 WinUSB)
+ * Total used: 4,096 / 4,096 bytes.
  */
 #define USB_FIFO_ADDR_CDC0_INT 64U
 #define USB_FIFO_ADDR_CDC1_INT 80U
-#define USB_FIFO_ADDR_HID_OUT  128U
-#define USB_FIFO_ADDR_HID_IN   192U
-#define USB_FIFO_ADDR_CMD_OUT  256U
-#define USB_FIFO_ADDR_CMD_IN   768U
-#define USB_FIFO_ADDR_DATA_IN  1280U
-#define USB_FIFO_ADDR_DATA_OUT 1792U
-#define USB_FIFO_ADDR_CDC0_OUT 2304U
-#define USB_FIFO_ADDR_CDC1_OUT 2816U
-#define USB_FIFO_ADDR_CDC0_IN  3328U
-#define USB_FIFO_ADDR_CDC1_IN  3584U
-#define USB_CDC_IN_FIFO_BYTES  256U
+#define USB_FIFO_ADDR_CDC1_IN  96U
+#define USB_FIFO_ADDR_CDC0_IN  128U
+#define USB_FIFO_ADDR_CMD_IN   256U
+#define USB_FIFO_ADDR_CMD_OUT  512U
+#define USB_FIFO_ADDR_DATA_IN  1024U
+#define USB_FIFO_ADDR_DATA_OUT 1536U
+#define USB_FIFO_ADDR_CDC0_OUT 2048U
+#define USB_FIFO_ADDR_CDC1_OUT 2560U
+#define USB_FIFO_ADDR_DAP_OUT  3072U
+#define USB_FIFO_ADDR_DAP_IN   3584U
+#define USB_CMD_IN_FIFO_BYTES  256U
+#define USB_CDC0_IN_FIFO_BYTES 128U
+#define USB_CDC1_IN_FIFO_BYTES 32U
 
 typedef enum {
     EP0_STATE_IDLE = 0,
@@ -122,15 +122,20 @@ static usb_ring_t g_cdc_tx_rings[USB_CDC_PORT_COUNT] = {
     {g_cdc_tx_storage[1], USB_CDC_TX_BUF_SIZE - 1U, 0U, 0U},
 };
 
-/* HID CMSIS-DAP 1.0 packet queues (64-byte fixed reports) */
-static uint8_t g_hid_rx_queue[USB_HID_QUEUE_DEPTH][USB_HID_PKT_SIZE];
-static uint8_t g_hid_tx_queue[USB_HID_QUEUE_DEPTH][USB_HID_PKT_SIZE];
-static volatile uint8_t g_hid_rx_head = 0U;
-static volatile uint8_t g_hid_rx_tail = 0U;
-static volatile uint8_t g_hid_rx_count = 0U;
-static volatile uint8_t g_hid_tx_head = 0U;
-static volatile uint8_t g_hid_tx_tail = 0U;
-static volatile uint8_t g_hid_tx_count = 0U;
+/* CMSIS-DAP v2 WinUSB Bulk variable-length packet queues */
+typedef struct {
+    uint16_t len;
+    uint8_t data[USB_DAP_MAX_PKT_SIZE];
+} usb_dap_pkt_t;
+
+static usb_dap_pkt_t g_dap_rx_queue[USB_DAP_QUEUE_DEPTH];
+static usb_dap_pkt_t g_dap_tx_queue[USB_DAP_QUEUE_DEPTH];
+static volatile uint8_t g_dap_rx_head = 0U;
+static volatile uint8_t g_dap_rx_tail = 0U;
+static volatile uint8_t g_dap_rx_count = 0U;
+static volatile uint8_t g_dap_tx_head = 0U;
+static volatile uint8_t g_dap_tx_tail = 0U;
+static volatile uint8_t g_dap_tx_count = 0U;
 
 /* Device & endpoint state */
 static volatile bool g_usb_configured = false;
@@ -140,7 +145,7 @@ static volatile bool g_cmd_tx_busy = false;
 static volatile bool g_cmd_tx_need_zlp = false;
 static volatile bool g_data_tx_busy = false;
 static volatile bool g_cdc_tx_busy[USB_CDC_PORT_COUNT] = {false, false};
-static volatile bool g_hid_tx_busy = false;
+static volatile bool g_dap_tx_busy = false;
 
 static ep0_state_t g_ep0_state = EP0_STATE_IDLE;
 static uint8_t g_pending_addr = 0U;
@@ -163,6 +168,7 @@ static volatile uint16_t g_cdc_ctrl_state[USB_CDC_PORT_COUNT] = {0U, 0U};
 
 static const uint32_t g_cdc_out_ep[USB_CDC_PORT_COUNT] = {USB_EP_1, USB_EP_4};
 static const uint32_t g_cdc_in_ep[USB_CDC_PORT_COUNT] = {USB_EP_2, USB_EP_5};
+static const uint32_t g_cdc_in_fifo_bytes[USB_CDC_PORT_COUNT] = {USB_CDC0_IN_FIFO_BYTES, USB_CDC1_IN_FIFO_BYTES};
 
 /* Shared NVIC priority for USB0 and EnergyTrace SSI1 (must match et_hdr.c) */
 #define USB_IRQ_PRIO 2U
@@ -323,7 +329,8 @@ static void usb_configure_endpoints(void)
 {
     uint32_t mps = g_bulk_mps;
     uint32_t fifo_full = g_usb_high_speed ? USB_FIFO_SZ_512 : USB_FIFO_SZ_64;
-    uint32_t fifo_cdc_in = g_usb_high_speed ? USB_FIFO_SZ_256 : USB_FIFO_SZ_64;
+    uint32_t fifo_cmd_in = g_usb_high_speed ? USB_FIFO_SZ_256 : USB_FIFO_SZ_64;
+    uint32_t fifo_cdc0_in = g_usb_high_speed ? USB_FIFO_SZ_128 : USB_FIFO_SZ_64;
 
     /* CDC0 / CDC1 Interrupt IN (EP1 IN 0x81, EP4 IN 0x84) */
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_1, USB_CDC_INT_MPS, USB_EP_MODE_INT | USB_EP_DEV_IN);
@@ -337,7 +344,7 @@ static void usb_configure_endpoints(void)
     MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_2, USB_FIFO_ADDR_CMD_OUT, fifo_full, USB_EP_DEV_OUT);
 
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_3, mps, USB_EP_MODE_BULK | USB_EP_DEV_IN);
-    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_3, USB_FIFO_ADDR_CMD_IN, fifo_full, USB_EP_DEV_IN);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_3, USB_FIFO_ADDR_CMD_IN, fifo_cmd_in, USB_EP_DEV_IN);
 
     /* Bulk 1 OUT (EP6, 0x06) & IN (EP7, 0x87) — EnergyTrace Data Port */
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_6, mps, USB_EP_MODE_BULK | USB_EP_DEV_OUT);
@@ -351,59 +358,60 @@ static void usb_configure_endpoints(void)
     MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_1, USB_FIFO_ADDR_CDC0_OUT, fifo_full, USB_EP_DEV_OUT);
 
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_2, mps, USB_EP_MODE_BULK | USB_EP_DEV_IN);
-    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_2, USB_FIFO_ADDR_CDC0_IN, fifo_cdc_in, USB_EP_DEV_IN);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_2, USB_FIFO_ADDR_CDC0_IN, fifo_cdc0_in, USB_EP_DEV_IN);
 
     /* CDC1 Bulk OUT (EP4, 0x04) & IN (EP5, 0x85) — Aux / SWO UART */
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_4, mps, USB_EP_MODE_BULK | USB_EP_DEV_OUT);
     MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_4, USB_FIFO_ADDR_CDC1_OUT, fifo_full, USB_EP_DEV_OUT);
 
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_5, mps, USB_EP_MODE_BULK | USB_EP_DEV_IN);
-    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_5, USB_FIFO_ADDR_CDC1_IN, fifo_cdc_in, USB_EP_DEV_IN);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_5, USB_FIFO_ADDR_CDC1_IN, USB_FIFO_SZ_32, USB_EP_DEV_IN);
 
-    /* HID CMSIS-DAP 1.0 Interrupt OUT (EP5, 0x05) & IN (EP6, 0x86) */
-    MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_5, USB_HID_INT_MPS, USB_EP_MODE_INT | USB_EP_DEV_OUT);
-    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_5, USB_FIFO_ADDR_HID_OUT, USB_FIFO_SZ_64, USB_EP_DEV_OUT);
+    /* CMSIS-DAP v2 WinUSB Bulk OUT (EP5, 0x05) & IN (EP6, 0x86) */
+    MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_5, mps, USB_EP_MODE_BULK | USB_EP_DEV_OUT);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_5, USB_FIFO_ADDR_DAP_OUT, fifo_full, USB_EP_DEV_OUT);
 
-    MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_6, USB_HID_INT_MPS, USB_EP_MODE_INT | USB_EP_DEV_IN);
-    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_6, USB_FIFO_ADDR_HID_IN, USB_FIFO_SZ_64, USB_EP_DEV_IN);
+    MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_6, mps, USB_EP_MODE_BULK | USB_EP_DEV_IN);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_6, USB_FIFO_ADDR_DAP_IN, fifo_full, USB_EP_DEV_IN);
 
     g_cmd_tx_busy = false;
     g_cmd_tx_need_zlp = false;
     g_data_tx_busy = false;
     g_cdc_tx_busy[0] = false;
     g_cdc_tx_busy[1] = false;
-    g_hid_tx_busy = false;
+    g_dap_tx_busy = false;
 }
 
-/* ---- HID Interrupt IN/OUT Packet Queue Helpers ---- */
+/* ---- CMSIS-DAP v2 Bulk IN/OUT Packet Queue Helpers ---- */
 
-static void hid_queues_reset(void)
+static void dap_queues_reset(void)
 {
-    g_hid_rx_head = 0U;
-    g_hid_rx_tail = 0U;
-    g_hid_rx_count = 0U;
-    g_hid_tx_head = 0U;
-    g_hid_tx_tail = 0U;
-    g_hid_tx_count = 0U;
-    g_hid_tx_busy = false;
+    g_dap_rx_head = 0U;
+    g_dap_rx_tail = 0U;
+    g_dap_rx_count = 0U;
+    g_dap_tx_head = 0U;
+    g_dap_tx_tail = 0U;
+    g_dap_tx_count = 0U;
+    g_dap_tx_busy = false;
 }
 
-static void usb_kick_hid_in(void)
+static void usb_kick_dap_in(void)
 {
-    if (!g_usb_configured || g_hid_tx_busy || (g_hid_tx_count == 0U)) {
+    if (!g_usb_configured || g_dap_tx_busy || (g_dap_tx_count == 0U)) {
         return;
     }
 
-    uint8_t tail = g_hid_tx_tail;
-    g_hid_tx_tail = (uint8_t)((tail + 1U) % USB_HID_QUEUE_DEPTH);
-    g_hid_tx_count--;
-    g_hid_tx_busy = true;
+    uint8_t tail = g_dap_tx_tail;
+    uint16_t pkt_len = g_dap_tx_queue[tail].len;
+    g_dap_tx_tail = (uint8_t)((tail + 1U) % USB_DAP_QUEUE_DEPTH);
+    g_dap_tx_count--;
+    g_dap_tx_busy = true;
 
-    MAP_USBEndpointDataPut(USB0_BASE, USB_EP_6, g_hid_tx_queue[tail], USB_HID_PKT_SIZE);
+    MAP_USBEndpointDataPut(USB0_BASE, USB_EP_6, g_dap_tx_queue[tail].data, pkt_len);
     MAP_USBEndpointDataSend(USB0_BASE, USB_EP_6, USB_TRANS_IN);
 }
 
-static void usb_handle_hid_out(void)
+static void usb_handle_dap_out(void)
 {
     uint32_t avail = MAP_USBEndpointDataAvail(USB0_BASE, USB_EP_5);
     if (avail == 0U) {
@@ -412,18 +420,18 @@ static void usb_handle_hid_out(void)
     }
 
     /* Hold packet in hardware FIFO (USB NAK flow control) if queue is full */
-    if (g_hid_rx_count >= USB_HID_QUEUE_DEPTH) {
+    if (g_dap_rx_count >= USB_DAP_QUEUE_DEPTH) {
         return;
     }
 
-    uint8_t head = g_hid_rx_head;
-    memset(g_hid_rx_queue[head], 0, USB_HID_PKT_SIZE);
-    uint32_t read_len = (avail > USB_HID_PKT_SIZE) ? USB_HID_PKT_SIZE : avail;
-    MAP_USBEndpointDataGet(USB0_BASE, USB_EP_5, g_hid_rx_queue[head], &read_len);
+    uint8_t head = g_dap_rx_head;
+    uint32_t read_len = (avail > USB_DAP_MAX_PKT_SIZE) ? USB_DAP_MAX_PKT_SIZE : avail;
+    MAP_USBEndpointDataGet(USB0_BASE, USB_EP_5, g_dap_rx_queue[head].data, &read_len);
     MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_5, false);
+    g_dap_rx_queue[head].len = (uint16_t)read_len;
 
-    g_hid_rx_head = (uint8_t)((head + 1U) % USB_HID_QUEUE_DEPTH);
-    g_hid_rx_count++;
+    g_dap_rx_head = (uint8_t)((head + 1U) % USB_DAP_QUEUE_DEPTH);
+    g_dap_rx_count++;
 }
 
 /* ---- Bulk IN/OUT Pump Helpers ---- */
@@ -563,15 +571,8 @@ static void ep0_handle_standard_request(const uint8_t setup[8])
         uint8_t desc_idx = (uint8_t)(w_value & 0xFFU);
         const uint8_t *desc_ptr = NULL;
         uint16_t desc_len = 0U;
-        bool ok = false;
 
-        if ((recipient == USB_REQ_RECIPIENT_IF) && (desc_type == USB_DESC_TYPE_HID_REPORT)) {
-            ok = usb_descriptors_get_hid_report(w_index, &desc_ptr, &desc_len);
-        } else {
-            ok = usb_descriptors_get(desc_type, desc_idx, &desc_ptr, &desc_len);
-        }
-
-        if (ok) {
+        if (usb_descriptors_get(desc_type, desc_idx, &desc_ptr, &desc_len)) {
             ep0_start_tx(desc_ptr, desc_len, w_length);
         } else {
             ep0_stall();
@@ -655,27 +656,7 @@ static void ep0_handle_class_request(const uint8_t setup[8])
         g_ep0_state = EP0_STATE_IDLE;
         break;
 
-    case USB_HID_GET_IDLE:
-        if (w_index != USB_IF_CMSIS_HID) {
-            ep0_stall();
-            break;
-        }
-        g_ep0_status_buf[0] = 0U;
-        ep0_start_tx(g_ep0_status_buf, 1U, w_length);
-        break;
-
-    case USB_HID_GET_PROTOCOL:
-        if (w_index != USB_IF_CMSIS_HID) {
-            ep0_stall();
-            break;
-        }
-        g_ep0_status_buf[0] = 1U; /* Report protocol */
-        ep0_start_tx(g_ep0_status_buf, 1U, w_length);
-        break;
-
     case USB_CDC_SEND_BREAK:
-    case USB_HID_SET_IDLE:
-    case USB_HID_SET_PROTOCOL:
         MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, true);
         g_ep0_state = EP0_STATE_IDLE;
         break;
@@ -684,6 +665,26 @@ static void ep0_handle_class_request(const uint8_t setup[8])
         ep0_stall();
         break;
     }
+}
+
+static void ep0_handle_vendor_request(const uint8_t setup[8])
+{
+    uint8_t bm_req_type = setup[0];
+    uint8_t b_request = setup[1];
+    uint16_t w_value = (uint16_t)setup[2] | ((uint16_t)setup[3] << 8U);
+    uint16_t w_index = (uint16_t)setup[4] | ((uint16_t)setup[5] << 8U);
+    uint16_t w_length = (uint16_t)setup[6] | ((uint16_t)setup[7] << 8U);
+
+    if (((bm_req_type & USB_REQ_DIR_IN_MASK) != 0U) && (b_request == USB_MS_OS_20_VENDOR_CODE) && (w_value == 0U) &&
+        (w_index == USB_MS_OS_20_DESC_INDEX)) {
+        const uint8_t *desc_ptr = NULL;
+        uint16_t desc_len = 0U;
+        usb_descriptors_get_ms_os_20(&desc_ptr, &desc_len);
+        ep0_start_tx(desc_ptr, desc_len, w_length);
+        return;
+    }
+
+    ep0_stall();
 }
 
 static void ep0_handle_interrupt(void)
@@ -746,6 +747,8 @@ static void ep0_handle_interrupt(void)
         ep0_handle_standard_request(setup);
     } else if (req_type == USB_REQ_TYPE_CLASS) {
         ep0_handle_class_request(setup);
+    } else if (req_type == USB_REQ_TYPE_VENDOR) {
+        ep0_handle_vendor_request(setup);
     } else {
         ep0_stall();
     }
@@ -778,7 +781,7 @@ void usb0_irq_handler(void)
         ring_reset(&g_cdc_rx_rings[1]);
         ring_reset(&g_cdc_tx_rings[0]);
         ring_reset(&g_cdc_tx_rings[1]);
-        hid_queues_reset();
+        dap_queues_reset();
 
         g_usb_high_speed = (MAP_USBDevSpeedGet(USB0_BASE) == USB_HIGH_SPEED);
         g_bulk_mps = g_usb_high_speed ? USB_BULK_MPS_HS : USB_BULK_MPS_FS;
@@ -793,7 +796,7 @@ void usb0_irq_handler(void)
         g_cdc_tx_busy[1] = false;
         g_cdc_ctrl_state[0] = 0U;
         g_cdc_ctrl_state[1] = 0U;
-        hid_queues_reset();
+        dap_queues_reset();
     }
 
     if ((ep_status & USB_INTEP_0) != 0U) {
@@ -807,7 +810,7 @@ void usb0_irq_handler(void)
 
     if ((ep_status & USB_INTEP_DEV_IN_3) != 0U) {
         g_cmd_tx_busy = false;
-        usb_kick_bulk_in(USB_EP_3, &g_cmd_tx_ring, &g_cmd_tx_busy, &g_cmd_tx_need_zlp, USB_BULK_MPS_HS);
+        usb_kick_bulk_in(USB_EP_3, &g_cmd_tx_ring, &g_cmd_tx_busy, &g_cmd_tx_need_zlp, USB_CMD_IN_FIFO_BYTES);
     }
 
     /* Bulk 1 — EnergyTrace Data (OUT 0x06 / IN 0x87) */
@@ -827,8 +830,8 @@ void usb0_irq_handler(void)
 
     if ((ep_status & USB_INTEP_DEV_IN_2) != 0U) {
         g_cdc_tx_busy[USB_CDC_PORT_APP] = false;
-        usb_kick_bulk_in(
-            USB_EP_2, &g_cdc_tx_rings[USB_CDC_PORT_APP], &g_cdc_tx_busy[USB_CDC_PORT_APP], NULL, USB_CDC_IN_FIFO_BYTES);
+        usb_kick_bulk_in(USB_EP_2, &g_cdc_tx_rings[USB_CDC_PORT_APP], &g_cdc_tx_busy[USB_CDC_PORT_APP], NULL,
+            USB_CDC0_IN_FIFO_BYTES);
     }
 
     /* CDC 1 — Aux / SWO UART (OUT 0x04 / IN 0x85) */
@@ -838,18 +841,18 @@ void usb0_irq_handler(void)
 
     if ((ep_status & USB_INTEP_DEV_IN_5) != 0U) {
         g_cdc_tx_busy[USB_CDC_PORT_AUX] = false;
-        usb_kick_bulk_in(
-            USB_EP_5, &g_cdc_tx_rings[USB_CDC_PORT_AUX], &g_cdc_tx_busy[USB_CDC_PORT_AUX], NULL, USB_CDC_IN_FIFO_BYTES);
+        usb_kick_bulk_in(USB_EP_5, &g_cdc_tx_rings[USB_CDC_PORT_AUX], &g_cdc_tx_busy[USB_CDC_PORT_AUX], NULL,
+            USB_CDC1_IN_FIFO_BYTES);
     }
 
-    /* HID — CMSIS-DAP 1.0 (OUT 0x05 / IN 0x86) */
+    /* CMSIS-DAP v2 WinUSB Bulk (OUT 0x05 / IN 0x86) */
     if ((ep_status & USB_INTEP_DEV_OUT_5) != 0U) {
-        usb_handle_hid_out();
+        usb_handle_dap_out();
     }
 
     if ((ep_status & USB_INTEP_DEV_IN_6) != 0U) {
-        g_hid_tx_busy = false;
-        usb_kick_hid_in();
+        g_dap_tx_busy = false;
+        usb_kick_dap_in();
     }
 }
 
@@ -920,7 +923,7 @@ void usb_device_disconnect(void)
     g_cdc_tx_busy[1] = false;
     g_cdc_ctrl_state[0] = 0U;
     g_cdc_ctrl_state[1] = 0U;
-    hid_queues_reset();
+    dap_queues_reset();
 }
 
 bool usb_device_is_configured(void)
@@ -974,7 +977,7 @@ uint32_t usb_cmd_tx_write(const uint8_t *src, uint32_t len)
     if ((written > 0U) && ((written % g_bulk_mps) == 0U)) {
         g_cmd_tx_need_zlp = true;
     }
-    usb_kick_bulk_in(USB_EP_3, &g_cmd_tx_ring, &g_cmd_tx_busy, &g_cmd_tx_need_zlp, USB_BULK_MPS_HS);
+    usb_kick_bulk_in(USB_EP_3, &g_cmd_tx_ring, &g_cmd_tx_busy, &g_cmd_tx_need_zlp, USB_CMD_IN_FIFO_BYTES);
     usb_crit_exit(crit);
     return written;
 }
@@ -1054,7 +1057,7 @@ uint32_t usb_cdc_tx_write(uint8_t port, const uint8_t *src, uint32_t len)
     }
     uint32_t crit = usb_crit_enter();
     uint32_t written = ring_push(&g_cdc_tx_rings[port], src, len);
-    usb_kick_bulk_in(g_cdc_in_ep[port], &g_cdc_tx_rings[port], &g_cdc_tx_busy[port], NULL, USB_CDC_IN_FIFO_BYTES);
+    usb_kick_bulk_in(g_cdc_in_ep[port], &g_cdc_tx_rings[port], &g_cdc_tx_busy[port], NULL, g_cdc_in_fifo_bytes[port]);
     usb_crit_exit(crit);
     return written;
 }
@@ -1092,52 +1095,66 @@ bool usb_cdc_is_dtr_asserted(uint8_t port)
     return (g_cdc_ctrl_state[port] & 0x0001U) != 0U;
 }
 
-bool usb_hid_rx_available(void)
+uint16_t usb_dap_packet_size(void)
 {
-    return (g_hid_rx_count > 0U);
+    return g_bulk_mps;
 }
 
-bool usb_hid_rx_pop(uint8_t out_pkt[USB_HID_PKT_SIZE])
+bool usb_dap_rx_available(void)
+{
+    return (g_dap_rx_count > 0U);
+}
+
+uint16_t usb_dap_rx_pop(uint8_t *out_pkt, uint16_t max_len)
 {
     uint32_t crit = usb_crit_enter();
-    if (g_hid_rx_count == 0U) {
+    if (g_dap_rx_count == 0U) {
         usb_crit_exit(crit);
-        return false;
+        return 0U;
     }
 
-    uint8_t tail = g_hid_rx_tail;
-    memcpy(out_pkt, g_hid_rx_queue[tail], USB_HID_PKT_SIZE);
-    g_hid_rx_tail = (uint8_t)((tail + 1U) % USB_HID_QUEUE_DEPTH);
-    g_hid_rx_count--;
+    uint8_t tail = g_dap_rx_tail;
+    uint16_t pkt_len = g_dap_rx_queue[tail].len;
+    if (pkt_len > max_len) {
+        pkt_len = max_len;
+    }
+    memcpy(out_pkt, g_dap_rx_queue[tail].data, pkt_len);
+    g_dap_rx_tail = (uint8_t)((tail + 1U) % USB_DAP_QUEUE_DEPTH);
+    g_dap_rx_count--;
 
-    /* Drain any HID OUT report held in hardware FIFO by NAK back-pressure */
+    /* Drain any DAP Bulk OUT packet held in hardware FIFO by NAK back-pressure */
     if (MAP_USBEndpointDataAvail(USB0_BASE, USB_EP_5) > 0U) {
-        usb_handle_hid_out();
+        usb_handle_dap_out();
     }
 
     usb_crit_exit(crit);
-    return true;
+    return pkt_len;
 }
 
-bool usb_hid_tx_space(void)
+bool usb_dap_tx_space(void)
 {
-    return (g_hid_tx_count < USB_HID_QUEUE_DEPTH);
+    return (g_dap_tx_count < USB_DAP_QUEUE_DEPTH);
 }
 
-bool usb_hid_tx_push(const uint8_t pkt[USB_HID_PKT_SIZE])
+bool usb_dap_tx_push(const uint8_t *pkt, uint16_t len)
 {
+    if ((len == 0U) || (len > g_bulk_mps)) {
+        return false;
+    }
+
     uint32_t crit = usb_crit_enter();
-    if (g_hid_tx_count >= USB_HID_QUEUE_DEPTH) {
+    if (g_dap_tx_count >= USB_DAP_QUEUE_DEPTH) {
         usb_crit_exit(crit);
         return false;
     }
 
-    uint8_t head = g_hid_tx_head;
-    memcpy(g_hid_tx_queue[head], pkt, USB_HID_PKT_SIZE);
-    g_hid_tx_head = (uint8_t)((head + 1U) % USB_HID_QUEUE_DEPTH);
-    g_hid_tx_count++;
+    uint8_t head = g_dap_tx_head;
+    memcpy(g_dap_tx_queue[head].data, pkt, len);
+    g_dap_tx_queue[head].len = len;
+    g_dap_tx_head = (uint8_t)((head + 1U) % USB_DAP_QUEUE_DEPTH);
+    g_dap_tx_count++;
 
-    usb_kick_hid_in();
+    usb_kick_dap_in();
     usb_crit_exit(crit);
     return true;
 }

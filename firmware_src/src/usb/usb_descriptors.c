@@ -1,9 +1,10 @@
 /*
- * usb_descriptors.c - USB 2.0 High-Speed composite descriptor definitions.
+ * usb_descriptors.c - USB 2.1 High-Speed composite descriptor definitions.
  *
  * Dynamically populates the product version string and 8-character flash serial
- * number into UTF-16LE string descriptors and adjusts bulk endpoint max packet
- * sizes between 512 B (HS) and 64 B (FS) upon USB bus reset.
+ * number into UTF-16LE string descriptors, adjusts bulk endpoint max packet
+ * sizes between 512 B (HS) and 64 B (FS) upon USB bus reset, and exposes BOS +
+ * Microsoft OS 2.0 descriptors for zero-driver WinUSB CMSIS-DAP v2 binding.
  */
 
 #include "usb_descriptors.h"
@@ -13,45 +14,19 @@
 
 #define U16_LO(x) ((uint8_t)((x) & 0xFFU))
 #define U16_HI(x) ((uint8_t)(((x) >> 8U) & 0xFFU))
+#define U16_CH(c) (uint8_t)(c), 0x00U
 
-#define USB_CONFIG_DESC_TOTAL_LEN 219U
-
-/* Minimal 64-byte vendor HID report descriptor (CMSIS-DAP 1.0 compatible) */
-static const uint8_t g_hid_report_desc[] = {
-    0x06U,
-    0x00U,
-    0xFFU, /* Usage Page (Vendor Defined 0xFF00) */
-    0x09U,
-    0x01U, /* Usage (0x01) */
-    0xA1U,
-    0x01U, /* Collection (Application) */
-    0x15U,
-    0x00U, /*   Logical Minimum (0) */
-    0x26U,
-    0xFFU,
-    0x00U, /*   Logical Maximum (255) */
-    0x75U,
-    0x08U, /*   Report Size (8 bits) */
-    0x95U,
-    0x40U, /*   Report Count (64 bytes) */
-    0x09U,
-    0x01U, /*   Usage (0x01) */
-    0x81U,
-    0x02U, /*   Input (Data, Var, Abs) */
-    0x95U,
-    0x40U, /*   Report Count (64 bytes) */
-    0x09U,
-    0x01U, /*   Usage (0x01) */
-    0x91U,
-    0x02U, /*   Output (Data, Var, Abs) */
-    0xC0U, /* End Collection */
-};
+#define USB_CONFIG_DESC_TOTAL_LEN 210U
+#define USB_BOS_DESC_TOTAL_LEN    40U
+#define USB_MS_OS_20_DESC_LEN     178U
+#define USB_MS_OS_20_CFG_SUB_LEN  168U
+#define USB_MS_OS_20_FUNC_SUB_LEN 160U
 
 static const uint8_t g_device_desc[] = {
     18U,                         /* bLength */
     USB_DESC_TYPE_DEVICE,        /* bDescriptorType */
-    U16_LO(USB_BCD_VERSION_2_0), /* bcdUSB lo */
-    U16_HI(USB_BCD_VERSION_2_0), /* bcdUSB hi */
+    U16_LO(USB_BCD_VERSION_2_1), /* bcdUSB lo (2.10 for BOS) */
+    U16_HI(USB_BCD_VERSION_2_1), /* bcdUSB hi */
     0xEFU,                       /* bDeviceClass (Misc / IAD Composite) */
     0x02U,                       /* bDeviceSubClass (Common Class) */
     0x01U,                       /* bDeviceProtocol (IAD) */
@@ -71,8 +46,8 @@ static const uint8_t g_device_desc[] = {
 static const uint8_t g_device_qualifier_desc[] = {
     10U,                         /* bLength */
     USB_DESC_TYPE_DEV_QUALIFIER, /* bDescriptorType */
-    U16_LO(USB_BCD_VERSION_2_0), /* bcdUSB lo */
-    U16_HI(USB_BCD_VERSION_2_0), /* bcdUSB hi */
+    U16_LO(USB_BCD_VERSION_2_1), /* bcdUSB lo */
+    U16_HI(USB_BCD_VERSION_2_1), /* bcdUSB hi */
     0xEFU,                       /* bDeviceClass */
     0x02U,                       /* bDeviceSubClass */
     0x01U,                       /* bDeviceProtocol */
@@ -80,6 +55,198 @@ static const uint8_t g_device_qualifier_desc[] = {
     1U,                          /* bNumConfigurations */
     0U,                          /* bReserved */
 };
+
+/* Binary Device Object Store (BOS) Descriptor with MS OS 2.0 Platform Capability */
+static const uint8_t g_bos_desc[] = {
+    /* BOS Descriptor Header (5 B) */
+    5U,
+    USB_DESC_TYPE_BOS,
+    U16_LO(USB_BOS_DESC_TOTAL_LEN),
+    U16_HI(USB_BOS_DESC_TOTAL_LEN),
+    2U, /* bNumDeviceCaps */
+
+    /* Device Capability 1: USB 2.0 Extension (7 B, required by USB 2.1) */
+    7U,
+    USB_DESC_TYPE_DEV_CAPABILITY,
+    0x02U, /* bDevCapabilityType: USB 2.0 Extension */
+    0x00U,
+    0x00U,
+    0x00U,
+    0x00U, /* bmAttributes: LPM not supported */
+
+    /* Device Capability 2: Microsoft OS 2.0 Platform Capability (28 B) */
+    28U,
+    USB_DESC_TYPE_DEV_CAPABILITY,
+    0x05U, /* bDevCapabilityType: Platform */
+    0x00U, /* bReserved */
+    /* PlatformCapabilityUUID: {D8DD60DF-4589-4CC7-9CD2-659D9E648A9F} */
+    0xDFU,
+    0x60U,
+    0xDDU,
+    0xD8U,
+    0x89U,
+    0x45U,
+    0xC7U,
+    0x4CU,
+    0x9CU,
+    0xD2U,
+    0x65U,
+    0x9DU,
+    0x9EU,
+    0x64U,
+    0x8AU,
+    0x9FU,
+    /* dwWindowsVersion: 0x06030000 (Windows 8.1+) */
+    0x00U,
+    0x00U,
+    0x03U,
+    0x06U,
+    /* wMSOSDescriptorSetTotalLength */
+    U16_LO(USB_MS_OS_20_DESC_LEN),
+    U16_HI(USB_MS_OS_20_DESC_LEN),
+    USB_MS_OS_20_VENDOR_CODE, /* bMS_VendorCode */
+    0x00U,                    /* bAltEnumCode */
+};
+
+_Static_assert(sizeof(g_bos_desc) == USB_BOS_DESC_TOTAL_LEN, "USB BOS descriptor length mismatch");
+
+/*
+ * Microsoft OS 2.0 Descriptor Set binding Interface 5 (CMSIS-DAP v2) to WinUSB
+ * with the standard ARM CMSIS-DAP v2 DeviceInterfaceGUID:
+ *   {CDB3B5AD-293B-4663-AA36-1AAE46463776}
+ */
+static const uint8_t g_ms_os_20_desc_set[] = {
+    /* Descriptor Set Header (10 B) */
+    0x0AU,
+    0x00U, /* wLength */
+    0x00U,
+    0x00U, /* wDescriptorType: MS_OS_20_SET_HEADER_DESCRIPTOR */
+    0x00U,
+    0x00U,
+    0x03U,
+    0x06U, /* dwWindowsVersion: 0x06030000 (Windows 8.1+) */
+    U16_LO(USB_MS_OS_20_DESC_LEN),
+    U16_HI(USB_MS_OS_20_DESC_LEN), /* wTotalLength */
+
+    /* Configuration Subset Header (8 B) */
+    0x08U,
+    0x00U, /* wLength */
+    0x01U,
+    0x00U, /* wDescriptorType: MS_OS_20_SUBSET_HEADER_CONFIGURATION */
+    0x00U, /* bConfigurationValue (0-based config index per MS OS 2.0 spec) */
+    0x00U, /* bReserved */
+    U16_LO(USB_MS_OS_20_CFG_SUB_LEN),
+    U16_HI(USB_MS_OS_20_CFG_SUB_LEN), /* wTotalLength */
+
+    /* Function Subset Header for Interface 5: CMSIS-DAP v2 (8 B) */
+    0x08U,
+    0x00U, /* wLength */
+    0x02U,
+    0x00U,            /* wDescriptorType: MS_OS_20_SUBSET_HEADER_FUNCTION */
+    USB_IF_CMSIS_DAP, /* bFirstInterface */
+    0x00U,            /* bReserved */
+    U16_LO(USB_MS_OS_20_FUNC_SUB_LEN),
+    U16_HI(USB_MS_OS_20_FUNC_SUB_LEN), /* wSubsetLength */
+
+    /* Feature Descriptor: Compatible ID = "WINUSB" (20 B) */
+    0x14U,
+    0x00U, /* wLength */
+    0x03U,
+    0x00U, /* wDescriptorType: MS_OS_20_FEATURE_COMPATIBLE_ID */
+    'W',
+    'I',
+    'N',
+    'U',
+    'S',
+    'B',
+    0x00U,
+    0x00U,
+    0x00U,
+    0x00U,
+    0x00U,
+    0x00U,
+    0x00U,
+    0x00U,
+    0x00U,
+    0x00U,
+
+    /* Feature Descriptor: Registry Property DeviceInterfaceGUIDs (132 B) */
+    0x84U,
+    0x00U, /* wLength (132 B) */
+    0x04U,
+    0x00U, /* wDescriptorType: MS_OS_20_FEATURE_REG_PROPERTY */
+    0x07U,
+    0x00U, /* wPropertyDataType: REG_MULTI_SZ */
+    0x2AU,
+    0x00U, /* wPropertyNameLength (42 B) */
+    /* "DeviceInterfaceGUIDs\0" (UTF-16LE) */
+    U16_CH('D'),
+    U16_CH('e'),
+    U16_CH('v'),
+    U16_CH('i'),
+    U16_CH('c'),
+    U16_CH('e'),
+    U16_CH('I'),
+    U16_CH('n'),
+    U16_CH('t'),
+    U16_CH('e'),
+    U16_CH('r'),
+    U16_CH('f'),
+    U16_CH('a'),
+    U16_CH('c'),
+    U16_CH('e'),
+    U16_CH('G'),
+    U16_CH('U'),
+    U16_CH('I'),
+    U16_CH('D'),
+    U16_CH('s'),
+    U16_CH('\0'),
+    0x50U,
+    0x00U, /* wPropertyDataLength (80 B) */
+    /* "{CDB3B5AD-293B-4663-AA36-1AAE46463776}\0\0" (UTF-16LE) */
+    U16_CH('{'),
+    U16_CH('C'),
+    U16_CH('D'),
+    U16_CH('B'),
+    U16_CH('3'),
+    U16_CH('B'),
+    U16_CH('5'),
+    U16_CH('A'),
+    U16_CH('D'),
+    U16_CH('-'),
+    U16_CH('2'),
+    U16_CH('9'),
+    U16_CH('3'),
+    U16_CH('B'),
+    U16_CH('-'),
+    U16_CH('4'),
+    U16_CH('6'),
+    U16_CH('6'),
+    U16_CH('3'),
+    U16_CH('-'),
+    U16_CH('A'),
+    U16_CH('A'),
+    U16_CH('3'),
+    U16_CH('6'),
+    U16_CH('-'),
+    U16_CH('1'),
+    U16_CH('A'),
+    U16_CH('A'),
+    U16_CH('E'),
+    U16_CH('4'),
+    U16_CH('6'),
+    U16_CH('4'),
+    U16_CH('6'),
+    U16_CH('3'),
+    U16_CH('7'),
+    U16_CH('7'),
+    U16_CH('6'),
+    U16_CH('}'),
+    U16_CH('\0'),
+    U16_CH('\0'),
+};
+
+_Static_assert(sizeof(g_ms_os_20_desc_set) == USB_MS_OS_20_DESC_LEN, "MS OS 2.0 descriptor length mismatch");
 
 /* Mutable configuration descriptor (bulk wMaxPacketSize patched on speed change) */
 static uint8_t g_config_desc[] = {
@@ -278,43 +445,33 @@ static uint8_t g_config_desc[] = {
     U16_HI(USB_BULK_MPS_HS),
     0U,
 
-    /* ---- Interface 5: HID CMSIS-DAP 1.0 ---- */
+    /* ---- Interface 5: CMSIS-DAP v2 WinUSB Bulk ---- */
     /* Interface 5 (9 B) */
     9U,
     USB_DESC_TYPE_INTERFACE,
-    USB_IF_CMSIS_HID,
+    USB_IF_CMSIS_DAP,
     0U,
     2U,
-    0x03U,
+    0xFFU, /* Vendor Specific */
     0x00U,
     0x00U,
-    6U,
-    /* HID Descriptor (9 B) */
-    9U,
-    USB_DESC_TYPE_HID,
-    0x11U,
-    0x01U,
-    0x00U,
-    1U,
-    USB_DESC_TYPE_HID_REPORT,
-    U16_LO(sizeof(g_hid_report_desc)),
-    U16_HI(sizeof(g_hid_report_desc)),
-    /* Endpoint 0x05: Interrupt OUT (7 B) */
+    6U, /* iInterface: "XDS110 CMSIS-DAP v2" */
+    /* Endpoint 0x05: Bulk OUT (7 B, Command) */
     7U,
     USB_DESC_TYPE_ENDPOINT,
-    USB_EP_ADDR_HID_OUT,
-    0x03U,
-    U16_LO(USB_HID_INT_MPS),
-    U16_HI(USB_HID_INT_MPS),
-    1U,
-    /* Endpoint 0x86: Interrupt IN (7 B) */
+    USB_EP_ADDR_DAP_OUT,
+    0x02U,
+    U16_LO(USB_BULK_MPS_HS),
+    U16_HI(USB_BULK_MPS_HS),
+    0U,
+    /* Endpoint 0x86: Bulk IN (7 B, Response) */
     7U,
     USB_DESC_TYPE_ENDPOINT,
-    USB_EP_ADDR_HID_IN,
-    0x03U,
-    U16_LO(USB_HID_INT_MPS),
-    U16_HI(USB_HID_INT_MPS),
-    1U,
+    USB_EP_ADDR_DAP_IN,
+    0x02U,
+    U16_LO(USB_BULK_MPS_HS),
+    U16_HI(USB_BULK_MPS_HS),
+    0U,
 
     /* ---- Interface 6: XDS110 EnergyTrace Data Bulk Port ---- */
     /* Interface 6 (9 B) */
@@ -413,7 +570,7 @@ void usb_descriptors_init(const uint8_t fw_version[4], const char *serial_ascii)
     usb_encode_utf16le_string(g_str_serial, sizeof(g_str_serial), serial_ascii);
     usb_encode_utf16le_string(g_str_ctrl_iface, sizeof(g_str_ctrl_iface), "XDS110 Control Interface");
     usb_encode_utf16le_string(g_str_config, sizeof(g_str_config), "XDS110 Configuration");
-    usb_encode_utf16le_string(g_str_cmsis, sizeof(g_str_cmsis), "XDS110 CMSIS-DAP");
+    usb_encode_utf16le_string(g_str_cmsis, sizeof(g_str_cmsis), "XDS110 CMSIS-DAP v2");
 
     usb_descriptors_set_speed(true);
 }
@@ -459,27 +616,29 @@ bool usb_descriptors_get(uint8_t desc_type, uint8_t desc_index, const uint8_t **
         *out_len = (uint16_t)sizeof(g_other_speed_desc);
         return true;
 
-    case USB_DESC_TYPE_STRING: {
-        uint32_t count = (uint32_t)(sizeof(g_string_table) / sizeof(g_string_table[0]));
-        if (desc_index >= count) {
+    case USB_DESC_TYPE_BOS:
+        if (desc_index != 0U) {
+            return false;
+        }
+        *out_data = g_bos_desc;
+        *out_len = (uint16_t)sizeof(g_bos_desc);
+        return true;
+
+    case USB_DESC_TYPE_STRING:
+        if (desc_index >= (sizeof(g_string_table) / sizeof(g_string_table[0]))) {
             return false;
         }
         *out_data = g_string_table[desc_index];
         *out_len = g_string_table[desc_index][0];
         return true;
-    }
 
     default:
         return false;
     }
 }
 
-bool usb_descriptors_get_hid_report(uint16_t iface, const uint8_t **out_data, uint16_t *out_len)
+void usb_descriptors_get_ms_os_20(const uint8_t **out_data, uint16_t *out_len)
 {
-    if (iface != USB_IF_CMSIS_HID) {
-        return false;
-    }
-    *out_data = g_hid_report_desc;
-    *out_len = (uint16_t)sizeof(g_hid_report_desc);
-    return true;
+    *out_data = g_ms_os_20_desc_set;
+    *out_len = (uint16_t)sizeof(g_ms_os_20_desc_set);
 }

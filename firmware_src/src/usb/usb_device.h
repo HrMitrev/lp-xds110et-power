@@ -2,12 +2,13 @@
  * usb_device.h - MSP432E401Y USB0 High-Speed (USB3300 ULPI) device driver.
  *
  * Uses MSP432E4 DriverLib (MAP_USB*) exclusively for ULPI PHY setup, EP0
- * enumeration, Bulk 0 (XDS110 CMD: OUT 0x02 / IN 0x83), Bulk 1
- * (EnergyTrace Data: OUT 0x06 / IN 0x87), dual CDC ACM Virtual COM Ports:
+ * enumeration (including BOS / MS OS 2.0 WinUSB), Bulk 0 (XDS110 CMD:
+ * OUT 0x02 / IN 0x83), Bulk 1 (EnergyTrace Data: OUT 0x06 / IN 0x87),
+ * dual CDC ACM Virtual COM Ports:
  *   - CDC 0 (App UART): OUT 0x01 / IN 0x82 / INT 0x81 (IF 0/1)
  *   - CDC 1 (Aux/SWO):  OUT 0x04 / IN 0x85 / INT 0x84 (IF 3/4)
- * and HID CMSIS-DAP 1.0:
- *   - HID (CMSIS-DAP):  OUT 0x05 / IN 0x86 (IF 5, 64-byte packets)
+ * and CMSIS-DAP v2 WinUSB Bulk:
+ *   - DAP v2 (WinUSB):  OUT 0x05 / IN 0x86 (IF 5, 512 B HS / 64 B FS)
  */
 
 #ifndef USB_DEVICE_H
@@ -24,9 +25,9 @@
 #define USB_CDC_RX_BUF_SIZE  2048U
 #define USB_CDC_TX_BUF_SIZE  8192U
 
-/* HID CMSIS-DAP 1.0 fixed-size packet queue parameters */
-#define USB_HID_PKT_SIZE    64U
-#define USB_HID_QUEUE_DEPTH 4U
+/* CMSIS-DAP v2 WinUSB Bulk variable-length packet queue parameters */
+#define USB_DAP_MAX_PKT_SIZE 512U
+#define USB_DAP_QUEUE_DEPTH  4U
 
 /* CDC port indices */
 #define USB_CDC_PORT_APP   0U
@@ -75,10 +76,11 @@ bool usb_cdc_take_line_coding(uint8_t port, usb_cdc_line_coding_t *out_coding);
 void usb_cdc_get_line_coding(uint8_t port, usb_cdc_line_coding_t *out_coding);
 bool usb_cdc_is_dtr_asserted(uint8_t port);
 
-/* HID CMSIS-DAP 1.0 interface (Interrupt OUT 0x05, Interrupt IN 0x86) */
-bool usb_hid_rx_available(void);
-bool usb_hid_rx_pop(uint8_t out_pkt[USB_HID_PKT_SIZE]);
-bool usb_hid_tx_space(void);
-bool usb_hid_tx_push(const uint8_t pkt[USB_HID_PKT_SIZE]);
+/* CMSIS-DAP v2 WinUSB Bulk interface (Bulk OUT 0x05, Bulk IN 0x86) */
+uint16_t usb_dap_packet_size(void);
+bool usb_dap_rx_available(void);
+uint16_t usb_dap_rx_pop(uint8_t *out_pkt, uint16_t max_len);
+bool usb_dap_tx_space(void);
+bool usb_dap_tx_push(const uint8_t *pkt, uint16_t len);
 
 #endif /* USB_DEVICE_H */

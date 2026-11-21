@@ -89,7 +89,7 @@ SRCS        = $(APP_SRCS) $(DL_SRCS)
 OBJS        = $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 DEPS        = $(OBJS:.o=.d)
 
-.PHONY: all clean fetch-sdk sdk fetch-toolchain toolchain inspect flash clang-format compile-commands clangd-check test-hil
+.PHONY: all clean fetch-sdk sdk fetch-toolchain toolchain inspect flash clang-format compile-commands clangd-check test-hil test-swd
 
 all: $(BUILD_DIR)/$(TARGET).bin $(BUILD_DIR)/$(TARGET).hex compile_commands.json
 
@@ -157,8 +157,13 @@ clangd-check cc-check: compile_commands.json
 		$(CLANGD) --compile-commands-dir=. --tweaks= --log=error --check=$$f || exit 1; \
 	done
 
+SWD_TARGET_CFG ?= target/stm32g0x.cfg
+
 test-hil:
 	$(Q)$(PYTHON) tests/hil_stress_test.py
+
+test-swd:
+	$(Q)$(PYTHON) tests/swd_target_test.py --target-cfg $(SWD_TARGET_CFG)
 
 clean:
 	$(Q)rm -rf $(BUILD_DIR) compile_commands.json

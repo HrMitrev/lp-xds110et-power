@@ -1,7 +1,7 @@
 /*
- * cmsis_dap.c - ARM CMSIS-DAP 1.1.0 HID command processor for LP-XDS110ET.
+ * cmsis_dap.c - ARM CMSIS-DAP v2.0.0 WinUSB Bulk command processor for LP-XDS110ET.
  *
- * Implements the CMSIS-DAP 1.1.0 command set over USB Interface 5 (HID 0x05/0x86):
+ * Implements the CMSIS-DAP v2.0.0 command set over USB Interface 5 (Bulk 0x05/0x86):
  *   - 0x00 DAP_Info, 0x01 DAP_HostStatus, 0x02 DAP_Connect, 0x03 DAP_Disconnect
  *   - 0x04 DAP_TransferConfigure, 0x05 DAP_Transfer, 0x06 DAP_TransferBlock
  *   - 0x07 DAP_TransferAbort, 0x08 DAP_WriteABORT, 0x09 DAP_Delay, 0x0A DAP_ResetTarget
@@ -84,10 +84,12 @@
 #define DAP_HOST_STATUS_RUNNING 1U
 
 #define DAP_SWJ_PIN_WAIT_MAX_US 3000000U
-#define DAP_PROTOCOL_VERSION    "1.1.0"
+#define DAP_PROTOCOL_VERSION    "2.0.0"
 
 static char g_dap_serial[BOARD_SERIAL_LEN + 1U];
 static char g_dap_product_fw_ver[16];
+static uint8_t g_dap_req_buf[USB_DAP_MAX_PKT_SIZE];
+static uint8_t g_dap_resp_buf[USB_DAP_MAX_PKT_SIZE];
 
 static uint8_t g_dap_port = DAP_PORT_DISABLED;
 static bool g_dap_host_connected = false;
@@ -194,7 +196,7 @@ static uint32_t dap_handle_info(const uint8_t *req, uint8_t *resp, uint32_t resp
     case DAP_INFO_PACKET_COUNT:
         if (resp_max >= 3U) {
             resp[1] = 1U;
-            resp[2] = USB_HID_QUEUE_DEPTH;
+            resp[2] = USB_DAP_QUEUE_DEPTH;
             return 3U;
         }
         return 2U;
@@ -202,7 +204,7 @@ static uint32_t dap_handle_info(const uint8_t *req, uint8_t *resp, uint32_t resp
     case DAP_INFO_PACKET_SIZE:
         if (resp_max >= 4U) {
             resp[1] = 2U;
-            write_u16le(&resp[2], USB_HID_PKT_SIZE);
+            write_u16le(&resp[2], usb_dap_packet_size());
             return 4U;
         }
         return 2U;
@@ -767,24 +769,30 @@ static bool dap_process_single(const uint8_t *req, uint32_t req_max, uint8_t *re
     return false;
 }
 
-/* Returns true if a 64-byte HID response report should be sent */
-static bool dap_process_packet(const uint8_t req[USB_HID_PKT_SIZE], uint8_t resp[USB_HID_PKT_SIZE])
+/* Returns exact number of response bytes to send (0 if no response, e.g. TransferAbort) */
+static uint16_t dap_process_packet(const uint8_t *req, uint32_t req_len, uint8_t *resp, uint32_t resp_max)
 {
-    memset(resp, 0, USB_HID_PKT_SIZE);
-    uint8_t cmd = req[0];
+    if ((req_len == 0U) || (resp_max == 0U)) {
+        return 0U;
+    }
 
+    uint8_t cmd = req[0];
     if ((cmd == DAP_CMD_EXECUTE_COMMANDS) || (cmd == DAP_CMD_QUEUE_COMMANDS)) {
+        if ((req_len < 2U) || (resp_max < 2U)) {
+            resp[0] = DAP_CMD_INVALID;
+            return 1U;
+        }
         uint8_t num_cmds = req[1];
         uint32_t req_off = 2U;
         uint32_t resp_off = 2U;
         uint8_t executed = 0U;
 
         resp[0] = cmd;
-        while ((executed < num_cmds) && (req_off < USB_HID_PKT_SIZE) && (resp_off < USB_HID_PKT_SIZE)) {
+        while ((executed < num_cmds) && (req_off < req_len) && (resp_off < resp_max)) {
             uint32_t sub_req = 0U;
             uint32_t sub_resp = 0U;
-            bool ok = dap_process_single(&req[req_off], USB_HID_PKT_SIZE - req_off, &resp[resp_off],
-                USB_HID_PKT_SIZE - resp_off, &sub_req, &sub_resp);
+            bool ok = dap_process_single(
+                &req[req_off], req_len - req_off, &resp[resp_off], resp_max - resp_off, &sub_req, &sub_resp);
             req_off += sub_req;
             resp_off += sub_resp;
             executed++;
@@ -793,13 +801,13 @@ static bool dap_process_packet(const uint8_t req[USB_HID_PKT_SIZE], uint8_t resp
             }
         }
         resp[1] = executed;
-        return true;
+        return (uint16_t)resp_off;
     }
 
     uint32_t req_used = 0U;
     uint32_t resp_used = 0U;
-    (void)dap_process_single(req, USB_HID_PKT_SIZE, resp, USB_HID_PKT_SIZE, &req_used, &resp_used);
-    return (resp_used > 0U);
+    (void)dap_process_single(req, req_len, resp, resp_max, &req_used, &resp_used);
+    return (uint16_t)resp_used;
 }
 
 /* ---- Public API ---- */
@@ -825,18 +833,19 @@ void cmsis_dap_init(const uint8_t fw_version[4])
 
 bool cmsis_dap_poll(void)
 {
-    if (!usb_hid_rx_available() || !usb_hid_tx_space()) {
+    if (!usb_dap_rx_available() || !usb_dap_tx_space()) {
         return false;
     }
 
-    uint8_t req[USB_HID_PKT_SIZE];
-    uint8_t resp[USB_HID_PKT_SIZE];
-    if (!usb_hid_rx_pop(req)) {
+    uint16_t max_pkt = usb_dap_packet_size();
+    uint16_t req_len = usb_dap_rx_pop(g_dap_req_buf, max_pkt);
+    if (req_len == 0U) {
         return false;
     }
 
-    if (dap_process_packet(req, resp)) {
-        (void)usb_hid_tx_push(resp);
+    uint16_t resp_len = dap_process_packet(g_dap_req_buf, req_len, g_dap_resp_buf, max_pkt);
+    if (resp_len > 0U) {
+        (void)usb_dap_tx_push(g_dap_resp_buf, resp_len);
     }
     return true;
 }
