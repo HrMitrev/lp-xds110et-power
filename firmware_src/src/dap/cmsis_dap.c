@@ -1,10 +1,11 @@
 /*
- * cmsis_dap.c - ARM CMSIS-DAP 1.0 HID command processor for LP-XDS110ET.
+ * cmsis_dap.c - ARM CMSIS-DAP 1.1.0 HID command processor for LP-XDS110ET.
  *
- * Uses MSP432E4 DriverLib (MAP_GPIO*) exclusively for SWD/JTAG pin setup on
- * Port A (PA2=SWCLK/TCK, PA3=SWDIO/TMS, PA4=TDO, PA5=TDI, PA6=nSRST) and the
- * U10 SN74AVC4T245 level-shifter direction pin PC5 (XDS_TMS_DIR: HIGH=A->B out,
- * LOW=B->A in).
+ * Implements the CMSIS-DAP 1.1.0 command set over USB Interface 5 (HID 0x05/0x86):
+ *   - 0x00 DAP_Info, 0x01 DAP_HostStatus, 0x02 DAP_Connect, 0x03 DAP_Disconnect
+ *   - 0x04 DAP_TransferConfigure, 0x05 DAP_Transfer, 0x06 DAP_TransferBlock
+ *   - 0x07 DAP_TransferAbort, 0x08 DAP_WriteABORT, 0x09 DAP_Delay, 0x0A DAP_ResetTarget
+ *   - 0x10 DAP_SWJ_Pins, 0x11 DAP_SWJ_Clock, 0x12 DAP_SWJ_Sequence, 0x13 DAP_SWD_Configure
  */
 
 #include "cmsis_dap.h"
@@ -13,9 +14,7 @@
 #include <string.h>
 
 #include "board_lp_xds110et.h"
-#include "driverlib/gpio.h"
-#include "driverlib/rom.h"
-#include "driverlib/rom_map.h"
+#include "swd.h"
 #include "usb/usb_device.h"
 
 /* CMSIS-DAP command IDs */
@@ -24,11 +23,15 @@
 #define DAP_CMD_CONNECT            0x02U
 #define DAP_CMD_DISCONNECT         0x03U
 #define DAP_CMD_TRANSFER_CONFIGURE 0x04U
+#define DAP_CMD_TRANSFER           0x05U
+#define DAP_CMD_TRANSFER_BLOCK     0x06U
+#define DAP_CMD_TRANSFER_ABORT     0x07U
 #define DAP_CMD_WRITE_ABORT        0x08U
 #define DAP_CMD_DELAY              0x09U
 #define DAP_CMD_RESET_TARGET       0x0AU
 #define DAP_CMD_SWJ_PINS           0x10U
 #define DAP_CMD_SWJ_CLOCK          0x11U
+#define DAP_CMD_SWJ_SEQUENCE       0x12U
 #define DAP_CMD_SWD_CONFIGURE      0x13U
 #define DAP_CMD_INVALID            0xFFU
 
@@ -58,20 +61,25 @@
 /* Capabilities byte 0: bit 0 = SWD supported */
 #define DAP_CAP_SWD 0x01U
 
-/* DAP_SWJ_Pins bit definitions */
-#define DAP_PIN_SWCLK_TCK 0x01U
-#define DAP_PIN_SWDIO_TMS 0x02U
-#define DAP_PIN_TDI       0x04U
-#define DAP_PIN_TDO       0x08U
-#define DAP_PIN_NRESET    0x80U
-#define DAP_PIN_READ_MASK (DAP_PIN_SWCLK_TCK | DAP_PIN_SWDIO_TMS | DAP_PIN_TDI | DAP_PIN_TDO | DAP_PIN_NRESET)
+/* DAP_Transfer request flags & response status bits */
+#define DAP_TRANSFER_APnDP      (1U << 0U)
+#define DAP_TRANSFER_RnW        (1U << 1U)
+#define DAP_TRANSFER_A2         (1U << 2U)
+#define DAP_TRANSFER_A3         (1U << 3U)
+#define DAP_TRANSFER_MATCH_VAL  (1U << 4U)
+#define DAP_TRANSFER_MATCH_MASK (1U << 5U)
+
+#define DAP_TRANSFER_MISMATCH (1U << 4U)
+
+/* DP register SWD request encodings */
+#define DAP_DP_ABORT_WRITE 0x00U /* DP Write A[3:2]=00 */
+#define DAP_DP_RDBUFF_READ (DAP_TRANSFER_RnW | DAP_TRANSFER_A2 | DAP_TRANSFER_A3)
 
 /* DAP_HostStatus types */
 #define DAP_HOST_STATUS_CONNECT 0U
 #define DAP_HOST_STATUS_RUNNING 1U
 
 #define DAP_SWJ_PIN_WAIT_MAX_US 3000000U
-#define DAP_DEFAULT_CLOCK_HZ    1000000U
 #define DAP_PROTOCOL_VERSION    "1.1.0"
 
 static char g_dap_serial[BOARD_SERIAL_LEN + 1U];
@@ -79,10 +87,10 @@ static char g_dap_product_fw_ver[16];
 
 static uint8_t g_dap_port = DAP_PORT_DISABLED;
 static bool g_dap_host_connected = false;
-static uint32_t g_dap_clock_hz = DAP_DEFAULT_CLOCK_HZ;
 static uint8_t g_dap_idle_cycles = 0U;
 static uint16_t g_dap_wait_retry = 100U;
 static uint16_t g_dap_match_retry = 0U;
+static uint32_t g_dap_match_mask = 0xFFFFFFFFU;
 static uint8_t g_dap_swd_turnaround = 1U;
 static bool g_dap_swd_data_phase = false;
 
@@ -102,59 +110,26 @@ static void write_u16le(uint8_t *dst, uint16_t val)
     dst[1] = (uint8_t)((val >> 8U) & 0xFFU);
 }
 
-/* ---- SWD / JTAG Hardware Pin Control ---- */
-
-static void dap_pins_release(void)
+static void write_u32le(uint8_t *dst, uint32_t val)
 {
-    const uint8_t jtag_pins = BOARD_JTAG_TCK_PIN | BOARD_JTAG_TMS_PIN | BOARD_JTAG_TDO_PIN | BOARD_JTAG_TDI_PIN;
-
-    /* Put PA2..PA5 into high-Z input BEFORE switching U10 TMS_DIR LOW (B->A) */
-    MAP_GPIOPinTypeGPIOInput(BOARD_JTAG_PORT_BASE, jtag_pins);
-    MAP_GPIOPadConfigSet(BOARD_JTAG_PORT_BASE, jtag_pins, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD);
-    MAP_GPIOPinWrite(BOARD_TMS_DIR_PORT_BASE, BOARD_TMS_DIR_PIN, 0U);
-
-    board_srst_set(false);
+    dst[0] = (uint8_t)(val & 0xFFU);
+    dst[1] = (uint8_t)((val >> 8U) & 0xFFU);
+    dst[2] = (uint8_t)((val >> 16U) & 0xFFU);
+    dst[3] = (uint8_t)((val >> 24U) & 0xFFU);
 }
 
-static void dap_pins_connect_swd(void)
+/* Execute SWD transfer with CMSIS-DAP WAIT retry loop */
+static uint8_t dap_swd_xfer_retry(uint8_t req, uint32_t *data)
 {
-    /* Switch U10 TMS_DIR HIGH (A->B) before driving PA3 (SWDIO) as output */
-    MAP_GPIOPinWrite(BOARD_TMS_DIR_PORT_BASE, BOARD_TMS_DIR_PIN, BOARD_TMS_DIR_PIN);
-
-    const uint8_t out_pins = BOARD_JTAG_TCK_PIN | BOARD_JTAG_TMS_PIN | BOARD_JTAG_TDI_PIN;
-    MAP_GPIOPinWrite(BOARD_JTAG_PORT_BASE, out_pins, out_pins);
-    MAP_GPIOPinTypeGPIOOutput(BOARD_JTAG_PORT_BASE, out_pins);
-    MAP_GPIOPadConfigSet(BOARD_JTAG_PORT_BASE, out_pins, GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD);
-
-    MAP_GPIOPinTypeGPIOInput(BOARD_JTAG_PORT_BASE, BOARD_JTAG_TDO_PIN);
-    MAP_GPIOPadConfigSet(BOARD_JTAG_PORT_BASE, BOARD_JTAG_TDO_PIN, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
-
-    board_srst_set(false);
-}
-
-static uint8_t dap_pins_read(void)
-{
-    const uint8_t read_mask =
-        BOARD_JTAG_TCK_PIN | BOARD_JTAG_TMS_PIN | BOARD_JTAG_TDO_PIN | BOARD_JTAG_TDI_PIN | BOARD_TARGET_SRST_PIN;
-    uint32_t raw = MAP_GPIOPinRead(BOARD_JTAG_PORT_BASE, read_mask);
-    uint8_t pins = 0U;
-
-    if ((raw & BOARD_JTAG_TCK_PIN) != 0U) {
-        pins |= DAP_PIN_SWCLK_TCK;
-    }
-    if ((raw & BOARD_JTAG_TMS_PIN) != 0U) {
-        pins |= DAP_PIN_SWDIO_TMS;
-    }
-    if ((raw & BOARD_JTAG_TDI_PIN) != 0U) {
-        pins |= DAP_PIN_TDI;
-    }
-    if ((raw & BOARD_JTAG_TDO_PIN) != 0U) {
-        pins |= DAP_PIN_TDO;
-    }
-    if ((raw & BOARD_TARGET_SRST_PIN) != 0U) {
-        pins |= DAP_PIN_NRESET;
-    }
-    return pins;
+    uint32_t retry = g_dap_wait_retry;
+    uint8_t ack;
+    do {
+        ack = swd_transfer(req, data);
+        if (ack != SWD_ACK_WAIT) {
+            break;
+        }
+    } while (retry-- > 0U);
+    return ack;
 }
 
 /* ---- CMSIS-DAP Command Handlers ---- */
@@ -252,7 +227,7 @@ static void dap_handle_connect(const uint8_t *req, uint8_t *resp)
     resp[0] = DAP_CMD_CONNECT;
 
     if ((port == DAP_PORT_AUTODETECT) || (port == DAP_PORT_SWD)) {
-        dap_pins_connect_swd();
+        swd_connect();
         g_dap_port = DAP_PORT_SWD;
         resp[1] = DAP_PORT_SWD;
     } else {
@@ -263,7 +238,7 @@ static void dap_handle_connect(const uint8_t *req, uint8_t *resp)
 
 static void dap_handle_disconnect(uint8_t *resp)
 {
-    dap_pins_release();
+    swd_disconnect();
     g_dap_port = DAP_PORT_DISABLED;
     resp[0] = DAP_CMD_DISCONNECT;
     resp[1] = DAP_STATUS_OK;
@@ -275,11 +250,251 @@ static void dap_handle_transfer_configure(const uint8_t *req, uint8_t *resp)
     g_dap_wait_retry = read_u16le(&req[2]);
     g_dap_match_retry = read_u16le(&req[4]);
 
-    (void)g_dap_idle_cycles;
-    (void)g_dap_wait_retry;
-    (void)g_dap_match_retry;
+    swd_configure(g_dap_swd_turnaround, g_dap_swd_data_phase, g_dap_idle_cycles);
 
     resp[0] = DAP_CMD_TRANSFER_CONFIGURE;
+    resp[1] = DAP_STATUS_OK;
+}
+
+static void dap_handle_transfer(const uint8_t *req, uint8_t *resp)
+{
+    uint8_t xfer_count = req[2];
+    uint32_t req_off = 3U;
+    uint32_t resp_off = 3U;
+    uint8_t resp_count = 0U;
+    uint8_t resp_val = 0U;
+    bool post_read = false;
+
+    resp[0] = DAP_CMD_TRANSFER;
+
+    if (g_dap_port != DAP_PORT_SWD) {
+        resp[1] = 0U;
+        resp[2] = 0U;
+        return;
+    }
+
+    for (uint8_t i = 0U; i < xfer_count; i++) {
+        if (req_off >= USB_HID_PKT_SIZE) {
+            break;
+        }
+        uint8_t xfer_req = req[req_off++];
+
+        if ((xfer_req & DAP_TRANSFER_RnW) != 0U) {
+            /* Read transfer */
+            if (post_read) {
+                if (((xfer_req & DAP_TRANSFER_APnDP) != 0U) && ((xfer_req & DAP_TRANSFER_MATCH_VAL) == 0U)) {
+                    /* Pipelined AP read: returns previous AP read while posting new one */
+                    uint32_t val = 0U;
+                    resp_val = dap_swd_xfer_retry(xfer_req, &val);
+                    if (resp_val != SWD_ACK_OK) {
+                        post_read = false;
+                        break;
+                    }
+                    if ((resp_off + 4U) <= USB_HID_PKT_SIZE) {
+                        write_u32le(&resp[resp_off], val);
+                        resp_off += 4U;
+                    }
+                    resp_count++;
+                    continue;
+                }
+
+                /* Flush previous posted AP read before DP read or value-match read */
+                uint32_t prev_val = 0U;
+                resp_val = dap_swd_xfer_retry(DAP_DP_RDBUFF_READ, &prev_val);
+                post_read = false;
+                if (resp_val != SWD_ACK_OK) {
+                    break;
+                }
+                if ((resp_off + 4U) <= USB_HID_PKT_SIZE) {
+                    write_u32le(&resp[resp_off], prev_val);
+                    resp_off += 4U;
+                }
+            }
+
+            if ((xfer_req & DAP_TRANSFER_MATCH_VAL) != 0U) {
+                if ((req_off + 4U) > USB_HID_PKT_SIZE) {
+                    break;
+                }
+                uint32_t match_val = read_u32le(&req[req_off]);
+                req_off += 4U;
+
+                if ((xfer_req & DAP_TRANSFER_APnDP) != 0U) {
+                    /* Post initial AP read before polling */
+                    resp_val = dap_swd_xfer_retry(xfer_req, NULL);
+                    if (resp_val != SWD_ACK_OK) {
+                        break;
+                    }
+                }
+
+                uint32_t val = 0U;
+                uint32_t retry = g_dap_match_retry;
+                do {
+                    resp_val = dap_swd_xfer_retry(xfer_req, &val);
+                    if (resp_val != SWD_ACK_OK) {
+                        break;
+                    }
+                    if ((val & g_dap_match_mask) == match_val) {
+                        break;
+                    }
+                } while (retry-- > 0U);
+
+                if (resp_val != SWD_ACK_OK) {
+                    break;
+                }
+                if ((val & g_dap_match_mask) != match_val) {
+                    resp_val |= DAP_TRANSFER_MISMATCH;
+                    break;
+                }
+            } else if ((xfer_req & DAP_TRANSFER_APnDP) != 0U) {
+                /* Initial AP read: post it and collect data on next transfer or at end */
+                resp_val = dap_swd_xfer_retry(xfer_req, NULL);
+                if (resp_val != SWD_ACK_OK) {
+                    break;
+                }
+                post_read = true;
+            } else {
+                /* Direct DP read */
+                uint32_t val = 0U;
+                resp_val = dap_swd_xfer_retry(xfer_req, &val);
+                if (resp_val != SWD_ACK_OK) {
+                    break;
+                }
+                if ((resp_off + 4U) <= USB_HID_PKT_SIZE) {
+                    write_u32le(&resp[resp_off], val);
+                    resp_off += 4U;
+                }
+            }
+        } else {
+            /* Write transfer (or MATCH_MASK pseudo-write) */
+            if (post_read) {
+                uint32_t prev_val = 0U;
+                resp_val = dap_swd_xfer_retry(DAP_DP_RDBUFF_READ, &prev_val);
+                post_read = false;
+                if (resp_val != SWD_ACK_OK) {
+                    break;
+                }
+                if ((resp_off + 4U) <= USB_HID_PKT_SIZE) {
+                    write_u32le(&resp[resp_off], prev_val);
+                    resp_off += 4U;
+                }
+            }
+
+            if ((req_off + 4U) > USB_HID_PKT_SIZE) {
+                break;
+            }
+            uint32_t wdata = read_u32le(&req[req_off]);
+            req_off += 4U;
+
+            if ((xfer_req & DAP_TRANSFER_MATCH_MASK) != 0U) {
+                g_dap_match_mask = wdata;
+                resp_val = SWD_ACK_OK;
+            } else {
+                resp_val = dap_swd_xfer_retry(xfer_req, &wdata);
+                if (resp_val != SWD_ACK_OK) {
+                    break;
+                }
+            }
+        }
+
+        resp_count++;
+    }
+
+    /* Flush final posted AP read if the loop completed cleanly */
+    if (post_read && (resp_val == SWD_ACK_OK)) {
+        uint32_t final_val = 0U;
+        resp_val = dap_swd_xfer_retry(DAP_DP_RDBUFF_READ, &final_val);
+        if ((resp_val == SWD_ACK_OK) && ((resp_off + 4U) <= USB_HID_PKT_SIZE)) {
+            write_u32le(&resp[resp_off], final_val);
+        }
+    }
+
+    resp[1] = resp_count;
+    resp[2] = resp_val;
+}
+
+static void dap_handle_transfer_block(const uint8_t *req, uint8_t *resp)
+{
+    uint16_t xfer_count = read_u16le(&req[2]);
+    uint8_t xfer_req = req[4];
+    uint16_t resp_count = 0U;
+    uint8_t resp_val = 0U;
+
+    resp[0] = DAP_CMD_TRANSFER_BLOCK;
+
+    if ((g_dap_port != DAP_PORT_SWD) || (xfer_count == 0U)) {
+        write_u16le(&resp[1], 0U);
+        resp[3] = 0U;
+        return;
+    }
+
+    if ((xfer_req & DAP_TRANSFER_RnW) != 0U) {
+        /* Block Read (max 15 words fit in 64-byte HID report: 4 + 15*4 = 64) */
+        uint32_t resp_off = 4U;
+        if ((xfer_req & DAP_TRANSFER_APnDP) != 0U) {
+            /* Post initial AP read */
+            resp_val = dap_swd_xfer_retry(xfer_req, NULL);
+            if (resp_val == SWD_ACK_OK) {
+                for (uint16_t i = 0U; i < xfer_count; i++) {
+                    if ((resp_off + 4U) > USB_HID_PKT_SIZE) {
+                        break;
+                    }
+                    uint8_t wire_req = ((i + 1U) < xfer_count) ? xfer_req : DAP_DP_RDBUFF_READ;
+                    uint32_t val = 0U;
+                    resp_val = dap_swd_xfer_retry(wire_req, &val);
+                    if (resp_val != SWD_ACK_OK) {
+                        break;
+                    }
+                    write_u32le(&resp[resp_off], val);
+                    resp_off += 4U;
+                    resp_count++;
+                }
+            }
+        } else {
+            for (uint16_t i = 0U; i < xfer_count; i++) {
+                if ((resp_off + 4U) > USB_HID_PKT_SIZE) {
+                    break;
+                }
+                uint32_t val = 0U;
+                resp_val = dap_swd_xfer_retry(xfer_req, &val);
+                if (resp_val != SWD_ACK_OK) {
+                    break;
+                }
+                write_u32le(&resp[resp_off], val);
+                resp_off += 4U;
+                resp_count++;
+            }
+        }
+    } else {
+        /* Block Write (max 14 words fit in 64-byte HID request: 5 + 14*4 = 61) */
+        uint32_t req_off = 5U;
+        for (uint16_t i = 0U; i < xfer_count; i++) {
+            if ((req_off + 4U) > USB_HID_PKT_SIZE) {
+                break;
+            }
+            uint32_t wdata = read_u32le(&req[req_off]);
+            req_off += 4U;
+            resp_val = dap_swd_xfer_retry(xfer_req, &wdata);
+            if (resp_val != SWD_ACK_OK) {
+                break;
+            }
+            resp_count++;
+        }
+    }
+
+    write_u16le(&resp[1], resp_count);
+    resp[3] = resp_val;
+}
+
+static void dap_handle_write_abort(const uint8_t *req, uint8_t *resp)
+{
+    resp[0] = DAP_CMD_WRITE_ABORT;
+    if (g_dap_port != DAP_PORT_SWD) {
+        resp[1] = DAP_STATUS_ERROR;
+        return;
+    }
+
+    uint32_t abort_val = read_u32le(&req[2]);
+    (void)swd_transfer(DAP_DP_ABORT_WRITE, &abort_val);
     resp[1] = DAP_STATUS_OK;
 }
 
@@ -289,31 +504,16 @@ static void dap_handle_swj_pins(const uint8_t *req, uint8_t *resp)
     uint8_t pin_sel = req[2];
     uint32_t pin_wait_us = read_u32le(&req[3]);
 
-    if ((pin_sel & DAP_PIN_SWCLK_TCK) != 0U) {
-        MAP_GPIOPinWrite(
-            BOARD_JTAG_PORT_BASE, BOARD_JTAG_TCK_PIN, ((pin_out & DAP_PIN_SWCLK_TCK) != 0U) ? BOARD_JTAG_TCK_PIN : 0U);
-    }
-    if ((pin_sel & DAP_PIN_SWDIO_TMS) != 0U) {
-        MAP_GPIOPinWrite(BOARD_TMS_DIR_PORT_BASE, BOARD_TMS_DIR_PIN, BOARD_TMS_DIR_PIN);
-        MAP_GPIOPinWrite(
-            BOARD_JTAG_PORT_BASE, BOARD_JTAG_TMS_PIN, ((pin_out & DAP_PIN_SWDIO_TMS) != 0U) ? BOARD_JTAG_TMS_PIN : 0U);
-    }
-    if ((pin_sel & DAP_PIN_TDI) != 0U) {
-        MAP_GPIOPinWrite(
-            BOARD_JTAG_PORT_BASE, BOARD_JTAG_TDI_PIN, ((pin_out & DAP_PIN_TDI) != 0U) ? BOARD_JTAG_TDI_PIN : 0U);
-    }
-    if ((pin_sel & DAP_PIN_NRESET) != 0U) {
-        board_srst_set((pin_out & DAP_PIN_NRESET) == 0U);
-    }
+    swd_pins_write(pin_out, pin_sel);
 
-    uint8_t check_mask = (uint8_t)(pin_sel & DAP_PIN_READ_MASK);
+    uint8_t check_mask = (uint8_t)(pin_sel & SWD_PIN_READ_MASK);
     if ((pin_wait_us > 0U) && (check_mask != 0U)) {
         if (pin_wait_us > DAP_SWJ_PIN_WAIT_MAX_US) {
             pin_wait_us = DAP_SWJ_PIN_WAIT_MAX_US;
         }
         uint32_t start_ms = board_get_uptime_ms();
         uint32_t wait_ms = (pin_wait_us + 999U) / 1000U;
-        while (((dap_pins_read() ^ pin_out) & check_mask) != 0U) {
+        while (((swd_pins_read() ^ pin_out) & check_mask) != 0U) {
             if ((uint32_t)(board_get_uptime_ms() - start_ms) >= wait_ms) {
                 break;
             }
@@ -322,7 +522,7 @@ static void dap_handle_swj_pins(const uint8_t *req, uint8_t *resp)
     }
 
     resp[0] = DAP_CMD_SWJ_PINS;
-    resp[1] = dap_pins_read();
+    resp[1] = swd_pins_read();
 }
 
 static void dap_handle_swj_clock(const uint8_t *req, uint8_t *resp)
@@ -333,8 +533,15 @@ static void dap_handle_swj_clock(const uint8_t *req, uint8_t *resp)
         resp[1] = DAP_STATUS_ERROR;
         return;
     }
-    g_dap_clock_hz = clock_hz;
-    (void)g_dap_clock_hz;
+    swd_set_clock_hz(clock_hz);
+    resp[1] = DAP_STATUS_OK;
+}
+
+static void dap_handle_swj_sequence(const uint8_t *req, uint8_t *resp)
+{
+    uint32_t bit_count = (req[1] == 0U) ? 256U : (uint32_t)req[1];
+    swd_sequence(bit_count, &req[2]);
+    resp[0] = DAP_CMD_SWJ_SEQUENCE;
     resp[1] = DAP_STATUS_OK;
 }
 
@@ -344,14 +551,14 @@ static void dap_handle_swd_configure(const uint8_t *req, uint8_t *resp)
     g_dap_swd_turnaround = (uint8_t)((cfg & 0x03U) + 1U);
     g_dap_swd_data_phase = (cfg & 0x04U) != 0U;
 
-    (void)g_dap_swd_turnaround;
-    (void)g_dap_swd_data_phase;
+    swd_configure(g_dap_swd_turnaround, g_dap_swd_data_phase, g_dap_idle_cycles);
 
     resp[0] = DAP_CMD_SWD_CONFIGURE;
     resp[1] = DAP_STATUS_OK;
 }
 
-static void dap_process_packet(const uint8_t req[USB_HID_PKT_SIZE], uint8_t resp[USB_HID_PKT_SIZE])
+/* Returns true if a 64-byte HID response report should be sent */
+static bool dap_process_packet(const uint8_t req[USB_HID_PKT_SIZE], uint8_t resp[USB_HID_PKT_SIZE])
 {
     memset(resp, 0, USB_HID_PKT_SIZE);
     uint8_t cmd = req[0];
@@ -359,58 +566,73 @@ static void dap_process_packet(const uint8_t req[USB_HID_PKT_SIZE], uint8_t resp
     switch (cmd) {
     case DAP_CMD_INFO:
         dap_handle_info(req, resp);
-        break;
+        return true;
 
     case DAP_CMD_HOST_STATUS:
         dap_handle_host_status(req, resp);
-        break;
+        return true;
 
     case DAP_CMD_CONNECT:
         dap_handle_connect(req, resp);
-        break;
+        return true;
 
     case DAP_CMD_DISCONNECT:
         dap_handle_disconnect(resp);
-        break;
+        return true;
 
     case DAP_CMD_TRANSFER_CONFIGURE:
         dap_handle_transfer_configure(req, resp);
-        break;
+        return true;
+
+    case DAP_CMD_TRANSFER:
+        dap_handle_transfer(req, resp);
+        return true;
+
+    case DAP_CMD_TRANSFER_BLOCK:
+        dap_handle_transfer_block(req, resp);
+        return true;
+
+    case DAP_CMD_TRANSFER_ABORT:
+        /* Per CMSIS-DAP specification, DAP_TransferAbort produces no response */
+        return false;
 
     case DAP_CMD_WRITE_ABORT:
-        resp[0] = DAP_CMD_WRITE_ABORT;
-        resp[1] = DAP_STATUS_ERROR;
-        break;
+        dap_handle_write_abort(req, resp);
+        return true;
 
     case DAP_CMD_DELAY: {
         uint16_t delay_us = read_u16le(&req[1]);
         board_delay_us(delay_us);
         resp[0] = DAP_CMD_DELAY;
         resp[1] = DAP_STATUS_OK;
-        break;
+        return true;
     }
 
     case DAP_CMD_RESET_TARGET:
         resp[0] = DAP_CMD_RESET_TARGET;
         resp[1] = DAP_STATUS_OK;
         resp[2] = 0U; /* No device-specific reset sequence executed */
-        break;
+        return true;
 
     case DAP_CMD_SWJ_PINS:
         dap_handle_swj_pins(req, resp);
-        break;
+        return true;
 
     case DAP_CMD_SWJ_CLOCK:
         dap_handle_swj_clock(req, resp);
-        break;
+        return true;
+
+    case DAP_CMD_SWJ_SEQUENCE:
+        dap_handle_swj_sequence(req, resp);
+        return true;
 
     case DAP_CMD_SWD_CONFIGURE:
         dap_handle_swd_configure(req, resp);
-        break;
+        return true;
 
     default:
         resp[0] = DAP_CMD_INVALID;
-        break;
+        return true;
     }
 }
 
@@ -424,8 +646,15 @@ void cmsis_dap_init(const uint8_t fw_version[4])
 
     g_dap_port = DAP_PORT_DISABLED;
     g_dap_host_connected = false;
+    g_dap_idle_cycles = 0U;
+    g_dap_wait_retry = 100U;
+    g_dap_match_retry = 0U;
+    g_dap_match_mask = 0xFFFFFFFFU;
+    g_dap_swd_turnaround = 1U;
+    g_dap_swd_data_phase = false;
     (void)g_dap_host_connected;
-    dap_pins_release();
+
+    swd_init();
 }
 
 bool cmsis_dap_poll(void)
@@ -440,7 +669,8 @@ bool cmsis_dap_poll(void)
         return false;
     }
 
-    dap_process_packet(req, resp);
-    (void)usb_hid_tx_push(resp);
+    if (dap_process_packet(req, resp)) {
+        (void)usb_hid_tx_push(resp);
+    }
     return true;
 }

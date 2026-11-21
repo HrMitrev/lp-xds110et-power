@@ -1,7 +1,7 @@
 /*
  * main.c - Open-source bare-metal firmware entry point for TI LP-XDS110ET.
  *
- * Phase 4A (EnergyTrace HDR + Dual Virtual COM Ports + Aux GPIOs + CMSIS-DAP HID):
+ * Phase 4B (EnergyTrace HDR + Dual VCOM + Aux GPIOs + CMSIS-DAP 1.1 SWD):
  *   - LP-XDS110ET BSP & 1 kHz SysTick uptime timebase
  *   - Boot-time double-reset DFU failsafe
  *   - Boot-time EnergyTrace HDR calibration (ADS127L01 + SSI1 + uDMA Ch5/Ch24)
@@ -9,7 +9,7 @@
  *   - XDS110 0x2A command framing, core control opcodes, & EnergyTrace streaming
  *   - Dual CDC ACM Virtual COM Ports (UART0 App UART + UART7 Aux/SWO RX)
  *   - Target Aux GPIOs (PF0..PF2 + PJ0..PJ1 level-shifter dir, opcodes 0x29/0x2A)
- *   - HID CMSIS-DAP 1.0 packet transport & core commands (Interface 5, 0x05/0x86)
+ *   - HID CMSIS-DAP 1.1.0 + fast SWD wire engine (Interface 5, 0x05/0x86)
  */
 
 #include <stdbool.h>
