@@ -3,9 +3,11 @@
  *
  * Implements:
  *   - USB3300-EZK ULPI pin mux, external 60 MHz clock, and HS PHY configuration
- *   - USB 2.0 Standard EP0 control transfer state machine + CDC/HID stubs
- *   - Bulk 0 (OUT 0x02 / IN 0x83) command ring buffers
- *   - Bulk 1 (OUT 0x06 / IN 0x87) 64 KiB streaming ring buffer
+ *   - USB 2.0 Standard EP0 control transfer state machine + per-port CDC ACM
+ *   - Bulk 0 (OUT 0x02 / IN 0x83) XDS110 command ring buffers
+ *   - Bulk 1 (OUT 0x06 / IN 0x87) 64 KiB EnergyTrace streaming ring buffer
+ *   - CDC 0  (OUT 0x01 / IN 0x82 / INT 0x81) App UART ring buffers
+ *   - CDC 1  (OUT 0x04 / IN 0x85 / INT 0x84) Aux/SWO UART ring buffers
  */
 
 #include "usb_device.h"
@@ -39,21 +41,46 @@
 #define USB_REQ_RECIPIENT_IF   0x01U
 #define USB_REQ_RECIPIENT_EP   0x02U
 
-/* CDC ACM & HID class requests (stubbed cleanly so OS drivers bind) */
+/* CDC ACM & HID class requests */
 #define USB_CDC_SET_LINE_CODING        0x20U
 #define USB_CDC_GET_LINE_CODING        0x21U
 #define USB_CDC_SET_CONTROL_LINE_STATE 0x22U
+#define USB_CDC_SEND_BREAK             0x23U
+#define USB_CDC_LINE_CODING_LEN        7U
 #define USB_HID_SET_IDLE               0x0AU
 
 /* USB3300 ULPI PHY register addresses */
 #define ULPI_REG_FUNC_CTRL 0x04U
 #define ULPI_REG_IF_CTRL   0x07U
 
-/* MSP432E4 USB0 FIFO RAM addresses (4096 B total; EP0 occupies 0..63) */
-#define USB_FIFO_ADDR_CMD_OUT  64U
-#define USB_FIFO_ADDR_CMD_IN   576U
-#define USB_FIFO_ADDR_DATA_OUT 1088U
-#define USB_FIFO_ADDR_DATA_IN  1600U
+/*
+ * MSP432E4 USB0 4,096-byte FIFO RAM layout (all addresses 8-byte aligned):
+ *   0..63      EP0 Control (64 B, fixed hardware)
+ *   64..79     CDC0 INT IN  0x81 (16 B)
+ *   80..95     CDC1 INT IN  0x84 (16 B)
+ *   128..191   Reserved for HID OUT 0x05 (64 B, Phase 4)
+ *   192..255   Reserved for HID IN  0x86 (64 B, Phase 4)
+ *   256..767   CMD OUT      0x02 (512 B)
+ *   768..1279  CMD IN       0x83 (512 B)
+ *   1280..1791 DATA IN      0x87 (512 B)
+ *   1792..2303 DATA OUT     0x06 (512 B)
+ *   2304..2815 CDC0 OUT     0x01 (512 B)
+ *   2816..3327 CDC1 OUT     0x04 (512 B)
+ *   3328..3583 CDC0 IN      0x82 (256 B, software-capped <=256 B/pkt)
+ *   3584..3839 CDC1 IN      0x85 (256 B, software-capped <=256 B/pkt)
+ * Total used: 3,840 / 4,096 bytes.
+ */
+#define USB_FIFO_ADDR_CDC0_INT 64U
+#define USB_FIFO_ADDR_CDC1_INT 80U
+#define USB_FIFO_ADDR_CMD_OUT  256U
+#define USB_FIFO_ADDR_CMD_IN   768U
+#define USB_FIFO_ADDR_DATA_IN  1280U
+#define USB_FIFO_ADDR_DATA_OUT 1792U
+#define USB_FIFO_ADDR_CDC0_OUT 2304U
+#define USB_FIFO_ADDR_CDC1_OUT 2816U
+#define USB_FIFO_ADDR_CDC0_IN  3328U
+#define USB_FIFO_ADDR_CDC1_IN  3584U
+#define USB_CDC_IN_FIFO_BYTES  256U
 
 typedef enum {
     EP0_STATE_IDLE = 0,
@@ -69,24 +96,35 @@ typedef struct {
     volatile uint32_t tail;
 } usb_ring_t;
 
-/* Backing storage for Bulk 0 (CMD) and Bulk 1 (EnergyTrace Data) */
+/* Backing storage for Bulk 0 (CMD), Bulk 1 (EnergyTrace Data), and CDC 0/1 */
 static uint8_t g_cmd_rx_storage[USB_CMD_RX_BUF_SIZE];
 static uint8_t g_cmd_tx_storage[USB_CMD_TX_BUF_SIZE];
 static uint8_t g_data_rx_storage[USB_DATA_RX_BUF_SIZE];
 static uint8_t g_data_tx_storage[USB_DATA_TX_BUF_SIZE];
+static uint8_t g_cdc_rx_storage[USB_CDC_PORT_COUNT][USB_CDC_RX_BUF_SIZE];
+static uint8_t g_cdc_tx_storage[USB_CDC_PORT_COUNT][USB_CDC_TX_BUF_SIZE];
 
 static usb_ring_t g_cmd_rx_ring = {g_cmd_rx_storage, USB_CMD_RX_BUF_SIZE - 1U, 0U, 0U};
 static usb_ring_t g_cmd_tx_ring = {g_cmd_tx_storage, USB_CMD_TX_BUF_SIZE - 1U, 0U, 0U};
 static usb_ring_t g_data_rx_ring = {g_data_rx_storage, USB_DATA_RX_BUF_SIZE - 1U, 0U, 0U};
 static usb_ring_t g_data_tx_ring = {g_data_tx_storage, USB_DATA_TX_BUF_SIZE - 1U, 0U, 0U};
+static usb_ring_t g_cdc_rx_rings[USB_CDC_PORT_COUNT] = {
+    {g_cdc_rx_storage[0], USB_CDC_RX_BUF_SIZE - 1U, 0U, 0U},
+    {g_cdc_rx_storage[1], USB_CDC_RX_BUF_SIZE - 1U, 0U, 0U},
+};
+static usb_ring_t g_cdc_tx_rings[USB_CDC_PORT_COUNT] = {
+    {g_cdc_tx_storage[0], USB_CDC_TX_BUF_SIZE - 1U, 0U, 0U},
+    {g_cdc_tx_storage[1], USB_CDC_TX_BUF_SIZE - 1U, 0U, 0U},
+};
 
-/* Device & EP0 state */
+/* Device & endpoint state */
 static volatile bool g_usb_configured = false;
 static volatile bool g_usb_high_speed = true;
 static volatile uint16_t g_bulk_mps = USB_BULK_MPS_HS;
 static volatile bool g_cmd_tx_busy = false;
 static volatile bool g_cmd_tx_need_zlp = false;
 static volatile bool g_data_tx_busy = false;
+static volatile bool g_cdc_tx_busy[USB_CDC_PORT_COUNT] = {false, false};
 
 static ep0_state_t g_ep0_state = EP0_STATE_IDLE;
 static uint8_t g_pending_addr = 0U;
@@ -96,9 +134,19 @@ static bool g_ep0_tx_need_zlp = false;
 static uint8_t g_ep0_status_buf[2];
 static uint8_t g_ep0_rx_scratch[16];
 static uint16_t g_ep0_rx_rem = 0U;
+static uint8_t g_ep0_rx_cdc_port = USB_CDC_PORT_APP;
 
-/* Default 115200 8N1 CDC line coding returned to OS drivers until Phase 3 */
-static uint8_t g_cdc_line_coding[7] = {0x00U, 0xC2U, 0x01U, 0x00U, 0x00U, 0x00U, 0x08U};
+/* Per-port CDC ACM state (defaults: 115200 8N1) */
+static usb_cdc_line_coding_t g_cdc_coding[USB_CDC_PORT_COUNT] = {
+    {115200U, 0U, 0U, 8U},
+    {115200U, 0U, 0U, 8U},
+};
+static uint8_t g_cdc_coding_wire[USB_CDC_LINE_CODING_LEN];
+static volatile bool g_cdc_coding_dirty[USB_CDC_PORT_COUNT] = {false, false};
+static volatile uint16_t g_cdc_ctrl_state[USB_CDC_PORT_COUNT] = {0U, 0U};
+
+static const uint32_t g_cdc_out_ep[USB_CDC_PORT_COUNT] = {USB_EP_1, USB_EP_4};
+static const uint32_t g_cdc_in_ep[USB_CDC_PORT_COUNT] = {USB_EP_2, USB_EP_5};
 
 /* ---- Ring buffer helpers ---- */
 
@@ -110,6 +158,12 @@ static inline uint32_t ring_used(const usb_ring_t *ring)
 static inline uint32_t ring_free(const usb_ring_t *ring)
 {
     return ring->mask - ring_used(ring);
+}
+
+static void ring_reset(usb_ring_t *ring)
+{
+    ring->head = 0U;
+    ring->tail = 0U;
 }
 
 static uint32_t ring_push(usb_ring_t *ring, const uint8_t *src, uint32_t len)
@@ -158,6 +212,41 @@ static uint32_t ring_pop(usb_ring_t *ring, uint8_t *dst, uint32_t len)
     return got;
 }
 
+/* ---- CDC Line Coding Serialization ---- */
+
+static bool usb_iface_to_cdc_port(uint16_t iface, uint8_t *out_port)
+{
+    if ((iface == USB_IF_CDC0_CTRL) || (iface == USB_IF_CDC0_DATA)) {
+        *out_port = USB_CDC_PORT_APP;
+        return true;
+    }
+    if ((iface == USB_IF_CDC1_CTRL) || (iface == USB_IF_CDC1_DATA)) {
+        *out_port = USB_CDC_PORT_AUX;
+        return true;
+    }
+    return false;
+}
+
+static void usb_pack_line_coding(const usb_cdc_line_coding_t *coding, uint8_t out[USB_CDC_LINE_CODING_LEN])
+{
+    out[0] = (uint8_t)(coding->baud_rate & 0xFFU);
+    out[1] = (uint8_t)((coding->baud_rate >> 8U) & 0xFFU);
+    out[2] = (uint8_t)((coding->baud_rate >> 16U) & 0xFFU);
+    out[3] = (uint8_t)((coding->baud_rate >> 24U) & 0xFFU);
+    out[4] = coding->stop_bits;
+    out[5] = coding->parity;
+    out[6] = coding->data_bits;
+}
+
+static void usb_unpack_line_coding(const uint8_t raw[USB_CDC_LINE_CODING_LEN], usb_cdc_line_coding_t *out)
+{
+    out->baud_rate =
+        (uint32_t)raw[0] | ((uint32_t)raw[1] << 8U) | ((uint32_t)raw[2] << 16U) | ((uint32_t)raw[3] << 24U);
+    out->stop_bits = raw[4];
+    out->parity = raw[5];
+    out->data_bits = raw[6];
+}
+
 /* ---- ULPI & Hardware PHY Setup ---- */
 
 static void usb_init_ulpi_pins(void)
@@ -191,35 +280,58 @@ static void usb_init_ulpi_pins(void)
     MAP_GPIOPadConfigSet(BOARD_ULPI_DATA_LO_BASE, BOARD_ULPI_DATA_LO_PINS, GPIO_STRENGTH_12MA, GPIO_PIN_TYPE_STD);
 }
 
-static void usb_configure_bulk_endpoints(void)
+static void usb_configure_endpoints(void)
 {
     uint32_t mps = g_bulk_mps;
-    uint32_t fifo_sz = g_usb_high_speed ? USB_FIFO_SZ_512 : USB_FIFO_SZ_64;
+    uint32_t fifo_full = g_usb_high_speed ? USB_FIFO_SZ_512 : USB_FIFO_SZ_64;
+    uint32_t fifo_cdc_in = g_usb_high_speed ? USB_FIFO_SZ_256 : USB_FIFO_SZ_64;
 
-    /* Bulk 0 OUT (EP2, 0x02) — XDS110 Command RX */
+    /* CDC0 / CDC1 Interrupt IN (EP1 IN 0x81, EP4 IN 0x84) */
+    MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_1, USB_CDC_INT_MPS, USB_EP_MODE_INT | USB_EP_DEV_IN);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_1, USB_FIFO_ADDR_CDC0_INT, USB_FIFO_SZ_16, USB_EP_DEV_IN);
+
+    MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_4, USB_CDC_INT_MPS, USB_EP_MODE_INT | USB_EP_DEV_IN);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_4, USB_FIFO_ADDR_CDC1_INT, USB_FIFO_SZ_16, USB_EP_DEV_IN);
+
+    /* Bulk 0 OUT (EP2, 0x02) & IN (EP3, 0x83) — XDS110 Command Port */
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_2, mps, USB_EP_MODE_BULK | USB_EP_DEV_OUT);
-    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_2, USB_FIFO_ADDR_CMD_OUT, fifo_sz, USB_EP_DEV_OUT);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_2, USB_FIFO_ADDR_CMD_OUT, fifo_full, USB_EP_DEV_OUT);
 
-    /* Bulk 0 IN (EP3, 0x83) — XDS110 Command TX */
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_3, mps, USB_EP_MODE_BULK | USB_EP_DEV_IN);
-    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_3, USB_FIFO_ADDR_CMD_IN, fifo_sz, USB_EP_DEV_IN);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_3, USB_FIFO_ADDR_CMD_IN, fifo_full, USB_EP_DEV_IN);
 
-    /* Bulk 1 OUT (EP6, 0x06) — Data Port RX */
+    /* Bulk 1 OUT (EP6, 0x06) & IN (EP7, 0x87) — EnergyTrace Data Port */
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_6, mps, USB_EP_MODE_BULK | USB_EP_DEV_OUT);
-    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_6, USB_FIFO_ADDR_DATA_OUT, fifo_sz, USB_EP_DEV_OUT);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_6, USB_FIFO_ADDR_DATA_OUT, fifo_full, USB_EP_DEV_OUT);
 
-    /* Bulk 1 IN (EP7, 0x87) — EnergyTrace Stream TX */
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_7, mps, USB_EP_MODE_BULK | USB_EP_DEV_IN);
-    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_7, USB_FIFO_ADDR_DATA_IN, fifo_sz, USB_EP_DEV_IN);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_7, USB_FIFO_ADDR_DATA_IN, fifo_full, USB_EP_DEV_IN);
+
+    /* CDC0 Bulk OUT (EP1, 0x01) & IN (EP2, 0x82) — Application UART */
+    MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_1, mps, USB_EP_MODE_BULK | USB_EP_DEV_OUT);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_1, USB_FIFO_ADDR_CDC0_OUT, fifo_full, USB_EP_DEV_OUT);
+
+    MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_2, mps, USB_EP_MODE_BULK | USB_EP_DEV_IN);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_2, USB_FIFO_ADDR_CDC0_IN, fifo_cdc_in, USB_EP_DEV_IN);
+
+    /* CDC1 Bulk OUT (EP4, 0x04) & IN (EP5, 0x85) — Aux / SWO UART */
+    MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_4, mps, USB_EP_MODE_BULK | USB_EP_DEV_OUT);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_4, USB_FIFO_ADDR_CDC1_OUT, fifo_full, USB_EP_DEV_OUT);
+
+    MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_5, mps, USB_EP_MODE_BULK | USB_EP_DEV_IN);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_5, USB_FIFO_ADDR_CDC1_IN, fifo_cdc_in, USB_EP_DEV_IN);
 
     g_cmd_tx_busy = false;
     g_cmd_tx_need_zlp = false;
     g_data_tx_busy = false;
+    g_cdc_tx_busy[0] = false;
+    g_cdc_tx_busy[1] = false;
 }
 
 /* ---- Bulk IN/OUT Pump Helpers ---- */
 
-static void usb_kick_bulk_in(uint32_t ep, usb_ring_t *ring, volatile bool *busy_flag, volatile bool *need_zlp)
+static void usb_kick_bulk_in(
+    uint32_t ep, usb_ring_t *ring, volatile bool *busy_flag, volatile bool *need_zlp, uint32_t max_chunk)
 {
     if (!g_usb_configured || *busy_flag) {
         return;
@@ -235,8 +347,10 @@ static void usb_kick_bulk_in(uint32_t ep, usb_ring_t *ring, volatile bool *busy_
         return;
     }
 
+    uint32_t limit = (max_chunk < g_bulk_mps) ? max_chunk : g_bulk_mps;
+    uint32_t chunk = (avail > limit) ? limit : avail;
+
     uint8_t pkt[USB_BULK_MPS_HS];
-    uint32_t chunk = (avail > g_bulk_mps) ? g_bulk_mps : avail;
     ring_pop(ring, pkt, chunk);
 
     *busy_flag = true;
@@ -376,7 +490,7 @@ static void ep0_handle_standard_request(const uint8_t setup[8])
         if ((w_value == 0U) || (w_value == USB_CONFIG_VALUE)) {
             g_usb_configured = (w_value == USB_CONFIG_VALUE);
             if (g_usb_configured) {
-                usb_configure_bulk_endpoints();
+                usb_configure_endpoints();
             }
             MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, true);
             g_ep0_state = EP0_STATE_IDLE;
@@ -404,15 +518,28 @@ static void ep0_handle_standard_request(const uint8_t setup[8])
 static void ep0_handle_class_request(const uint8_t setup[8])
 {
     uint8_t b_request = setup[1];
+    uint16_t w_value = (uint16_t)setup[2] | ((uint16_t)setup[3] << 8U);
+    uint16_t w_index = (uint16_t)setup[4] | ((uint16_t)setup[5] << 8U);
     uint16_t w_length = (uint16_t)setup[6] | ((uint16_t)setup[7] << 8U);
+    uint8_t cdc_port = USB_CDC_PORT_APP;
 
     switch (b_request) {
     case USB_CDC_GET_LINE_CODING:
-        ep0_start_tx(g_cdc_line_coding, (uint16_t)sizeof(g_cdc_line_coding), w_length);
+        if (!usb_iface_to_cdc_port(w_index, &cdc_port)) {
+            ep0_stall();
+            break;
+        }
+        usb_pack_line_coding(&g_cdc_coding[cdc_port], g_cdc_coding_wire);
+        ep0_start_tx(g_cdc_coding_wire, USB_CDC_LINE_CODING_LEN, w_length);
         break;
 
     case USB_CDC_SET_LINE_CODING:
+        if (!usb_iface_to_cdc_port(w_index, &cdc_port)) {
+            ep0_stall();
+            break;
+        }
         if ((w_length > 0U) && (w_length <= sizeof(g_ep0_rx_scratch))) {
+            g_ep0_rx_cdc_port = cdc_port;
             g_ep0_rx_rem = w_length;
             g_ep0_state = EP0_STATE_RX_DATA;
             MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, false);
@@ -423,6 +550,14 @@ static void ep0_handle_class_request(const uint8_t setup[8])
         break;
 
     case USB_CDC_SET_CONTROL_LINE_STATE:
+        if (usb_iface_to_cdc_port(w_index, &cdc_port)) {
+            g_cdc_ctrl_state[cdc_port] = w_value;
+        }
+        MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, true);
+        g_ep0_state = EP0_STATE_IDLE;
+        break;
+
+    case USB_CDC_SEND_BREAK:
     case USB_HID_SET_IDLE:
         MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, true);
         g_ep0_state = EP0_STATE_IDLE;
@@ -466,8 +601,10 @@ static void ep0_handle_interrupt(void)
     if (g_ep0_state == EP0_STATE_RX_DATA) {
         uint32_t got = sizeof(g_ep0_rx_scratch);
         MAP_USBEndpointDataGet(USB0_BASE, USB_EP_0, g_ep0_rx_scratch, &got);
-        if ((got >= sizeof(g_cdc_line_coding)) && (g_ep0_rx_rem >= sizeof(g_cdc_line_coding))) {
-            memcpy(g_cdc_line_coding, g_ep0_rx_scratch, sizeof(g_cdc_line_coding));
+        if ((got >= USB_CDC_LINE_CODING_LEN) && (g_ep0_rx_rem >= USB_CDC_LINE_CODING_LEN) &&
+            (g_ep0_rx_cdc_port < USB_CDC_PORT_COUNT)) {
+            usb_unpack_line_coding(g_ep0_rx_scratch, &g_cdc_coding[g_ep0_rx_cdc_port]);
+            g_cdc_coding_dirty[g_ep0_rx_cdc_port] = true;
         }
         g_ep0_rx_rem = (got >= g_ep0_rx_rem) ? 0U : (uint16_t)(g_ep0_rx_rem - got);
         bool is_last = (g_ep0_rx_rem == 0U);
@@ -509,15 +646,21 @@ void usb0_irq_handler(void)
         g_ep0_state = EP0_STATE_IDLE;
         g_pending_addr = 0U;
         g_cmd_tx_busy = false;
+        g_cmd_tx_need_zlp = false;
         g_data_tx_busy = false;
-        g_cmd_rx_ring.head = 0U;
-        g_cmd_rx_ring.tail = 0U;
-        g_cmd_tx_ring.head = 0U;
-        g_cmd_tx_ring.tail = 0U;
-        g_data_rx_ring.head = 0U;
-        g_data_rx_ring.tail = 0U;
-        g_data_tx_ring.head = 0U;
-        g_data_tx_ring.tail = 0U;
+        g_cdc_tx_busy[0] = false;
+        g_cdc_tx_busy[1] = false;
+        g_cdc_ctrl_state[0] = 0U;
+        g_cdc_ctrl_state[1] = 0U;
+
+        ring_reset(&g_cmd_rx_ring);
+        ring_reset(&g_cmd_tx_ring);
+        ring_reset(&g_data_rx_ring);
+        ring_reset(&g_data_tx_ring);
+        ring_reset(&g_cdc_rx_rings[0]);
+        ring_reset(&g_cdc_rx_rings[1]);
+        ring_reset(&g_cdc_tx_rings[0]);
+        ring_reset(&g_cdc_tx_rings[1]);
 
         g_usb_high_speed = (MAP_USBDevSpeedGet(USB0_BASE) == USB_HIGH_SPEED);
         g_bulk_mps = g_usb_high_speed ? USB_BULK_MPS_HS : USB_BULK_MPS_FS;
@@ -528,28 +671,56 @@ void usb0_irq_handler(void)
         g_usb_configured = false;
         g_cmd_tx_busy = false;
         g_data_tx_busy = false;
+        g_cdc_tx_busy[0] = false;
+        g_cdc_tx_busy[1] = false;
+        g_cdc_ctrl_state[0] = 0U;
+        g_cdc_ctrl_state[1] = 0U;
     }
 
     if ((ep_status & USB_INTEP_0) != 0U) {
         ep0_handle_interrupt();
     }
 
+    /* Bulk 0 — XDS110 Command (OUT 0x02 / IN 0x83) */
     if ((ep_status & USB_INTEP_DEV_OUT_2) != 0U) {
         usb_handle_bulk_out(USB_EP_2, &g_cmd_rx_ring);
     }
 
     if ((ep_status & USB_INTEP_DEV_IN_3) != 0U) {
         g_cmd_tx_busy = false;
-        usb_kick_bulk_in(USB_EP_3, &g_cmd_tx_ring, &g_cmd_tx_busy, &g_cmd_tx_need_zlp);
+        usb_kick_bulk_in(USB_EP_3, &g_cmd_tx_ring, &g_cmd_tx_busy, &g_cmd_tx_need_zlp, USB_BULK_MPS_HS);
     }
 
+    /* Bulk 1 — EnergyTrace Data (OUT 0x06 / IN 0x87) */
     if ((ep_status & USB_INTEP_DEV_OUT_6) != 0U) {
         usb_handle_bulk_out(USB_EP_6, &g_data_rx_ring);
     }
 
     if ((ep_status & USB_INTEP_DEV_IN_7) != 0U) {
         g_data_tx_busy = false;
-        usb_kick_bulk_in(USB_EP_7, &g_data_tx_ring, &g_data_tx_busy, NULL);
+        usb_kick_bulk_in(USB_EP_7, &g_data_tx_ring, &g_data_tx_busy, NULL, USB_BULK_MPS_HS);
+    }
+
+    /* CDC 0 — App UART (OUT 0x01 / IN 0x82) */
+    if ((ep_status & USB_INTEP_DEV_OUT_1) != 0U) {
+        usb_handle_bulk_out(USB_EP_1, &g_cdc_rx_rings[USB_CDC_PORT_APP]);
+    }
+
+    if ((ep_status & USB_INTEP_DEV_IN_2) != 0U) {
+        g_cdc_tx_busy[USB_CDC_PORT_APP] = false;
+        usb_kick_bulk_in(
+            USB_EP_2, &g_cdc_tx_rings[USB_CDC_PORT_APP], &g_cdc_tx_busy[USB_CDC_PORT_APP], NULL, USB_CDC_IN_FIFO_BYTES);
+    }
+
+    /* CDC 1 — Aux / SWO UART (OUT 0x04 / IN 0x85) */
+    if ((ep_status & USB_INTEP_DEV_OUT_4) != 0U) {
+        usb_handle_bulk_out(USB_EP_4, &g_cdc_rx_rings[USB_CDC_PORT_AUX]);
+    }
+
+    if ((ep_status & USB_INTEP_DEV_IN_5) != 0U) {
+        g_cdc_tx_busy[USB_CDC_PORT_AUX] = false;
+        usb_kick_bulk_in(
+            USB_EP_5, &g_cdc_tx_rings[USB_CDC_PORT_AUX], &g_cdc_tx_busy[USB_CDC_PORT_AUX], NULL, USB_CDC_IN_FIFO_BYTES);
     }
 }
 
@@ -597,8 +768,9 @@ void usb_device_init(const uint8_t fw_version[4])
 
     MAP_USBIntEnableControl(
         USB0_BASE, USB_INTCTRL_RESET | USB_INTCTRL_DISCONNECT | USB_INTCTRL_SUSPEND | USB_INTCTRL_RESUME);
-    MAP_USBIntEnableEndpoint(
-        USB0_BASE, USB_INTEP_0 | USB_INTEP_DEV_OUT_2 | USB_INTEP_DEV_IN_3 | USB_INTEP_DEV_OUT_6 | USB_INTEP_DEV_IN_7);
+    MAP_USBIntEnableEndpoint(USB0_BASE,
+        USB_INTEP_0 | USB_INTEP_DEV_OUT_1 | USB_INTEP_DEV_IN_2 | USB_INTEP_DEV_OUT_2 | USB_INTEP_DEV_IN_3 |
+            USB_INTEP_DEV_OUT_4 | USB_INTEP_DEV_IN_5 | USB_INTEP_DEV_OUT_6 | USB_INTEP_DEV_IN_7);
 
     NVIC_ClearPendingIRQ(USB0_IRQn);
     NVIC_EnableIRQ(USB0_IRQn);
@@ -613,6 +785,10 @@ void usb_device_disconnect(void)
     g_usb_configured = false;
     g_cmd_tx_busy = false;
     g_data_tx_busy = false;
+    g_cdc_tx_busy[0] = false;
+    g_cdc_tx_busy[1] = false;
+    g_cdc_ctrl_state[0] = 0U;
+    g_cdc_ctrl_state[1] = 0U;
 }
 
 bool usb_device_is_configured(void)
@@ -650,7 +826,7 @@ uint32_t usb_cmd_rx_read(uint8_t *dst, uint32_t len)
 void usb_cmd_rx_flush(void)
 {
     NVIC_DisableIRQ(USB0_IRQn);
-    g_cmd_rx_ring.tail = g_cmd_rx_ring.head;
+    ring_reset(&g_cmd_rx_ring);
     NVIC_EnableIRQ(USB0_IRQn);
 }
 
@@ -666,7 +842,7 @@ uint32_t usb_cmd_tx_write(const uint8_t *src, uint32_t len)
     if ((written > 0U) && ((written % g_bulk_mps) == 0U)) {
         g_cmd_tx_need_zlp = true;
     }
-    usb_kick_bulk_in(USB_EP_3, &g_cmd_tx_ring, &g_cmd_tx_busy, &g_cmd_tx_need_zlp);
+    usb_kick_bulk_in(USB_EP_3, &g_cmd_tx_ring, &g_cmd_tx_busy, &g_cmd_tx_need_zlp, USB_BULK_MPS_HS);
     NVIC_EnableIRQ(USB0_IRQn);
     return written;
 }
@@ -696,7 +872,7 @@ uint32_t usb_data_tx_write(const uint8_t *src, uint32_t len)
 {
     NVIC_DisableIRQ(USB0_IRQn);
     uint32_t written = ring_push(&g_data_tx_ring, src, len);
-    usb_kick_bulk_in(USB_EP_7, &g_data_tx_ring, &g_data_tx_busy, NULL);
+    usb_kick_bulk_in(USB_EP_7, &g_data_tx_ring, &g_data_tx_busy, NULL, USB_BULK_MPS_HS);
     NVIC_EnableIRQ(USB0_IRQn);
     return written;
 }
@@ -704,6 +880,82 @@ uint32_t usb_data_tx_write(const uint8_t *src, uint32_t len)
 void usb_data_tx_flush(void)
 {
     NVIC_DisableIRQ(USB0_IRQn);
-    g_data_tx_ring.tail = g_data_tx_ring.head;
+    ring_reset(&g_data_tx_ring);
     NVIC_EnableIRQ(USB0_IRQn);
+}
+
+uint32_t usb_cdc_rx_available(uint8_t port)
+{
+    if (port >= USB_CDC_PORT_COUNT) {
+        return 0U;
+    }
+    return ring_used(&g_cdc_rx_rings[port]);
+}
+
+uint32_t usb_cdc_rx_read(uint8_t port, uint8_t *dst, uint32_t len)
+{
+    if (port >= USB_CDC_PORT_COUNT) {
+        return 0U;
+    }
+    NVIC_DisableIRQ(USB0_IRQn);
+    uint32_t got = ring_pop(&g_cdc_rx_rings[port], dst, len);
+    uint32_t ep = g_cdc_out_ep[port];
+    if (MAP_USBEndpointDataAvail(USB0_BASE, ep) > 0U) {
+        usb_handle_bulk_out(ep, &g_cdc_rx_rings[port]);
+    }
+    NVIC_EnableIRQ(USB0_IRQn);
+    return got;
+}
+
+uint32_t usb_cdc_tx_space(uint8_t port)
+{
+    if (port >= USB_CDC_PORT_COUNT) {
+        return 0U;
+    }
+    return ring_free(&g_cdc_tx_rings[port]);
+}
+
+uint32_t usb_cdc_tx_write(uint8_t port, const uint8_t *src, uint32_t len)
+{
+    if (port >= USB_CDC_PORT_COUNT) {
+        return 0U;
+    }
+    NVIC_DisableIRQ(USB0_IRQn);
+    uint32_t written = ring_push(&g_cdc_tx_rings[port], src, len);
+    usb_kick_bulk_in(g_cdc_in_ep[port], &g_cdc_tx_rings[port], &g_cdc_tx_busy[port], NULL, USB_CDC_IN_FIFO_BYTES);
+    NVIC_EnableIRQ(USB0_IRQn);
+    return written;
+}
+
+bool usb_cdc_take_line_coding(uint8_t port, usb_cdc_line_coding_t *out_coding)
+{
+    if (port >= USB_CDC_PORT_COUNT) {
+        return false;
+    }
+    NVIC_DisableIRQ(USB0_IRQn);
+    bool changed = g_cdc_coding_dirty[port];
+    if (changed) {
+        g_cdc_coding_dirty[port] = false;
+        *out_coding = g_cdc_coding[port];
+    }
+    NVIC_EnableIRQ(USB0_IRQn);
+    return changed;
+}
+
+void usb_cdc_get_line_coding(uint8_t port, usb_cdc_line_coding_t *out_coding)
+{
+    if (port >= USB_CDC_PORT_COUNT) {
+        return;
+    }
+    NVIC_DisableIRQ(USB0_IRQn);
+    *out_coding = g_cdc_coding[port];
+    NVIC_EnableIRQ(USB0_IRQn);
+}
+
+bool usb_cdc_is_dtr_asserted(uint8_t port)
+{
+    if (port >= USB_CDC_PORT_COUNT) {
+        return false;
+    }
+    return (g_cdc_ctrl_state[port] & 0x0001U) != 0U;
 }
