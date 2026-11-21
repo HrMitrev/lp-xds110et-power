@@ -327,10 +327,12 @@ bool cdc_uart_poll(void)
     uint8_t chunk_buf[CDC_UART_PUMP_CHUNK];
 
     bool bmp_active = bmp_mode_is_active();
+    bool rtt_active = bmp_rtt_is_active();
+    uint8_t uart_port_start = rtt_active ? 1U : 0U;
     uint8_t uart_port_limit = bmp_active ? 1U : USB_CDC_PORT_COUNT;
 
-    /* 1. Apply any pending USB CDC SET_LINE_CODING changes (skip CDC1 in BMP mode) */
-    for (uint8_t port = 0U; port < uart_port_limit; port++) {
+    /* 1. Apply any pending USB CDC SET_LINE_CODING changes (skip ports owned by BMP/RTT) */
+    for (uint8_t port = uart_port_start; port < uart_port_limit; port++) {
         usb_cdc_line_coding_t coding;
         if (usb_cdc_take_line_coding(port, &coding)) {
             cdc_uart_apply_line_coding(port, &coding);
@@ -345,13 +347,17 @@ bool cdc_uart_poll(void)
         return did_work;
     }
 
+    if (rtt_active) {
+        /* Discard idle UART0 RX bytes while CDC0 is owned by BMP RTT */
+        uart_ring_discard(&g_uart_rx_rings[USB_CDC_PORT_APP]);
+    }
     if (bmp_active) {
         /* Discard idle UART7 RX bytes while CDC1 is owned by BMP GDB server */
         uart_ring_discard(&g_uart_rx_rings[USB_CDC_PORT_AUX]);
     }
 
-    /* 2. Forward UART0 (and UART7 in Normal mode) RX rings -> USB CDC IN */
-    for (uint8_t port = 0U; port < uart_port_limit; port++) {
+    /* 2. Forward UART0 (unless RTT owns CDC0) and UART7 (Normal mode) RX rings -> USB CDC IN */
+    for (uint8_t port = uart_port_start; port < uart_port_limit; port++) {
         uint32_t rx_avail = uart_ring_used(&g_uart_rx_rings[port]);
         if (rx_avail == 0U) {
             continue;
@@ -371,26 +377,28 @@ bool cdc_uart_poll(void)
         }
     }
 
-    /* 3. Forward USB CDC0 OUT -> UART0 TX ring (lossless USB NAK back-pressure) */
-    uint32_t cdc0_avail = usb_cdc_rx_available(USB_CDC_PORT_APP);
-    uint32_t tx_space = uart_ring_free(&g_uart0_tx_ring);
-    if ((cdc0_avail > 0U) && (tx_space > 0U)) {
-        uint32_t to_tx = (cdc0_avail < tx_space) ? cdc0_avail : tx_space;
-        if (to_tx > sizeof(chunk_buf)) {
-            to_tx = sizeof(chunk_buf);
-        }
-        uint32_t got = usb_cdc_rx_read(USB_CDC_PORT_APP, chunk_buf, to_tx);
-        if (got > 0U) {
-            for (uint32_t i = 0U; i < got; i++) {
-                uart_ring_push_byte(&g_uart0_tx_ring, chunk_buf[i]);
+    /* 3. Forward USB CDC0 OUT -> UART0 TX ring (skipped while BMP RTT owns CDC0) */
+    if (!rtt_active) {
+        uint32_t cdc0_avail = usb_cdc_rx_available(USB_CDC_PORT_APP);
+        uint32_t tx_space = uart_ring_free(&g_uart0_tx_ring);
+        if ((cdc0_avail > 0U) && (tx_space > 0U)) {
+            uint32_t to_tx = (cdc0_avail < tx_space) ? cdc0_avail : tx_space;
+            if (to_tx > sizeof(chunk_buf)) {
+                to_tx = sizeof(chunk_buf);
             }
-            uint32_t crit = uart_crit_enter();
-            uart0_tx_fill_fifo();
-            if (uart_ring_used(&g_uart0_tx_ring) > 0U) {
-                MAP_UARTIntEnable(BOARD_APP_UART_BASE, UART_INT_TX);
+            uint32_t got = usb_cdc_rx_read(USB_CDC_PORT_APP, chunk_buf, to_tx);
+            if (got > 0U) {
+                for (uint32_t i = 0U; i < got; i++) {
+                    uart_ring_push_byte(&g_uart0_tx_ring, chunk_buf[i]);
+                }
+                uint32_t crit = uart_crit_enter();
+                uart0_tx_fill_fifo();
+                if (uart_ring_used(&g_uart0_tx_ring) > 0U) {
+                    MAP_UARTIntEnable(BOARD_APP_UART_BASE, UART_INT_TX);
+                }
+                uart_crit_exit(crit);
+                did_work = true;
             }
-            uart_crit_exit(crit);
-            did_work = true;
         }
     }
 

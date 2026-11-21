@@ -47,6 +47,9 @@ uint8_t bmp_mode_get_caps(void);
 /* Convenience check: returns true when probe is in PROBE_MODE_BMP */
 bool bmp_mode_is_active(void);
 
+/* Returns true when BMP mode is active and RTT has claimed CDC0 (ttyACM0) */
+bool bmp_rtt_is_active(void);
+
 /*
  * Switch probe mode cleanly (disconnects active SWD session and flushes CDC1).
  * Returns XDS_ERR_OK on success or XDS_ERR_INVALID_PARAM for unknown mode.

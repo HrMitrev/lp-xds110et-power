@@ -14,8 +14,10 @@
 
 #include "timing.h"
 
-#define NO_LIBOPENCM3  1
-#define PLATFORM_IDENT "(LP-XDS110ET) "
+#define NO_LIBOPENCM3     1
+#define PLATFORM_IDENT    "(LP-XDS110ET) "
+#define RTT_UP_BUF_SIZE   (2048U + 8U)
+#define RTT_DOWN_BUF_SIZE 256U
 
 /* Forward declarations avoid pulling msp432e401y.h (SRAM_BASE) into upstream BMP targets */
 void board_led_red_set(bool on);

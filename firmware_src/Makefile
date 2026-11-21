@@ -99,7 +99,8 @@ BMP_VERSION_H = $(BUILD_DIR)/bmp/version.h
 
 ifeq ($(BMP_ENABLE),1)
 BMP_INCLUDES  = -Isrc/bmp -I$(BUILD_DIR)/bmp -I$(BMP_DIR) -I$(BMP_DIR)/include -I$(BMP_DIR)/target
-BMP_DEFINES   = -DNO_LIBOPENCM3=1 -DCONFIG_BMDA=0 -DENABLE_DEBUG=0 -DADVERTISE_NOACKMODE=1 \
+BMP_DEFINES   = -DNO_LIBOPENCM3=1 -DCONFIG_BMDA=0 -DENABLE_DEBUG=0 -DENABLE_RTT=1 \
+                -DADVERTISE_NOACKMODE=1 \
                 -DCONFIG_CORTEXM=1 -DCONFIG_STM=1 -DCONFIG_NRF=1 -DCONFIG_TI=1 \
                 -DCONFIG_TI_ICEPICK=1 -DCONFIG_LPC=1 -DCONFIG_SAM=1 -DCONFIG_NXP=1 \
                 -DCONFIG_RA=1 -DCONFIG_PUYA=1 -DCONFIG_GD32=1
@@ -113,7 +114,7 @@ BMP_BRIDGE_SRCS = src/bmp/bmp_mode.c src/bmp/bmp_platform.c src/bmp/bmp_tap.c
 BMP_CORE_SRCS = $(BMP_DIR)/command.c $(BMP_DIR)/crc32.c $(BMP_DIR)/exception.c \
                 $(BMP_DIR)/gdb_main.c $(BMP_DIR)/gdb_packet.c $(BMP_DIR)/hex_utils.c \
                 $(BMP_DIR)/maths_utils.c $(BMP_DIR)/morse.c $(BMP_DIR)/remote.c \
-                $(BMP_DIR)/timing.c
+                $(BMP_DIR)/rtt.c $(BMP_DIR)/timing.c
 BMP_TARGET_SRCS = $(BMP_DIR)/target/adi.c $(BMP_DIR)/target/adiv5.c \
                   $(BMP_DIR)/target/adiv5_jtag.c $(BMP_DIR)/target/adiv5_swd.c \
                   $(BMP_DIR)/target/adiv6.c $(BMP_DIR)/target/cortex.c \
@@ -130,6 +131,7 @@ BMP_TARGET_SRCS = $(BMP_DIR)/target/adi.c $(BMP_DIR)/target/adiv5.c \
                   $(BMP_DIR)/target/stm32mp15.c $(BMP_DIR)/target/stm32wb0.c \
                   $(BMP_DIR)/target/nrf51.c $(BMP_DIR)/target/nrf54l.c $(BMP_DIR)/target/nrf91.c \
                   $(BMP_DIR)/target/msp432e4.c $(BMP_DIR)/target/msp432p4.c \
+                  $(BMP_DIR)/target/ti_cc_common.c $(BMP_DIR)/target/cc23xx.c \
                   $(BMP_DIR)/target/mspm0.c $(BMP_DIR)/target/icepick.c \
                   $(BMP_DIR)/target/lpc_common.c $(BMP_DIR)/target/lpc11xx.c \
                   $(BMP_DIR)/target/lpc15xx.c $(BMP_DIR)/target/lpc17xx.c \

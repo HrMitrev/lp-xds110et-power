@@ -43,7 +43,7 @@ firmware_src/
 ├── Makefile                        # Build, format, clangd-check, DFU flash, HIL & SWD test targets
 ├── msp432e401y.ld                  # Linker script (flash offset 0x4000, 256 KiB SRAM)
 ├── scripts/
-│   ├── fetch_bmp.py                # Automated Black Magic Debug (main branch) downloader
+│   ├── fetch_bmp.py                # Automated Black Magic Debug (pr/cc23xx branch) downloader
 │   ├── fetch_sdk.py                # Automated TI MSP432E4 DriverLib & CMSIS downloader
 │   ├── fetch_toolchain.py          # Optional standalone GCC 16 arm-none-eabi fetcher
 │   └── gen_compile_commands.py     # Generates compile_commands.json for clangd
@@ -66,7 +66,7 @@ firmware_src/
 │   ├── bmp/
 │   │   ├── bmp_mode.h / .c         # Runtime Normal/BMP mode manager & cooperative GDB poll bridge
 │   │   ├── platform.h              # BMP platform configuration & LED/background-poll macros
-│   │   ├── bmp_platform.c          # BMP platform HAL, CDC1 GDB RSP transport & guarded _sbrk
+│   │   ├── bmp_platform.c          # BMP platform HAL, CDC1 GDB RSP, CDC0 RTT & guarded _sbrk
 │   │   └── bmp_tap.c               # Bit-masked GPIO SWD & 4-wire JTAG TAP drivers for BMP
 │   └── dap/
 │       ├── swd.h / .c              # High-speed bit-masked GPIO SWD engine (PA2/PA3/PA6 + PC5 TMS_DIR)

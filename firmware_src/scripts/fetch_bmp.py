@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-Fetch upstream Black Magic Debug (BMP) firmware sources from the `main` branch.
+Fetch Black Magic Debug (BMP) firmware sources from the `pr/cc23xx` branch.
 
-Clones (or updates) https://github.com/blackmagic-debug/blackmagic.git tracking
-the `main` branch — explicitly avoiding the repository's default `archive` branch
-— into firmware_src/third_party/blackmagic/.
+Clones (or updates) https://codeberg.org/hrm/blackmagic.git tracking
+the `pr/cc23xx` branch into firmware_src/third_party/blackmagic/.
 """
 
 import argparse
@@ -14,8 +13,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-BMP_REPO_URL = "https://github.com/blackmagic-debug/blackmagic.git"
-BMP_DEFAULT_BRANCH = "main"
+BMP_REPO_URL = "https://codeberg.org/hrm/blackmagic.git"
+BMP_DEFAULT_BRANCH = "pr/cc23xx"
 
 
 def is_bmp_present(dest_dir: Path) -> bool:
@@ -110,7 +109,7 @@ def fetch_bmp(
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Fetch Black Magic Debug (main branch) sources into firmware_src/third_party/blackmagic."
+        description="Fetch Black Magic Debug (pr/cc23xx branch) sources into firmware_src/third_party/blackmagic."
     )
     parser.add_argument(
         "--dest",

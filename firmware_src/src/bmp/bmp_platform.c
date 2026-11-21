@@ -1,13 +1,14 @@
 /*
- * bmp_platform.c - Black Magic Debug platform HAL & CDC1 GDB RSP transport.
+ * bmp_platform.c - Black Magic Debug platform HAL, CDC1 GDB & CDC0 RTT transport.
  *
- * Implements three clean layers for upstream Black Magic Debug on LP-XDS110ET:
+ * Implements four clean layers for Black Magic Debug on LP-XDS110ET:
  *   1. Platform HAL (platform_support.h / timing.h): SysTick uptime, nSRST,
  *      DFU jump, SWCLK output enable, and SWD/JTAG clock frequency scaling.
  *   2. GDB RSP Transport (gdb_if.h) over USB CDC1 (ttyACM1), pumping
  *      app_background_poll() in every wait loop so EnergyTrace HDR (256 kS/s),
  *      CDC0 App UART (ttyACM0), and XDS110 opcode 0x63 never stall.
- *   3. Stack-guarded newlib _sbrk heap allocator & minimal nosys syscall stubs.
+ *   3. SEGGER RTT Transport (rtt_if.h) over USB CDC0 (ttyACM0) when enabled.
+ *   4. Stack-guarded newlib _sbrk heap allocator & minimal nosys syscall stubs.
  */
 
 #include <errno.h>
@@ -24,6 +25,10 @@
 #include "gdb_if.h"
 #include "general.h"
 #include "platform.h"
+#ifdef ENABLE_RTT
+#include "rtt.h"
+#include "rtt_if.h"
+#endif
 #include "usb/usb_device.h"
 
 #define BMP_GDB_TX_BUF_SIZE 64U
@@ -268,7 +273,114 @@ char gdb_if_getchar_to(uint32_t timeout)
     return (char)ch;
 }
 
-/* ---- 3. Stack-Guarded Newlib _sbrk & Minimal Syscall Stubs ---- */
+#ifdef ENABLE_RTT
+/* ---- 3. SEGGER RTT Transport (rtt_if.h) over USB CDC0 (ttyACM0) ---- */
+
+static uint8_t g_rtt_down_buf[RTT_DOWN_BUF_SIZE];
+static uint32_t g_rtt_down_head = 0U;
+static uint32_t g_rtt_down_tail = 0U;
+
+int rtt_if_init(void)
+{
+    g_rtt_down_head = 0U;
+    g_rtt_down_tail = 0U;
+    return 0;
+}
+
+int rtt_if_exit(void)
+{
+    g_rtt_down_head = 0U;
+    g_rtt_down_tail = 0U;
+    return 0;
+}
+
+void rtt_load_recv_buf(const char *data_buf, size_t len)
+{
+    for (size_t i = 0U; i < len; i++) {
+        uint32_t next_head = (g_rtt_down_head + 1U) % RTT_DOWN_BUF_SIZE;
+        if (next_head == g_rtt_down_tail) {
+            break;
+        }
+        g_rtt_down_buf[g_rtt_down_head] = (uint8_t)data_buf[i];
+        g_rtt_down_head = next_head;
+    }
+}
+
+static void bmp_rtt_drain_cdc0(void)
+{
+    uint8_t tmp[64];
+    while (usb_cdc_rx_available(USB_CDC_PORT_APP) > 0U) {
+        uint32_t free_space = (g_rtt_down_tail <= g_rtt_down_head) ?
+            (RTT_DOWN_BUF_SIZE - g_rtt_down_head + g_rtt_down_tail - 1U) :
+            (g_rtt_down_tail - g_rtt_down_head - 1U);
+        if (free_space == 0U) {
+            if (rtt_flag_skip) {
+                (void)usb_cdc_rx_read(USB_CDC_PORT_APP, tmp, sizeof(tmp));
+                continue;
+            }
+            break;
+        }
+        uint32_t want = (free_space < sizeof(tmp)) ? free_space : (uint32_t)sizeof(tmp);
+        uint32_t got = usb_cdc_rx_read(USB_CDC_PORT_APP, tmp, want);
+        if (got == 0U) {
+            break;
+        }
+        rtt_load_recv_buf((const char *)tmp, got);
+    }
+}
+
+bool rtt_nodata(const uint32_t channel)
+{
+    if (channel != 0U) {
+        return true;
+    }
+    bmp_rtt_drain_cdc0();
+    return g_rtt_down_head == g_rtt_down_tail;
+}
+
+int32_t rtt_getchar(const uint32_t channel)
+{
+    if (channel != 0U) {
+        return -1;
+    }
+    bmp_rtt_drain_cdc0();
+    if (g_rtt_down_head == g_rtt_down_tail) {
+        return -1;
+    }
+    uint8_t ch = g_rtt_down_buf[g_rtt_down_tail];
+    g_rtt_down_tail = (g_rtt_down_tail + 1U) % RTT_DOWN_BUF_SIZE;
+    return (int32_t)ch;
+}
+
+uint32_t rtt_write(const uint32_t channel, const char *buf, uint32_t len)
+{
+    if ((channel != 0U) || (len == 0U)) {
+        return len;
+    }
+    if (!bmp_mode_is_active() || !usb_device_is_configured() || !usb_cdc_is_dtr_asserted(USB_CDC_PORT_APP)) {
+        return len;
+    }
+
+    uint32_t offset = 0U;
+    uint32_t start_ms = board_get_uptime_ms();
+    while (offset < len) {
+        uint32_t space = usb_cdc_tx_space(USB_CDC_PORT_APP);
+        if (space == 0U) {
+            if ((uint32_t)(board_get_uptime_ms() - start_ms) >= 25U) {
+                return offset;
+            }
+            app_background_poll();
+            continue;
+        }
+        uint32_t rem = len - offset;
+        uint32_t chunk = (rem < space) ? rem : space;
+        offset += usb_cdc_tx_write(USB_CDC_PORT_APP, (const uint8_t *)&buf[offset], chunk);
+    }
+    return len;
+}
+#endif /* ENABLE_RTT */
+
+/* ---- 4. Stack-Guarded Newlib _sbrk & Minimal Syscall Stubs ---- */
 
 __attribute__((used)) void *_sbrk(ptrdiff_t incr)
 {

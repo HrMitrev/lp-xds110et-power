@@ -23,6 +23,10 @@
 #include "jtagtap.h"
 #include "morse.h"
 #include "platform.h"
+#ifdef ENABLE_RTT
+#include "rtt.h"
+#include "rtt_if.h"
+#endif
 #include "swd.h"
 #include "target.h"
 #endif
@@ -38,6 +42,10 @@ static void bmp_gdb_on_exit(void)
         cur_target = NULL;
     }
     gdb_target_running = false;
+#ifdef ENABLE_RTT
+    rtt_enabled = false;
+    rtt_found = false;
+#endif
     swd_disconnect();
 }
 
@@ -61,6 +69,11 @@ static void bmp_gdb_poll_step(void)
         if ((c == '\x03') || (c == '\x04')) {
             target_halt_request(cur_target);
         }
+#ifdef ENABLE_RTT
+        else if (rtt_enabled) {
+            poll_rtt(cur_target);
+        }
+#endif
         platform_pace_poll();
     }
 
@@ -114,6 +127,15 @@ uint8_t bmp_mode_get_caps(void)
 bool bmp_mode_is_active(void)
 {
     return g_probe_mode == PROBE_MODE_BMP;
+}
+
+bool bmp_rtt_is_active(void)
+{
+#if (FW_BMP_GDB_COMPILED != 0) && defined(ENABLE_RTT)
+    return bmp_mode_is_active() && rtt_enabled;
+#else
+    return false;
+#endif
 }
 
 int32_t bmp_mode_set(uint8_t mode)
