@@ -20,11 +20,22 @@
 #include "uart/cdc_uart.h"
 #include "usb/usb_device.h"
 
+/* Firmware version components (3.0.0.02) */
+#define FW_VERSION_MAJOR 3U
+#define FW_VERSION_MINOR 0U
+#define FW_VERSION_PATCH 0U
+#define FW_VERSION_BUILD 2U
+
 /*
  * Firmware version marker matching XDS_VERSION (CMD 0x03) wire format:
- * [build=0x02, patch=0x00, minor=0x00, major=0x03] = 3.0.0.02
+ * [build, patch, minor, major]
  */
-__attribute__((used, section(".rodata.version"))) const uint8_t g_firmware_version[4] = {0x02U, 0x00U, 0x00U, 0x03U};
+__attribute__((used, section(".rodata.version"))) const uint8_t g_firmware_version[4] = {
+    FW_VERSION_BUILD,
+    FW_VERSION_PATCH,
+    FW_VERSION_MINOR,
+    FW_VERSION_MAJOR,
+};
 
 int main(void)
 {
