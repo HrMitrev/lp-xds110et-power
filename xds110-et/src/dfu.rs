@@ -494,6 +494,10 @@ pub fn trigger_dfu_mode_switch() -> Result<(), DfuError> {
     Ok(())
 }
 
+/// Maximum time to wait for DFU bootloader USB re-enumeration (covers WSL/usbipd attach latency)
+const DFU_REENUM_TIMEOUT: Duration = Duration::from_secs(15);
+const DFU_REENUM_POLL_INTERVAL: Duration = Duration::from_millis(250);
+
 /// Connect to DFU mode, switching from runtime mode if needed.
 pub fn ensure_dfu_mode() -> Result<DfuDevice, DfuError> {
     let context = Context::new()?;
@@ -505,18 +509,26 @@ pub fn ensure_dfu_mode() -> Result<DfuDevice, DfuError> {
     eprintln!("Switching XDS110 to DFU bootloader mode (cmd 0x26)...");
     trigger_dfu_mode_switch()?;
 
-    // Wait up to 5 seconds for re-enumeration
-    let deadline = Instant::now() + Duration::from_secs(5);
+    // Wait for USB re-enumeration (including WSL / usbipd auto-attach delay)
+    eprintln!(
+        "Waiting for DFU bootloader re-enumeration (up to {}s)...",
+        DFU_REENUM_TIMEOUT.as_secs()
+    );
+    let deadline = Instant::now() + DFU_REENUM_TIMEOUT;
+    let mut last_err: Option<DfuError> = None;
     while Instant::now() < deadline {
-        thread::sleep(Duration::from_millis(500));
+        thread::sleep(DFU_REENUM_POLL_INTERVAL);
         let ctx = Context::new()?;
         if DfuDevice::find_dfu_device(&ctx).is_ok() {
             thread::sleep(Duration::from_millis(200));
-            return DfuDevice::open();
+            match DfuDevice::open() {
+                Ok(dev) => return Ok(dev),
+                Err(err) => last_err = Some(err),
+            }
         }
     }
 
-    Err(DfuError::Timeout)
+    Err(last_err.unwrap_or(DfuError::Timeout))
 }
 
 /// Flash a firmware binary file to the probe.
