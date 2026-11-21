@@ -42,11 +42,42 @@ static void xds_send_response(int32_t err_code, uint16_t data_len)
     usb_cmd_tx_write(s_xds_cmd.resp_buf, (uint32_t)(XDS_REQ_HEADER_SIZE + payload_len));
 }
 
+/*
+ * Opcodes exclusively used by host SWD/JTAG debuggers (TI UniFlash DSLite,
+ * CCS, OpenOCD xds110) — never by EnergyTrace (xds110-et), DFU, or probe info.
+ * Receiving any of these while in BMP mode hands SWD ownership back to Normal
+ * mode automatically before executing the command.
+ */
+static bool xds_opcode_claims_debug(uint8_t opcode)
+{
+    switch (opcode) {
+    case XDS_CMD_SET_TCK:
+    case XDS_CMD_JTAG_SET_MODE_EX:
+    case XDS_CMD_JTAG_SET_FREQ_EX:
+    case XDS_CMD_SET_OPTION:
+    case XDS_CMD_SWD_CONNECT:
+    case XDS_CMD_CJTAG_CONNECT:
+    case XDS_CMD_CMAPI_CONNECT:
+    case XDS_CMD_CMAPI_CONNECT_EX:
+    case XDS_CMD_CMAPI_ACQUIRE:
+    case XDS_CMD_OCD_DAP_REQUEST:
+    case XDS_CMD_SACI_WRITE:
+    case XDS_CMD_SACI_READ:
+        return true;
+    default:
+        return false;
+    }
+}
+
 static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t args_len)
 {
     uint8_t *resp_data = &s_xds_cmd.resp_buf[XDS_RESP_HEADER_SIZE];
     int32_t err = XDS_ERR_OK;
     uint16_t resp_len = 0U;
+
+    if (bmp_mode_is_active() && xds_opcode_claims_debug(opcode)) {
+        (void)bmp_mode_set(PROBE_MODE_NORMAL);
+    }
 
     switch (opcode) {
     case XDS_CMD_ECHO: {
