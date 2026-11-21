@@ -19,7 +19,7 @@ Clean-room, bare-metal ARM Cortex-M4F open-source firmware for the **Texas Instr
   - Hardware-timed `ADS127L01` (`PB4` `nDRDY` → uDMA Ch 5 → `SSI1` Mode 1 @ 15 MHz → uDMA Ch 24 ping-pong) streaming `0x68` framed packets with boot-cached calibration (`idx 0, 1, 2, 4`) and zero dropped frames concurrently with UART0 or SWD debugging.
 - **Target Aux GPIOs (`0x29` / `0x2A`)**:
   - Glitch-free control of `PF0` (`GPIO3`), `PF1` (`GPIO1`, `U49` dir `PJ0`), and `PF2` (`GPIO2`, `U49` dir `PJ1`), plus probe-identify LED blink (`0x80000010`).
-- **Dual SWD Debug Transports (DWT Cycle-Accurate SWCLK)**:
+- **Dual SWD Debug Transports (High-Speed Bit-Masked GPIO SWD, up to ~10 MHz)**:
   - **CMSIS-DAP v2 WinUSB (Interface 5)**: Out-of-the-box support for **OpenOCD** (`interface/cmsis-dap.cfg`), **probe-rs**, and **pyOCD** — runs concurrently with EnergyTrace HDR (`Interface 2`/`6`) with zero USB contention.
   - **Native XDS110 SWD (Interface 2)**: Drop-in compatibility with both OpenOCD's **`interface/xds110.cfg`** (`0x04..0x07`, `0x0E..0x12`, `0x15..0x1A`, `0x2B..0x2C`, `0x3A OCD_DAP_REQUEST`) and **TI UniFlash `DSLite`** (`0x09`, `0x13..0x14` `CMAPI_READ/WRITE_MEM`, `0x32`, `0x39`, `0x3D..0x3E` `CMAPI_*_MEM_64`, `0x45`, `0x49`, `0x50..0x51` `SEC_AP` SACI mailbox, `0x5A` `CMAPI_CONNECT_EX`, BCD version `3.0.0.45`), verified end-to-end on STM32G0 (`connect_assert_srst`) and TI CC2340R5 (`noConnectFlash` chip erase + program + verify + run). *(Note: `interface/xds110.cfg` and `DSLite` claim Interface 2, so use `interface/cmsis-dap.cfg` when running EnergyTrace simultaneously.)*
 
@@ -30,7 +30,7 @@ Clean-room, bare-metal ARM Cortex-M4F open-source firmware for the **Texas Instr
 | Memory Region | Address Range | Size | Description |
 |---|---|---|---|
 | **DFU Bootloader** | `0x0000_0000 - 0x0000_3FFF` | 16 KiB | Preserved primary TI USB DFU bootloader |
-| **Application Flash** | `0x0000_4000 - 0x000F_BFFF` | 992 KiB | **This firmware binary** (~24 KiB used) |
+| **Application Flash** | `0x0000_4000 - 0x000F_BFFF` | 992 KiB | **This firmware binary** (~25 KiB used) |
 | **Config / Serial** | `0x000F_C000 - 0x000F_FFFF` | 16 KiB | Factory 8-char serial number & config word |
 | **Internal SRAM** | `0x2000_0000 - 0x2003_FFFF` | 256 KiB | Data, BSS, Ring Buffers, uDMA & Stack |
 
@@ -63,7 +63,7 @@ firmware_src/
 │   ├── gpio/
 │   │   └── aux_gpio.h / .c         # Target Aux GPIOs (PF0..PF2, U49 PJ0/PJ1) & LED identify
 │   └── dap/
-│       ├── swd.h / .c              # DWT-paced SWD wire engine (PA2/PA3/PA6 + PC5 TMS_DIR)
+│       ├── swd.h / .c              # High-speed bit-masked GPIO SWD engine (PA2/PA3/PA6 + PC5 TMS_DIR)
 │       ├── cmsis_dap.h / .c        # CMSIS-DAP v2.0.0 WinUSB Bulk + Atomic Commands (0x7E/0x7F)
 │       └── xds_swd.h / .c          # Native XDS110 Interface 2 SWD (CMAPI + OCD_DAP_REQUEST 0x3A)
 └── tests/
@@ -112,3 +112,23 @@ openocd -f interface/xds110.cfg -c "transport select swd" -f target/stm32g0x.cfg
 probe-rs info --speed 2000
 pyocd list
 ```
+
+---
+
+## Performance Benchmarks (`DSLite` on TI CC2340R5)
+
+Apples-to-apples benchmark flashing a **258 KiB** multi-region image (Bootloader + Application + password-protected CCFG) onto a **TI CC2340R5** via `DSLite noConnectFlash` (Chip Erase + Program + `SEC_AP` SACI Debug Authentication + Fast Verification + Run):
+
+| Phase | OpenFW (Initial) | Proprietary `3.0.0.45` | **OpenFW (Optimized)** | Speedup vs Initial | vs Proprietary |
+|---|---:|---:|---:|---:|---:|
+| **Startup / Init** | `1.31 s` | `1.68 s` | **`1.32 s`** | — | 21% faster |
+| **Per 30 KiB Flash Write** | `2.45 s` | `0.58 s` | **`0.59 s`** (`0.49–0.60 s`) | **4.15×** | Matched |
+| **Total Flash Program** | `21.89 s` | `6.66 s` | **`5.28 s`** | **4.15×** | **21% faster** |
+| **Per 30 KiB Fast Verify** | `0.73 s` (`42 KB/s`) | `0.10 s` (`307 KB/s`) | **`0.094 s`** (**`327 KB/s`**) | **7.77×** | **6% faster** |
+| **Total Verify** | `6.11 s` | `0.83 s` | **`0.80 s`** | **7.64×** | **4% faster** |
+| **Total Wall Time** | **`30.90 s`** | **`12.08 s`** | **`9.01 s`** | **3.43× faster** | **25.4% faster** |
+
+### Key Optimizations
+1. **Inline Bit-Masked GPIO SWD Engine (`src/dap/swd.c`)**: Replaced per-bit `MAP_GPIOPinWrite` ROM indirect calls with DriverLib single-instruction bit-masked `HWREG(BOARD_JTAG_PORT_BASE + (mask << 2))` writes (`SWCLK` + `SWDIO` updated in one `STR`) under `-O2` / `always_inline` with calibrated loop pacing, lifting max SWD clock from ~1.0 MHz to ~10 MHz.
+2. **Full 512 B High-Speed `CMD IN (0x83)` USB FIFO (`src/usb/usb_device.c`)**: Swapped FIFO sizes between `CMD IN (0x83)` (`256 B → 512 B`) and RX-only `CDC1 OUT (0x04)` (`512 B → 256 B`) within the 4,096 B USB0 FIFO budget, eliminating premature USB short packets that previously split 4 KiB `CMAPI_READ_MEM` responses into 16 separate host URBs.
+3. **CMAPI & `SEC_AP` SACI Fast Path (`src/dap/xds_swd.c`)**: Split `xds_swd_cmapi_xfer()` into an inlined `SWD_ACK_OK` fast path with out-of-line `WAIT`/`FAULT` recovery, hoisted AP bank selection (`0x00`) out of `SACI` read/write loops, and eliminated redundant per-word trailing idle clocks during SACI TX.

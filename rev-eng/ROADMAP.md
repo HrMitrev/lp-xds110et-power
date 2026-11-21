@@ -49,7 +49,7 @@ A phased, clean-room engineering plan for the open-source bare-metal firmware in
 
 ## Phase 4 — CMSIS-DAP v2 WinUSB Bulk & Fast SWD Engine (Completed & Verified)
 
-- [x] **Fast SWD Wire Engine (`dap/swd.{h,c}`)**: `DWT->CYCCNT` cycle-accurate SWCLK pacing, glitch-free `PA3`/`PC5` turnaround, `SWCLK` parked LOW per ARM ADIv5, and 8 trailing idle clocks after final AP/DP writes (verified `connect_assert_srst` + `VC_CORERESET` + `OBL_LAUNCH`).
+- [x] **Fast SWD Wire Engine (`dap/swd.{h,c}`)**: Single-instruction bit-masked GPIO (`HWREG`) `-O2` fast path (up to ~10 MHz) with calibrated cycle pacing, glitch-free `PA3`/`PC5` turnaround, `SWCLK` parked LOW per ARM ADIv5, and 8 trailing idle clocks after final AP/DP writes (verified `connect_assert_srst` + `VC_CORERESET` + `OBL_LAUNCH`).
 - [x] **CMSIS-DAP v2.0.0 WinUSB Bulk (`dap/cmsis_dap.{h,c}`, Interface 5 `0x05`/`0x86`)**:
   - 512-byte HS / 64-byte FS variable-length Bulk packets, 4-deep queues, exact 4,096 B USB0 FIFO packing.
   - USB 2.1 BOS Descriptor + Microsoft OS 2.0 Descriptor Set (`WINUSB` + `{CDB3B5AD-293B-4663-AA36-1AAE46463776}`).
@@ -72,4 +72,10 @@ A phased, clean-room engineering plan for the open-source bare-metal firmware in
 - [x] **Native XDS110 SWD Protocol (`dap/xds_swd.{h,c}`)**:
   - Implemented `0x04` (`XDS_SET_TCK`), `0x05`/`0x06` (`XDS_SET/GET_TRST`), `0x07` (`XDS_CYCLE_TCK`), `0x09` (`JTAG_GOTO_STATE`), `0x0F..0x12` (`CMAPI_CONNECT`/`DISCONNECT`/`ACQUIRE`/`RELEASE`), `0x13..0x14` (`CMAPI_READ/WRITE_MEM`), `0x15..0x16` (`CMAPI_REG_READ`/`WRITE`), `0x17..0x1A` (`SWD_CONNECT` with ADIv5.2 Dormant-to-SWD fallback / `SWD_DISCONNECT` / SWO routing no-ops), `0x2B..0x2C` (`CJTAG_CONNECT`/`DISCONNECT`), `0x32` (`SET_SUPPLY`), `0x39` (`JTAG_SET_MODE_EX`), `0x3A` (`OCD_DAP_REQUEST` batched raw SWD queue up to 4 KiB), `0x3D..0x3E` (`CMAPI_READ/WRITE_MEM_64` with CSW `SProt` + cache), `0x45` (`JTAG_SET_FREQ_EX`), `0x49` (`SET_OPTION`), `0x50..0x51` (`SEC_AP` SACI mailbox write/read), and `0x5A` (`CMAPI_CONNECT_EX` with DP power-up + automatic SWD `FAULT` sticky-error recovery).
   - Updated reported BCD firmware version to `3.0.0.45` so TI UniFlash / `xds110reset` accepts the probe without forcing a proprietary firmware overwrite.
-  - Verified live against STM32G0 with OpenOCD `interface/xds110.cfg` (`connect_assert_srst`, `reset halt`, 64 KiB Flash dump/verify, SRAM R/W/restore) and against **TI CC2340R5** with **TI UniFlash `DSLite` (`noConnectFlash`)** (full `xds110reset`, `SEC_AP` SACI debug unlock, Chip Erase, 83+ KiB program + CCFG @ `0x4e020000`, Fast Verify, and Run).
+  - **High-Speed Performance Optimizations**:
+    - Replaced per-bit ROM GPIO calls in `dap/swd.c` with single-instruction bit-masked `HWREG` GPIO writes (`-O2` / `always_inline`, up to ~10 MHz SWCLK).
+    - Upgraded `CMD IN (0x83)` USB0 FIFO from `256 B` to full `512 B` HS MPS (swapping with RX-only `CDC1 OUT 0x04` at `256 B`, keeping `4,096 / 4,096 B` total) to eliminate 16× USB short-packet splits on 4 KiB memory reads.
+    - Added inlined `SWD_ACK_OK` fast path in `xds_swd_cmapi_xfer()` and hoisted AP bank selection / removed redundant per-word trailing idle clocks in `SEC_AP` SACI loops.
+  - **Verified & Benchmarked**:
+    - STM32G0 via OpenOCD `interface/xds110.cfg` (`connect_assert_srst`, `reset halt`, 64 KiB Flash dump/verify, SRAM R/W/restore).
+    - **TI CC2340R5** via **TI UniFlash `DSLite` (`noConnectFlash`)** on a 258 KiB Bootloader + App + password-protected CCFG image (Chip Erase + Program + `SEC_AP` SACI Debug Authentication + Fast Verify + Run): **`9.01 s` total** (`5.28 s` program, `0.80 s` verify @ `327 KB/s`), **3.43× faster** than initial OpenFW (`30.90 s`) and **25.4% faster** than TI proprietary `3.0.0.45` (`12.08 s`).
