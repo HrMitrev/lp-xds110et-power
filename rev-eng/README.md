@@ -26,6 +26,7 @@ Complete static reverse-engineering analysis of `proprietary_fw/firmware_3.0.0.4
 | `PROTOCOL_SPEC.md` | Complete XDS110 USB command table (`0x00..0x62`), framing, error codes, CDC/CMSIS-DAP/MSC |
 | `ENERGYTRACE_DEEP_DIVE.md` | Full hardware/firmware analysis of LP-XDS110ET EnergyTrace HDR (`ADS127L01`, calibration, DMA, packets) |
 | `ROADMAP.md` | Phased open-source firmware implementation roadmap for `firmware_src/` |
+| `BMP_ROADMAP.md` | Phase 7 architecture & implementation roadmap for Black Magic Debug Probe (BMP) support |
 | `scripts/` | Reproducible Python 3 + Capstone reverse-engineering scripts |
 | `output/` | Machine-readable JSON analysis dumps & extracted schematic text |
 

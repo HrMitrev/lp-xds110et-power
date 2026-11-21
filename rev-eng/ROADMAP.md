@@ -79,3 +79,14 @@ A phased, clean-room engineering plan for the open-source bare-metal firmware in
   - **Verified & Benchmarked**:
     - STM32G0 via OpenOCD `interface/xds110.cfg` (`connect_assert_srst`, `reset halt`, 64 KiB Flash dump/verify, SRAM R/W/restore).
     - **TI CC2340R5** via **TI UniFlash `DSLite` (`noConnectFlash`)** on a 258 KiB Bootloader + App + password-protected CCFG image (Chip Erase + Program + `SEC_AP` SACI Debug Authentication + Fast Verify + Run): **`9.01 s` total** (`5.28 s` program, `0.80 s` verify @ `327 KB/s`), **3.43× faster** than initial OpenFW (`30.90 s`) and **25.4% faster** than TI proprietary `3.0.0.45` (`12.08 s`).
+
+---
+
+## Phase 7 — Black Magic Debug Probe (BMP) Integration (Planned)
+
+See the dedicated plan in **[`BMP_ROADMAP.md`](BMP_ROADMAP.md)**:
+
+- [ ] **Submodule (`main` branch)**: Add `https://github.com/blackmagic-debug/blackmagic` tracking `main` under `firmware_src/third_party/blackmagic` with opt-in `BMP_ENABLE` and `BMP_DEFAULT_MODE` (`0` = Normal, `1` = BMP) build macros.
+- [ ] **Port Reuse (`CDC1` / `if03` / `ttyACM1`)**: MSP432E401Y `USB0` uses all 7/7 IN endpoints and 4,096/4,096 B FIFO RAM, so multiplex `CDC1` (`ttyACM1`) between Aux/SWO UART (Normal Mode) and BMP GDB RSP Server (BMP Mode) with zero USB re-enumeration — preserving `CDC0` (`ttyACM0`) App UART and 256 kS/s EnergyTrace HDR concurrently!
+- [ ] **Runtime Mode Switch**: Custom XDS110 vendor opcode `0x63` (`xds110-et mode [normal|bmp|status]`) + GDB `monitor xds_normal` escape command, with cooperative `app_background_poll()` inside `gdb_if_getchar*()` so EnergyTrace and `UART0` never stall.
+- [ ] **BMP Platform & Fast SWD Bridge**: Wire `swd_proc` directly onto our high-speed bit-masked GPIO engine (`dap/swd.c`) and verify live GDB debugging + EnergyTrace + UART0 triple concurrency.
