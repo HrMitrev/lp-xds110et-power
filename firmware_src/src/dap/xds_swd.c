@@ -54,12 +54,16 @@
 #define XDS_SACI_REG_RXD   0x08U
 #define XDS_SACI_REG_RXCTL 0x0CU
 
-static bool g_xds_swd_active = false;
-static bool g_xds_cmapi_connected = false;
-static bool g_xds_select_valid = false;
-static uint32_t g_xds_select_cache = 0U;
-static uint32_t g_xds_csw_cache[XDS_AP_CSW_CACHE_MAX];
-static bool g_xds_csw_valid[XDS_AP_CSW_CACHE_MAX];
+typedef struct {
+    bool swd_active;
+    bool cmapi_connected;
+    bool select_valid;
+    uint32_t select_cache;
+    uint32_t csw_cache[XDS_AP_CSW_CACHE_MAX];
+    bool csw_valid[XDS_AP_CSW_CACHE_MAX];
+} xds_swd_state_t;
+
+static xds_swd_state_t s_xds_swd = {0};
 
 static int32_t xds_swd_ack_to_err(uint8_t ack)
 {
@@ -234,29 +238,29 @@ static void xds_swd_send_dormant_to_swd(void)
 static int32_t xds_swd_select_ap_bank(uint8_t ap_num, uint8_t addr)
 {
     uint32_t sel = ((uint32_t)ap_num << 24U) | ((uint32_t)addr & 0xF0U);
-    if (g_xds_select_valid && (g_xds_select_cache == sel)) {
+    if (s_xds_swd.select_valid && (s_xds_swd.select_cache == sel)) {
         return XDS_ERR_OK;
     }
 
     uint32_t wval = sel;
     uint8_t ack = xds_swd_cmapi_xfer(XDS_DP_SELECT_REQ, &wval);
     if (ack != SWD_ACK_OK) {
-        g_xds_select_valid = false;
+        s_xds_swd.select_valid = false;
         return xds_swd_ack_to_err(ack);
     }
 
-    g_xds_select_cache = sel;
-    g_xds_select_valid = true;
+    s_xds_swd.select_cache = sel;
+    s_xds_swd.select_valid = true;
     return XDS_ERR_OK;
 }
 
 static void xds_swd_clear_caches(void)
 {
-    g_xds_select_valid = false;
-    g_xds_select_cache = 0U;
+    s_xds_swd.select_valid = false;
+    s_xds_swd.select_cache = 0U;
     for (uint32_t i = 0U; i < XDS_AP_CSW_CACHE_MAX; i++) {
-        g_xds_csw_valid[i] = false;
-        g_xds_csw_cache[i] = 0U;
+        s_xds_swd.csw_valid[i] = false;
+        s_xds_swd.csw_cache[i] = 0U;
     }
 }
 
@@ -264,8 +268,8 @@ static void xds_swd_clear_caches(void)
 
 void xds_swd_init(void)
 {
-    g_xds_swd_active = false;
-    g_xds_cmapi_connected = false;
+    s_xds_swd.swd_active = false;
+    s_xds_swd.cmapi_connected = false;
     xds_swd_clear_caches();
 }
 
@@ -306,7 +310,7 @@ int32_t xds_swd_cycle_tck(uint32_t count)
     if (count > XDS_CYCLE_TCK_MAX) {
         count = XDS_CYCLE_TCK_MAX;
     }
-    if (g_xds_swd_active && (count > 0U)) {
+    if (s_xds_swd.swd_active && (count > 0U)) {
         swd_idle_cycles(count);
     }
     return XDS_ERR_OK;
@@ -333,20 +337,20 @@ int32_t xds_swd_connect(void)
         (void)xds_swd_xfer_retry(XDS_DP_IDCODE_REQ, &idcode);
     }
 
-    g_xds_swd_active = true;
+    s_xds_swd.swd_active = true;
     xds_swd_clear_caches();
     return XDS_ERR_OK;
 }
 
 int32_t xds_swd_disconnect(void)
 {
-    if (g_xds_swd_active) {
+    if (s_xds_swd.swd_active) {
         xds_swd_send_swd_to_jtag();
         swd_disconnect();
     }
 
-    g_xds_swd_active = false;
-    g_xds_cmapi_connected = false;
+    s_xds_swd.swd_active = false;
+    s_xds_swd.cmapi_connected = false;
     xds_swd_clear_caches();
     return XDS_ERR_OK;
 }
@@ -355,10 +359,10 @@ int32_t xds_swd_cmapi_connect(uint32_t *out_idcode)
 {
     *out_idcode = 0U;
     if (bmp_mode_is_active()) {
-        g_xds_cmapi_connected = false;
+        s_xds_swd.cmapi_connected = false;
         return XDS_ERR_SWD_PROTOCOL;
     }
-    if (!g_xds_swd_active) {
+    if (!s_xds_swd.swd_active) {
         (void)xds_swd_connect();
     }
 
@@ -376,7 +380,7 @@ int32_t xds_swd_cmapi_connect(uint32_t *out_idcode)
     }
 
     if (ack != SWD_ACK_OK) {
-        g_xds_cmapi_connected = false;
+        s_xds_swd.cmapi_connected = false;
         return xds_swd_ack_to_err(ack);
     }
 
@@ -399,7 +403,7 @@ int32_t xds_swd_cmapi_connect(uint32_t *out_idcode)
         }
     }
 
-    g_xds_cmapi_connected = true;
+    s_xds_swd.cmapi_connected = true;
     xds_swd_clear_caches();
     *out_idcode = idcode;
     return XDS_ERR_OK;
@@ -407,13 +411,13 @@ int32_t xds_swd_cmapi_connect(uint32_t *out_idcode)
 
 int32_t xds_swd_cmapi_disconnect(void)
 {
-    g_xds_cmapi_connected = false;
+    s_xds_swd.cmapi_connected = false;
     return XDS_ERR_OK;
 }
 
 int32_t xds_swd_cmapi_acquire(void)
 {
-    if (!g_xds_cmapi_connected) {
+    if (!s_xds_swd.cmapi_connected) {
         return XDS_ERR_SWD_PROTOCOL;
     }
     return XDS_ERR_OK;
@@ -427,7 +431,7 @@ int32_t xds_swd_cmapi_release(void)
 int32_t xds_swd_cmapi_read_reg(uint8_t type, uint8_t ap_num, uint8_t addr, uint32_t *out_val)
 {
     *out_val = 0U;
-    if (!g_xds_swd_active) {
+    if (!s_xds_swd.swd_active) {
         return XDS_ERR_SWD_PROTOCOL;
     }
 
@@ -465,7 +469,7 @@ int32_t xds_swd_cmapi_read_reg(uint8_t type, uint8_t ap_num, uint8_t addr, uint3
 
 int32_t xds_swd_cmapi_write_reg(uint8_t type, uint8_t ap_num, uint8_t addr, uint32_t val)
 {
-    if (!g_xds_swd_active) {
+    if (!s_xds_swd.swd_active) {
         return XDS_ERR_SWD_PROTOCOL;
     }
 
@@ -479,13 +483,13 @@ int32_t xds_swd_cmapi_write_reg(uint8_t type, uint8_t ap_num, uint8_t addr, uint
         uint8_t ack = xds_swd_cmapi_xfer((uint8_t)(SWD_REQ_APnDP | reg_bits), &wval);
         if (ack != SWD_ACK_OK) {
             if ((addr == XDS_AP_CSW_ADDR) && (ap_num < XDS_AP_CSW_CACHE_MAX)) {
-                g_xds_csw_valid[ap_num] = false;
+                s_xds_swd.csw_valid[ap_num] = false;
             }
             return xds_swd_ack_to_err(ack);
         }
         if ((addr == XDS_AP_CSW_ADDR) && (ap_num < XDS_AP_CSW_CACHE_MAX)) {
-            g_xds_csw_cache[ap_num] = val;
-            g_xds_csw_valid[ap_num] = true;
+            s_xds_swd.csw_cache[ap_num] = val;
+            s_xds_swd.csw_valid[ap_num] = true;
         }
         swd_idle_cycles(XDS_SWD_TRAILING_CLKS);
         return XDS_ERR_OK;
@@ -498,8 +502,8 @@ int32_t xds_swd_cmapi_write_reg(uint8_t type, uint8_t ap_num, uint8_t addr, uint
             return xds_swd_ack_to_err(ack);
         }
         if (reg_bits == XDS_DP_SELECT_REQ) {
-            g_xds_select_cache = val;
-            g_xds_select_valid = true;
+            s_xds_swd.select_cache = val;
+            s_xds_swd.select_valid = true;
         }
         swd_idle_cycles(XDS_SWD_TRAILING_CLKS);
         return XDS_ERR_OK;
@@ -512,14 +516,14 @@ static int32_t xds_swd_prepare_mem_csw(
     uint8_t ap_num, uint8_t access_size, uint8_t flags, bool has_csw, uint32_t csw_override)
 {
     uint32_t base_csw = 0U;
-    bool had_cached = (ap_num < XDS_AP_CSW_CACHE_MAX) && g_xds_csw_valid[ap_num];
+    bool had_cached = (ap_num < XDS_AP_CSW_CACHE_MAX) && s_xds_swd.csw_valid[ap_num];
     if (had_cached) {
-        base_csw = g_xds_csw_cache[ap_num];
+        base_csw = s_xds_swd.csw_cache[ap_num];
     } else if (has_csw) {
         base_csw = csw_override;
         if (ap_num < XDS_AP_CSW_CACHE_MAX) {
-            g_xds_csw_cache[ap_num] = base_csw;
-            g_xds_csw_valid[ap_num] = true;
+            s_xds_swd.csw_cache[ap_num] = base_csw;
+            s_xds_swd.csw_valid[ap_num] = true;
         }
     } else {
         int32_t r_err = xds_swd_cmapi_read_reg(XDS_DAP_AP, ap_num, XDS_AP_CSW_ADDR, &base_csw);
@@ -527,8 +531,8 @@ static int32_t xds_swd_prepare_mem_csw(
             return r_err;
         }
         if (ap_num < XDS_AP_CSW_CACHE_MAX) {
-            g_xds_csw_cache[ap_num] = base_csw;
-            g_xds_csw_valid[ap_num] = true;
+            s_xds_swd.csw_cache[ap_num] = base_csw;
+            s_xds_swd.csw_valid[ap_num] = true;
         }
     }
 
@@ -545,7 +549,7 @@ static int32_t xds_swd_prepare_mem_csw(
         return sel_err;
     }
 
-    if (had_cached && (csw == g_xds_csw_cache[ap_num])) {
+    if (had_cached && (csw == s_xds_swd.csw_cache[ap_num])) {
         return XDS_ERR_OK;
     }
 
@@ -553,14 +557,14 @@ static int32_t xds_swd_prepare_mem_csw(
     uint8_t ack = xds_swd_cmapi_xfer((uint8_t)(SWD_REQ_APnDP | XDS_AP_CSW_ADDR), &wval);
     if (ack != SWD_ACK_OK) {
         if (ap_num < XDS_AP_CSW_CACHE_MAX) {
-            g_xds_csw_valid[ap_num] = false;
+            s_xds_swd.csw_valid[ap_num] = false;
         }
         return xds_swd_ack_to_err(ack);
     }
 
     if (ap_num < XDS_AP_CSW_CACHE_MAX) {
-        g_xds_csw_cache[ap_num] = csw;
-        g_xds_csw_valid[ap_num] = true;
+        s_xds_swd.csw_cache[ap_num] = csw;
+        s_xds_swd.csw_valid[ap_num] = true;
     }
     return XDS_ERR_OK;
 }
@@ -569,7 +573,7 @@ int32_t xds_swd_cmapi_read_mem(uint8_t access_size, uint8_t flags, uint8_t ap_nu
     bool has_csw, uint32_t csw_override, uint8_t *out_data, uint16_t out_max, uint16_t *out_len)
 {
     *out_len = 0U;
-    if (!g_xds_swd_active) {
+    if (!s_xds_swd.swd_active) {
         return XDS_ERR_SWD_PROTOCOL;
     }
     if (((access_size != 1U) && (access_size != 2U) && (access_size != 4U)) || (byte_count > out_max) ||
@@ -643,7 +647,7 @@ int32_t xds_swd_cmapi_read_mem(uint8_t access_size, uint8_t flags, uint8_t ap_nu
 int32_t xds_swd_cmapi_write_mem(uint8_t access_size, uint8_t flags, uint8_t ap_num, uint32_t addr, uint16_t byte_count,
     bool has_csw, uint32_t csw_override, const uint8_t *in_data)
 {
-    if (!g_xds_swd_active) {
+    if (!s_xds_swd.swd_active) {
         return XDS_ERR_SWD_PROTOCOL;
     }
     if (((access_size != 1U) && (access_size != 2U) && (access_size != 4U)) || ((byte_count % access_size) != 0U)) {
@@ -727,7 +731,7 @@ static int32_t xds_swd_saci_poll_ctl(uint8_t ctl_reg, bool expect_bit0_set)
 
 int32_t xds_swd_saci_write(uint8_t ap_num, uint16_t word_count, const uint8_t *in_words)
 {
-    if (!g_xds_swd_active) {
+    if (!s_xds_swd.swd_active) {
         return XDS_ERR_SWD_PROTOCOL;
     }
 
@@ -755,7 +759,7 @@ int32_t xds_swd_saci_write(uint8_t ap_num, uint16_t word_count, const uint8_t *i
 int32_t xds_swd_saci_read(uint8_t ap_num, uint16_t word_count, uint8_t *out_words, uint16_t out_max, uint16_t *out_len)
 {
     *out_len = 0U;
-    if (!g_xds_swd_active) {
+    if (!s_xds_swd.swd_active) {
         return XDS_ERR_SWD_PROTOCOL;
     }
     if (((uint32_t)word_count * 4U) > (uint32_t)out_max) {
@@ -793,7 +797,7 @@ int32_t xds_swd_ocd_dap_request(
 {
     uint16_t req_off = 0U;
     uint16_t resp_off = 0U;
-    int32_t err = g_xds_swd_active ? XDS_ERR_OK : XDS_ERR_SWD_PROTOCOL;
+    int32_t err = s_xds_swd.swd_active ? XDS_ERR_OK : XDS_ERR_SWD_PROTOCOL;
     bool last_was_write = false;
 
     while (req_off < req_len) {
@@ -834,8 +838,8 @@ int32_t xds_swd_ocd_dap_request(
                 } else {
                     last_was_write = true;
                     if (swd_req == XDS_DP_SELECT_REQ) {
-                        g_xds_select_cache = wval;
-                        g_xds_select_valid = true;
+                        s_xds_swd.select_cache = wval;
+                        s_xds_swd.select_valid = true;
                     }
                 }
             }
@@ -853,5 +857,5 @@ int32_t xds_swd_ocd_dap_request(
 
 bool xds_swd_is_active(void)
 {
-    return g_xds_swd_active;
+    return s_xds_swd.swd_active;
 }

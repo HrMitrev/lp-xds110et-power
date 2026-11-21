@@ -33,23 +33,41 @@
 
 #define BMP_GDB_TX_BUF_SIZE 64U
 
-/* SWCLK delay loop count used by bmp_tap.c (UINT32_MAX = max speed) */
+/* SWCLK delay loop count required as an external symbol by BMP timing.h / bmp_tap.c */
 uint32_t target_clk_divider = 2U;
-static uint32_t g_bmp_max_freq_hz = 4000000U;
-
-static uint8_t g_gdb_tx_buf[BMP_GDB_TX_BUF_SIZE];
-static uint32_t g_gdb_tx_count = 0U;
 
 /* Linker-provided heap bounds (16 KiB stack reserved at top of 256 KiB SRAM) */
 extern uint8_t __heap_start__;
 extern uint8_t __heap_end__;
-static uint8_t *g_heap_cur = &__heap_start__;
+
+typedef struct {
+    uint32_t max_freq_hz;
+
+    struct {
+        uint8_t buf[BMP_GDB_TX_BUF_SIZE];
+        uint32_t count;
+    } gdb_tx;
+#ifdef ENABLE_RTT
+    struct {
+        uint8_t buf[RTT_DOWN_BUF_SIZE];
+        uint32_t head;
+        uint32_t tail;
+    } rtt_down;
+#endif
+    uint8_t *heap_cur;
+} bmp_platform_state_t;
+
+static bmp_platform_state_t s_bmp_plat;
 
 /* ---- 1. Platform HAL (platform_support.h / timing.h) ---- */
 
 void platform_init(void)
 {
     /* Board, SysTick, and USB composite stack are already initialized by main() */
+    s_bmp_plat.max_freq_hz = 4000000U;
+    if (s_bmp_plat.heap_cur == NULL) {
+        s_bmp_plat.heap_cur = &__heap_start__;
+    }
 }
 
 uint32_t platform_time_ms(void)
@@ -61,7 +79,7 @@ void platform_delay(uint32_t ms)
 {
     uint32_t start = board_get_uptime_ms();
     while ((uint32_t)(board_get_uptime_ms() - start) < ms) {
-        app_background_poll();
+        bmp_mode_background_poll();
     }
 }
 
@@ -111,7 +129,7 @@ void platform_max_frequency_set(uint32_t freq)
 {
     if (freq == 0U) {
         target_clk_divider = UINT32_MAX;
-        g_bmp_max_freq_hz = 10000000U;
+        s_bmp_plat.max_freq_hz = 10000000U;
         return;
     }
 
@@ -119,16 +137,16 @@ void platform_max_frequency_set(uint32_t freq)
     uint32_t half_cycles = sys_clk / (2U * freq);
     if (half_cycles <= 6U) {
         target_clk_divider = UINT32_MAX;
-        g_bmp_max_freq_hz = 10000000U;
+        s_bmp_plat.max_freq_hz = 10000000U;
     } else {
         target_clk_divider = (half_cycles - 6U) / 4U;
-        g_bmp_max_freq_hz = freq;
+        s_bmp_plat.max_freq_hz = freq;
     }
 }
 
 uint32_t platform_max_frequency_get(void)
 {
-    return g_bmp_max_freq_hz;
+    return s_bmp_plat.max_freq_hz;
 }
 
 void platform_target_clk_output_enable(bool enable)
@@ -182,14 +200,14 @@ static inline bool bmp_gdb_link_open(void)
 
 int gdb_if_init(void)
 {
-    g_gdb_tx_count = 0U;
+    s_bmp_plat.gdb_tx.count = 0U;
     return 0;
 }
 
 void gdb_if_putchar(char c, bool flush)
 {
-    g_gdb_tx_buf[g_gdb_tx_count++] = (uint8_t)c;
-    if (flush || (g_gdb_tx_count >= BMP_GDB_TX_BUF_SIZE)) {
+    s_bmp_plat.gdb_tx.buf[s_bmp_plat.gdb_tx.count++] = (uint8_t)c;
+    if (flush || (s_bmp_plat.gdb_tx.count >= BMP_GDB_TX_BUF_SIZE)) {
         gdb_if_flush(flush);
     }
 }
@@ -197,27 +215,27 @@ void gdb_if_putchar(char c, bool flush)
 void gdb_if_flush(bool force)
 {
     (void)force;
-    if (g_gdb_tx_count == 0U) {
+    if (s_bmp_plat.gdb_tx.count == 0U) {
         return;
     }
 
     uint32_t offset = 0U;
-    while (offset < g_gdb_tx_count) {
+    while (offset < s_bmp_plat.gdb_tx.count) {
         if (!bmp_gdb_link_open()) {
-            g_gdb_tx_count = 0U;
+            s_bmp_plat.gdb_tx.count = 0U;
             return;
         }
         uint32_t space = usb_cdc_tx_space(USB_CDC_PORT_AUX);
         if (space == 0U) {
-            app_background_poll();
+            bmp_mode_background_poll();
             continue;
         }
-        uint32_t rem = g_gdb_tx_count - offset;
+        uint32_t rem = s_bmp_plat.gdb_tx.count - offset;
         uint32_t chunk = (rem < space) ? rem : space;
-        offset += usb_cdc_tx_write(USB_CDC_PORT_AUX, &g_gdb_tx_buf[offset], chunk);
+        offset += usb_cdc_tx_write(USB_CDC_PORT_AUX, &s_bmp_plat.gdb_tx.buf[offset], chunk);
     }
 
-    g_gdb_tx_count = 0U;
+    s_bmp_plat.gdb_tx.count = 0U;
 }
 
 char gdb_if_getchar(void)
@@ -226,7 +244,7 @@ char gdb_if_getchar(void)
         if (!bmp_gdb_link_open()) {
             return '\x04';
         }
-        app_background_poll();
+        bmp_mode_background_poll();
         if (usb_cdc_rx_available(USB_CDC_PORT_AUX) == 0U) {
             __WFI();
         }
@@ -242,7 +260,7 @@ char gdb_if_getchar(void)
 char gdb_if_getchar_to(uint32_t timeout)
 {
     if (timeout == 0U) {
-        app_background_poll();
+        bmp_mode_background_poll();
         if (!bmp_gdb_link_open()) {
             return '\x04';
         }
@@ -263,7 +281,7 @@ char gdb_if_getchar_to(uint32_t timeout)
         if (platform_timeout_is_expired(&rx_timeout)) {
             return (char)-1;
         }
-        app_background_poll();
+        bmp_mode_background_poll();
     }
 
     uint8_t ch = 0U;
@@ -276,33 +294,29 @@ char gdb_if_getchar_to(uint32_t timeout)
 #ifdef ENABLE_RTT
 /* ---- 3. SEGGER RTT Transport (rtt_if.h) over USB CDC0 (ttyACM0) ---- */
 
-static uint8_t g_rtt_down_buf[RTT_DOWN_BUF_SIZE];
-static uint32_t g_rtt_down_head = 0U;
-static uint32_t g_rtt_down_tail = 0U;
-
 int rtt_if_init(void)
 {
-    g_rtt_down_head = 0U;
-    g_rtt_down_tail = 0U;
+    s_bmp_plat.rtt_down.head = 0U;
+    s_bmp_plat.rtt_down.tail = 0U;
     return 0;
 }
 
 int rtt_if_exit(void)
 {
-    g_rtt_down_head = 0U;
-    g_rtt_down_tail = 0U;
+    s_bmp_plat.rtt_down.head = 0U;
+    s_bmp_plat.rtt_down.tail = 0U;
     return 0;
 }
 
 void rtt_load_recv_buf(const char *data_buf, size_t len)
 {
     for (size_t i = 0U; i < len; i++) {
-        uint32_t next_head = (g_rtt_down_head + 1U) % RTT_DOWN_BUF_SIZE;
-        if (next_head == g_rtt_down_tail) {
+        uint32_t next_head = (s_bmp_plat.rtt_down.head + 1U) % RTT_DOWN_BUF_SIZE;
+        if (next_head == s_bmp_plat.rtt_down.tail) {
             break;
         }
-        g_rtt_down_buf[g_rtt_down_head] = (uint8_t)data_buf[i];
-        g_rtt_down_head = next_head;
+        s_bmp_plat.rtt_down.buf[s_bmp_plat.rtt_down.head] = (uint8_t)data_buf[i];
+        s_bmp_plat.rtt_down.head = next_head;
     }
 }
 
@@ -310,9 +324,9 @@ static void bmp_rtt_drain_cdc0(void)
 {
     uint8_t tmp[64];
     while (usb_cdc_rx_available(USB_CDC_PORT_APP) > 0U) {
-        uint32_t free_space = (g_rtt_down_tail <= g_rtt_down_head) ?
-            (RTT_DOWN_BUF_SIZE - g_rtt_down_head + g_rtt_down_tail - 1U) :
-            (g_rtt_down_tail - g_rtt_down_head - 1U);
+        uint32_t head = s_bmp_plat.rtt_down.head;
+        uint32_t tail = s_bmp_plat.rtt_down.tail;
+        uint32_t free_space = (tail <= head) ? (RTT_DOWN_BUF_SIZE - head + tail - 1U) : (tail - head - 1U);
         if (free_space == 0U) {
             if (rtt_flag_skip) {
                 (void)usb_cdc_rx_read(USB_CDC_PORT_APP, tmp, sizeof(tmp));
@@ -335,7 +349,7 @@ bool rtt_nodata(const uint32_t channel)
         return true;
     }
     bmp_rtt_drain_cdc0();
-    return g_rtt_down_head == g_rtt_down_tail;
+    return s_bmp_plat.rtt_down.head == s_bmp_plat.rtt_down.tail;
 }
 
 int32_t rtt_getchar(const uint32_t channel)
@@ -344,11 +358,11 @@ int32_t rtt_getchar(const uint32_t channel)
         return -1;
     }
     bmp_rtt_drain_cdc0();
-    if (g_rtt_down_head == g_rtt_down_tail) {
+    if (s_bmp_plat.rtt_down.head == s_bmp_plat.rtt_down.tail) {
         return -1;
     }
-    uint8_t ch = g_rtt_down_buf[g_rtt_down_tail];
-    g_rtt_down_tail = (g_rtt_down_tail + 1U) % RTT_DOWN_BUF_SIZE;
+    uint8_t ch = s_bmp_plat.rtt_down.buf[s_bmp_plat.rtt_down.tail];
+    s_bmp_plat.rtt_down.tail = (s_bmp_plat.rtt_down.tail + 1U) % RTT_DOWN_BUF_SIZE;
     return (int32_t)ch;
 }
 
@@ -369,7 +383,7 @@ uint32_t rtt_write(const uint32_t channel, const char *buf, uint32_t len)
             if ((uint32_t)(board_get_uptime_ms() - start_ms) >= 25U) {
                 return offset;
             }
-            app_background_poll();
+            bmp_mode_background_poll();
             continue;
         }
         uint32_t rem = len - offset;
@@ -384,14 +398,18 @@ uint32_t rtt_write(const uint32_t channel, const char *buf, uint32_t len)
 
 __attribute__((used)) void *_sbrk(ptrdiff_t incr)
 {
-    uint8_t *next = g_heap_cur + incr;
+    if (s_bmp_plat.heap_cur == NULL) {
+        s_bmp_plat.heap_cur = &__heap_start__;
+    }
+
+    uint8_t *next = s_bmp_plat.heap_cur + incr;
     if ((next < &__heap_start__) || (next > &__heap_end__)) {
         errno = ENOMEM;
         return (void *)-1;
     }
 
-    void *prev = g_heap_cur;
-    g_heap_cur = next;
+    void *prev = s_bmp_plat.heap_cur;
+    s_bmp_plat.heap_cur = next;
     return prev;
 }
 

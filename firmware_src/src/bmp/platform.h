@@ -21,7 +21,6 @@
 
 /* Forward declarations avoid pulling msp432e401y.h (SRAM_BASE) into upstream BMP targets */
 void board_led_red_set(bool on);
-void app_background_poll(void);
 void bmp_tap_clk_output_enable(bool enable);
 
 #define SET_RUN_STATE(state) board_led_red_set((state) != 0)

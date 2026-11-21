@@ -102,74 +102,103 @@ typedef struct {
     volatile uint32_t tail;
 } usb_ring_t;
 
-/* Backing storage for Bulk 0 (CMD), Bulk 1 (EnergyTrace Data), and CDC 0/1 */
-static uint8_t g_cmd_rx_storage[USB_CMD_RX_BUF_SIZE];
-static uint8_t g_cmd_tx_storage[USB_CMD_TX_BUF_SIZE];
-static uint8_t g_data_rx_storage[USB_DATA_RX_BUF_SIZE];
-static uint8_t g_data_tx_storage[USB_DATA_TX_BUF_SIZE];
-static uint8_t g_cdc_rx_storage[USB_CDC_PORT_COUNT][USB_CDC_RX_BUF_SIZE];
-static uint8_t g_cdc_tx_storage[USB_CDC_PORT_COUNT][USB_CDC_TX_BUF_SIZE];
-
-static usb_ring_t g_cmd_rx_ring = {g_cmd_rx_storage, USB_CMD_RX_BUF_SIZE - 1U, 0U, 0U};
-static usb_ring_t g_cmd_tx_ring = {g_cmd_tx_storage, USB_CMD_TX_BUF_SIZE - 1U, 0U, 0U};
-static usb_ring_t g_data_rx_ring = {g_data_rx_storage, USB_DATA_RX_BUF_SIZE - 1U, 0U, 0U};
-static usb_ring_t g_data_tx_ring = {g_data_tx_storage, USB_DATA_TX_BUF_SIZE - 1U, 0U, 0U};
-static usb_ring_t g_cdc_rx_rings[USB_CDC_PORT_COUNT] = {
-    {g_cdc_rx_storage[0], USB_CDC_RX_BUF_SIZE - 1U, 0U, 0U},
-    {g_cdc_rx_storage[1], USB_CDC_RX_BUF_SIZE - 1U, 0U, 0U},
-};
-static usb_ring_t g_cdc_tx_rings[USB_CDC_PORT_COUNT] = {
-    {g_cdc_tx_storage[0], USB_CDC_TX_BUF_SIZE - 1U, 0U, 0U},
-    {g_cdc_tx_storage[1], USB_CDC_TX_BUF_SIZE - 1U, 0U, 0U},
-};
-
 /* CMSIS-DAP v2 WinUSB Bulk variable-length packet queues */
 typedef struct {
     uint16_t len;
     uint8_t data[USB_DAP_MAX_PKT_SIZE];
 } usb_dap_pkt_t;
 
-static usb_dap_pkt_t g_dap_rx_queue[USB_DAP_QUEUE_DEPTH];
-static usb_dap_pkt_t g_dap_tx_queue[USB_DAP_QUEUE_DEPTH];
-static volatile uint8_t g_dap_rx_head = 0U;
-static volatile uint8_t g_dap_rx_tail = 0U;
-static volatile uint8_t g_dap_rx_count = 0U;
-static volatile uint8_t g_dap_tx_head = 0U;
-static volatile uint8_t g_dap_tx_tail = 0U;
-static volatile uint8_t g_dap_tx_count = 0U;
+typedef struct {
+    usb_dap_pkt_t rx_queue[USB_DAP_QUEUE_DEPTH];
+    usb_dap_pkt_t tx_queue[USB_DAP_QUEUE_DEPTH];
+    volatile uint8_t rx_head;
+    volatile uint8_t rx_tail;
+    volatile uint8_t rx_count;
+    volatile uint8_t tx_head;
+    volatile uint8_t tx_tail;
+    volatile uint8_t tx_count;
+    volatile bool tx_busy;
+} usb_dap_state_t;
 
-/* Device & endpoint state */
-static volatile bool g_usb_configured = false;
-static volatile bool g_usb_high_speed = true;
-static volatile uint16_t g_bulk_mps = USB_BULK_MPS_HS;
-static volatile bool g_cmd_tx_busy = false;
-static volatile bool g_cmd_tx_need_zlp = false;
-static volatile bool g_data_tx_busy = false;
-static volatile bool g_cdc_tx_busy[USB_CDC_PORT_COUNT] = {false, false};
-static volatile bool g_dap_tx_busy = false;
+typedef struct {
+    ep0_state_t state;
+    uint8_t pending_addr;
+    const uint8_t *tx_ptr;
+    uint16_t tx_rem;
+    bool tx_need_zlp;
+    uint8_t status_buf[2];
+    uint8_t rx_scratch[16];
+    uint16_t rx_rem;
+    uint8_t rx_cdc_port;
+    uint8_t cdc_coding_wire[USB_CDC_LINE_CODING_LEN];
+} usb_ep0_ctrl_t;
 
-static ep0_state_t g_ep0_state = EP0_STATE_IDLE;
-static uint8_t g_pending_addr = 0U;
-static const uint8_t *g_ep0_tx_ptr = NULL;
-static uint16_t g_ep0_tx_rem = 0U;
-static bool g_ep0_tx_need_zlp = false;
-static uint8_t g_ep0_status_buf[2];
-static uint8_t g_ep0_rx_scratch[16];
-static uint16_t g_ep0_rx_rem = 0U;
-static uint8_t g_ep0_rx_cdc_port = USB_CDC_PORT_APP;
+typedef struct {
+    uint8_t rx_buf[USB_CDC_RX_BUF_SIZE];
+    uint8_t tx_buf[USB_CDC_TX_BUF_SIZE];
+    usb_ring_t rx_ring;
+    usb_ring_t tx_ring;
+    volatile bool tx_busy;
+    usb_cdc_line_coding_t coding;
+    volatile bool coding_dirty;
+    volatile uint16_t ctrl_state;
+} usb_cdc_port_state_t;
 
-/* Per-port CDC ACM state (defaults: 115200 8N1) */
-static usb_cdc_line_coding_t g_cdc_coding[USB_CDC_PORT_COUNT] = {
-    {115200U, 0U, 0U, 8U},
-    {115200U, 0U, 0U, 8U},
-};
-static uint8_t g_cdc_coding_wire[USB_CDC_LINE_CODING_LEN];
-static volatile bool g_cdc_coding_dirty[USB_CDC_PORT_COUNT] = {false, false};
-static volatile uint16_t g_cdc_ctrl_state[USB_CDC_PORT_COUNT] = {0U, 0U};
+typedef struct {
+    /* USB bus link state */
+    volatile bool configured;
+    volatile bool high_speed;
+    volatile uint16_t bulk_mps;
 
-static const uint32_t g_cdc_out_ep[USB_CDC_PORT_COUNT] = {USB_EP_1, USB_EP_4};
-static const uint32_t g_cdc_in_ep[USB_CDC_PORT_COUNT] = {USB_EP_2, USB_EP_5};
-static const uint32_t g_cdc_in_fifo_bytes[USB_CDC_PORT_COUNT] = {USB_CDC0_IN_FIFO_BYTES, USB_CDC1_IN_FIFO_BYTES};
+    /* EP0 control transfer state machine */
+    usb_ep0_ctrl_t ep0;
+
+    /* Bulk 0: XDS110 Command (OUT 0x02 / IN 0x83) */
+    struct {
+        uint8_t rx_buf[USB_CMD_RX_BUF_SIZE];
+        uint8_t tx_buf[USB_CMD_TX_BUF_SIZE];
+        usb_ring_t rx_ring;
+        usb_ring_t tx_ring;
+        volatile bool tx_busy;
+        volatile bool tx_need_zlp;
+    } cmd;
+
+    /* Bulk 1: EnergyTrace Data (OUT 0x06 / IN 0x87) */
+    struct {
+        uint8_t rx_buf[USB_DATA_RX_BUF_SIZE];
+        uint8_t tx_buf[USB_DATA_TX_BUF_SIZE];
+        usb_ring_t rx_ring;
+        usb_ring_t tx_ring;
+        volatile bool tx_busy;
+    } data;
+
+    /* CDC ACM Virtual COM Ports (CDC0 App UART / RTT, CDC1 BMP GDB / Aux UART) */
+    usb_cdc_port_state_t cdc[USB_CDC_PORT_COUNT];
+
+    /* CMSIS-DAP v2 WinUSB Bulk (OUT 0x05 / IN 0x86) */
+    usb_dap_state_t dap;
+} usb_device_state_t;
+
+static usb_device_state_t s_usb;
+
+static const uint32_t k_cdc_out_ep[USB_CDC_PORT_COUNT] = {USB_EP_1, USB_EP_4};
+static const uint32_t k_cdc_in_ep[USB_CDC_PORT_COUNT] = {USB_EP_2, USB_EP_5};
+static const uint32_t k_cdc_in_fifo_bytes[USB_CDC_PORT_COUNT] = {USB_CDC0_IN_FIFO_BYTES, USB_CDC1_IN_FIFO_BYTES};
+
+static void usb_state_init(void)
+{
+    s_usb.high_speed = true;
+    s_usb.bulk_mps = USB_BULK_MPS_HS;
+    s_usb.cmd.rx_ring = (usb_ring_t){s_usb.cmd.rx_buf, USB_CMD_RX_BUF_SIZE - 1U, 0U, 0U};
+    s_usb.cmd.tx_ring = (usb_ring_t){s_usb.cmd.tx_buf, USB_CMD_TX_BUF_SIZE - 1U, 0U, 0U};
+    s_usb.data.rx_ring = (usb_ring_t){s_usb.data.rx_buf, USB_DATA_RX_BUF_SIZE - 1U, 0U, 0U};
+    s_usb.data.tx_ring = (usb_ring_t){s_usb.data.tx_buf, USB_DATA_TX_BUF_SIZE - 1U, 0U, 0U};
+    for (uint8_t port = 0U; port < USB_CDC_PORT_COUNT; port++) {
+        s_usb.cdc[port].rx_ring = (usb_ring_t){s_usb.cdc[port].rx_buf, USB_CDC_RX_BUF_SIZE - 1U, 0U, 0U};
+        s_usb.cdc[port].tx_ring = (usb_ring_t){s_usb.cdc[port].tx_buf, USB_CDC_TX_BUF_SIZE - 1U, 0U, 0U};
+        s_usb.cdc[port].coding = (usb_cdc_line_coding_t){115200U, 0U, 0U, 8U};
+    }
+}
 
 /* Shared NVIC priority for USB0 and EnergyTrace SSI1 (must match et_hdr.c) */
 #define USB_IRQ_PRIO 2U
@@ -328,9 +357,9 @@ static void usb_init_ulpi_pins(void)
 
 static void usb_configure_endpoints(void)
 {
-    uint32_t mps = g_bulk_mps;
-    uint32_t fifo_full = g_usb_high_speed ? USB_FIFO_SZ_512 : USB_FIFO_SZ_64;
-    uint32_t fifo_data_out = g_usb_high_speed ? USB_FIFO_SZ_256 : USB_FIFO_SZ_64;
+    uint32_t mps = s_usb.bulk_mps;
+    uint32_t fifo_full = s_usb.high_speed ? USB_FIFO_SZ_512 : USB_FIFO_SZ_64;
+    uint32_t fifo_data_out = s_usb.high_speed ? USB_FIFO_SZ_256 : USB_FIFO_SZ_64;
 
     /* CDC0 / CDC1 Interrupt IN (EP1 IN 0x81, EP4 IN 0x84) */
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_1, USB_CDC_INT_MPS, USB_EP_MODE_INT | USB_EP_DEV_IN);
@@ -374,40 +403,40 @@ static void usb_configure_endpoints(void)
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_6, mps, USB_EP_MODE_BULK | USB_EP_DEV_IN);
     MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_6, USB_FIFO_ADDR_DAP_IN, fifo_full, USB_EP_DEV_IN);
 
-    g_cmd_tx_busy = false;
-    g_cmd_tx_need_zlp = false;
-    g_data_tx_busy = false;
-    g_cdc_tx_busy[0] = false;
-    g_cdc_tx_busy[1] = false;
-    g_dap_tx_busy = false;
+    s_usb.cmd.tx_busy = false;
+    s_usb.cmd.tx_need_zlp = false;
+    s_usb.data.tx_busy = false;
+    s_usb.cdc[0].tx_busy = false;
+    s_usb.cdc[1].tx_busy = false;
+    s_usb.dap.tx_busy = false;
 }
 
 /* ---- CMSIS-DAP v2 Bulk IN/OUT Packet Queue Helpers ---- */
 
 static void dap_queues_reset(void)
 {
-    g_dap_rx_head = 0U;
-    g_dap_rx_tail = 0U;
-    g_dap_rx_count = 0U;
-    g_dap_tx_head = 0U;
-    g_dap_tx_tail = 0U;
-    g_dap_tx_count = 0U;
-    g_dap_tx_busy = false;
+    s_usb.dap.rx_head = 0U;
+    s_usb.dap.rx_tail = 0U;
+    s_usb.dap.rx_count = 0U;
+    s_usb.dap.tx_head = 0U;
+    s_usb.dap.tx_tail = 0U;
+    s_usb.dap.tx_count = 0U;
+    s_usb.dap.tx_busy = false;
 }
 
 static void usb_kick_dap_in(void)
 {
-    if (!g_usb_configured || g_dap_tx_busy || (g_dap_tx_count == 0U)) {
+    if (!s_usb.configured || s_usb.dap.tx_busy || (s_usb.dap.tx_count == 0U)) {
         return;
     }
 
-    uint8_t tail = g_dap_tx_tail;
-    uint16_t pkt_len = g_dap_tx_queue[tail].len;
-    g_dap_tx_tail = (uint8_t)((tail + 1U) % USB_DAP_QUEUE_DEPTH);
-    g_dap_tx_count--;
-    g_dap_tx_busy = true;
+    uint8_t tail = s_usb.dap.tx_tail;
+    uint16_t pkt_len = s_usb.dap.tx_queue[tail].len;
+    s_usb.dap.tx_tail = (uint8_t)((tail + 1U) % USB_DAP_QUEUE_DEPTH);
+    s_usb.dap.tx_count--;
+    s_usb.dap.tx_busy = true;
 
-    MAP_USBEndpointDataPut(USB0_BASE, USB_EP_6, g_dap_tx_queue[tail].data, pkt_len);
+    MAP_USBEndpointDataPut(USB0_BASE, USB_EP_6, s_usb.dap.tx_queue[tail].data, pkt_len);
     MAP_USBEndpointDataSend(USB0_BASE, USB_EP_6, USB_TRANS_IN);
 }
 
@@ -420,18 +449,18 @@ static void usb_handle_dap_out(void)
     }
 
     /* Hold packet in hardware FIFO (USB NAK flow control) if queue is full */
-    if (g_dap_rx_count >= USB_DAP_QUEUE_DEPTH) {
+    if (s_usb.dap.rx_count >= USB_DAP_QUEUE_DEPTH) {
         return;
     }
 
-    uint8_t head = g_dap_rx_head;
+    uint8_t head = s_usb.dap.rx_head;
     uint32_t read_len = (avail > USB_DAP_MAX_PKT_SIZE) ? USB_DAP_MAX_PKT_SIZE : avail;
-    MAP_USBEndpointDataGet(USB0_BASE, USB_EP_5, g_dap_rx_queue[head].data, &read_len);
+    MAP_USBEndpointDataGet(USB0_BASE, USB_EP_5, s_usb.dap.rx_queue[head].data, &read_len);
     MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_5, false);
-    g_dap_rx_queue[head].len = (uint16_t)read_len;
+    s_usb.dap.rx_queue[head].len = (uint16_t)read_len;
 
-    g_dap_rx_head = (uint8_t)((head + 1U) % USB_DAP_QUEUE_DEPTH);
-    g_dap_rx_count++;
+    s_usb.dap.rx_head = (uint8_t)((head + 1U) % USB_DAP_QUEUE_DEPTH);
+    s_usb.dap.rx_count++;
 }
 
 /* ---- Bulk IN/OUT Pump Helpers ---- */
@@ -439,7 +468,7 @@ static void usb_handle_dap_out(void)
 static void usb_kick_bulk_in(
     uint32_t ep, usb_ring_t *ring, volatile bool *busy_flag, volatile bool *need_zlp, uint32_t max_chunk)
 {
-    if (!g_usb_configured || *busy_flag) {
+    if (!s_usb.configured || *busy_flag) {
         return;
     }
 
@@ -453,7 +482,7 @@ static void usb_kick_bulk_in(
         return;
     }
 
-    uint32_t limit = (max_chunk < g_bulk_mps) ? max_chunk : g_bulk_mps;
+    uint32_t limit = (max_chunk < s_usb.bulk_mps) ? max_chunk : s_usb.bulk_mps;
     uint32_t chunk = (avail > limit) ? limit : avail;
 
     uint8_t pkt[USB_BULK_MPS_HS];
@@ -488,21 +517,21 @@ static void usb_handle_bulk_out(uint32_t ep, usb_ring_t *ring)
 
 static void ep0_send_next_chunk(void)
 {
-    uint32_t chunk = (g_ep0_tx_rem > USB_EP0_MPS) ? USB_EP0_MPS : g_ep0_tx_rem;
-    bool is_last = (g_ep0_tx_rem < USB_EP0_MPS) || ((g_ep0_tx_rem == USB_EP0_MPS) && !g_ep0_tx_need_zlp);
+    uint32_t chunk = (s_usb.ep0.tx_rem > USB_EP0_MPS) ? USB_EP0_MPS : s_usb.ep0.tx_rem;
+    bool is_last = (s_usb.ep0.tx_rem < USB_EP0_MPS) || ((s_usb.ep0.tx_rem == USB_EP0_MPS) && !s_usb.ep0.tx_need_zlp);
 
     if (chunk > 0U) {
-        MAP_USBEndpointDataPut(USB0_BASE, USB_EP_0, (uint8_t *)g_ep0_tx_ptr, chunk);
-        g_ep0_tx_ptr += chunk;
-        g_ep0_tx_rem = (uint16_t)(g_ep0_tx_rem - chunk);
+        MAP_USBEndpointDataPut(USB0_BASE, USB_EP_0, (uint8_t *)s_usb.ep0.tx_ptr, chunk);
+        s_usb.ep0.tx_ptr += chunk;
+        s_usb.ep0.tx_rem = (uint16_t)(s_usb.ep0.tx_rem - chunk);
     }
 
     if (is_last) {
-        g_ep0_state = EP0_STATE_IDLE;
-        g_ep0_tx_need_zlp = false;
+        s_usb.ep0.state = EP0_STATE_IDLE;
+        s_usb.ep0.tx_need_zlp = false;
         MAP_USBEndpointDataSend(USB0_BASE, USB_EP_0, USB_TRANS_IN_LAST);
     } else {
-        g_ep0_state = EP0_STATE_TX_DATA;
+        s_usb.ep0.state = EP0_STATE_TX_DATA;
         MAP_USBEndpointDataSend(USB0_BASE, USB_EP_0, USB_TRANS_IN);
     }
 }
@@ -510,9 +539,9 @@ static void ep0_send_next_chunk(void)
 static void ep0_start_tx(const uint8_t *data, uint16_t data_len, uint16_t req_len)
 {
     uint16_t send_len = (data_len < req_len) ? data_len : req_len;
-    g_ep0_tx_ptr = data;
-    g_ep0_tx_rem = send_len;
-    g_ep0_tx_need_zlp = (send_len < req_len) && ((send_len % USB_EP0_MPS) == 0U);
+    s_usb.ep0.tx_ptr = data;
+    s_usb.ep0.tx_rem = send_len;
+    s_usb.ep0.tx_need_zlp = (send_len < req_len) && ((send_len % USB_EP0_MPS) == 0U);
 
     MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, false);
     ep0_send_next_chunk();
@@ -520,7 +549,7 @@ static void ep0_start_tx(const uint8_t *data, uint16_t data_len, uint16_t req_le
 
 static void ep0_stall(void)
 {
-    g_ep0_state = EP0_STATE_IDLE;
+    s_usb.ep0.state = EP0_STATE_IDLE;
     MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, false);
     MAP_USBDevEndpointStall(USB0_BASE, USB_EP_0, USB_EP_DEV_IN);
 }
@@ -536,9 +565,9 @@ static void ep0_handle_standard_request(const uint8_t setup[8])
 
     switch (b_request) {
     case USB_REQ_GET_STATUS:
-        g_ep0_status_buf[0] = 0U;
-        g_ep0_status_buf[1] = 0U;
-        ep0_start_tx(g_ep0_status_buf, 2U, w_length);
+        s_usb.ep0.status_buf[0] = 0U;
+        s_usb.ep0.status_buf[1] = 0U;
+        ep0_start_tx(s_usb.ep0.status_buf, 2U, w_length);
         break;
 
     case USB_REQ_CLEAR_FEATURE:
@@ -557,12 +586,12 @@ static void ep0_handle_standard_request(const uint8_t setup[8])
             }
         }
         MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, true);
-        g_ep0_state = EP0_STATE_IDLE;
+        s_usb.ep0.state = EP0_STATE_IDLE;
         break;
 
     case USB_REQ_SET_ADDRESS:
-        g_pending_addr = (uint8_t)(w_value & 0x7FU);
-        g_ep0_state = EP0_STATE_STATUS_SET_ADDR;
+        s_usb.ep0.pending_addr = (uint8_t)(w_value & 0x7FU);
+        s_usb.ep0.state = EP0_STATE_STATUS_SET_ADDR;
         MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, true);
         break;
 
@@ -581,31 +610,31 @@ static void ep0_handle_standard_request(const uint8_t setup[8])
     }
 
     case USB_REQ_GET_CONFIGURATION:
-        g_ep0_status_buf[0] = g_usb_configured ? USB_CONFIG_VALUE : 0U;
-        ep0_start_tx(g_ep0_status_buf, 1U, w_length);
+        s_usb.ep0.status_buf[0] = s_usb.configured ? USB_CONFIG_VALUE : 0U;
+        ep0_start_tx(s_usb.ep0.status_buf, 1U, w_length);
         break;
 
     case USB_REQ_SET_CONFIGURATION:
         if ((w_value == 0U) || (w_value == USB_CONFIG_VALUE)) {
-            g_usb_configured = (w_value == USB_CONFIG_VALUE);
-            if (g_usb_configured) {
+            s_usb.configured = (w_value == USB_CONFIG_VALUE);
+            if (s_usb.configured) {
                 usb_configure_endpoints();
             }
             MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, true);
-            g_ep0_state = EP0_STATE_IDLE;
+            s_usb.ep0.state = EP0_STATE_IDLE;
         } else {
             ep0_stall();
         }
         break;
 
     case USB_REQ_GET_INTERFACE:
-        g_ep0_status_buf[0] = 0U;
-        ep0_start_tx(g_ep0_status_buf, 1U, w_length);
+        s_usb.ep0.status_buf[0] = 0U;
+        ep0_start_tx(s_usb.ep0.status_buf, 1U, w_length);
         break;
 
     case USB_REQ_SET_INTERFACE:
         MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, true);
-        g_ep0_state = EP0_STATE_IDLE;
+        s_usb.ep0.state = EP0_STATE_IDLE;
         break;
 
     default:
@@ -628,8 +657,8 @@ static void ep0_handle_class_request(const uint8_t setup[8])
             ep0_stall();
             break;
         }
-        usb_pack_line_coding(&g_cdc_coding[cdc_port], g_cdc_coding_wire);
-        ep0_start_tx(g_cdc_coding_wire, USB_CDC_LINE_CODING_LEN, w_length);
+        usb_pack_line_coding(&s_usb.cdc[cdc_port].coding, s_usb.ep0.cdc_coding_wire);
+        ep0_start_tx(s_usb.ep0.cdc_coding_wire, USB_CDC_LINE_CODING_LEN, w_length);
         break;
 
     case USB_CDC_SET_LINE_CODING:
@@ -637,28 +666,28 @@ static void ep0_handle_class_request(const uint8_t setup[8])
             ep0_stall();
             break;
         }
-        if ((w_length > 0U) && (w_length <= sizeof(g_ep0_rx_scratch))) {
-            g_ep0_rx_cdc_port = cdc_port;
-            g_ep0_rx_rem = w_length;
-            g_ep0_state = EP0_STATE_RX_DATA;
+        if ((w_length > 0U) && (w_length <= sizeof(s_usb.ep0.rx_scratch))) {
+            s_usb.ep0.rx_cdc_port = cdc_port;
+            s_usb.ep0.rx_rem = w_length;
+            s_usb.ep0.state = EP0_STATE_RX_DATA;
             MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, false);
         } else {
             MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, true);
-            g_ep0_state = EP0_STATE_IDLE;
+            s_usb.ep0.state = EP0_STATE_IDLE;
         }
         break;
 
     case USB_CDC_SET_CONTROL_LINE_STATE:
         if (usb_iface_to_cdc_port(w_index, &cdc_port)) {
-            g_cdc_ctrl_state[cdc_port] = w_value;
+            s_usb.cdc[cdc_port].ctrl_state = w_value;
         }
         MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, true);
-        g_ep0_state = EP0_STATE_IDLE;
+        s_usb.ep0.state = EP0_STATE_IDLE;
         break;
 
     case USB_CDC_SEND_BREAK:
         MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, true);
-        g_ep0_state = EP0_STATE_IDLE;
+        s_usb.ep0.state = EP0_STATE_IDLE;
         break;
 
     default:
@@ -693,21 +722,21 @@ static void ep0_handle_interrupt(void)
 
     if ((ep0_status & USB_DEV_EP0_SENT_STALL) != 0U) {
         MAP_USBDevEndpointStatusClear(USB0_BASE, USB_EP_0, USB_DEV_EP0_SENT_STALL);
-        g_ep0_state = EP0_STATE_IDLE;
+        s_usb.ep0.state = EP0_STATE_IDLE;
     }
 
     if ((ep0_status & USB_DEV_EP0_SETUP_END) != 0U) {
         MAP_USBDevEndpointStatusClear(USB0_BASE, USB_EP_0, USB_DEV_EP0_SETUP_END);
-        g_ep0_state = EP0_STATE_IDLE;
+        s_usb.ep0.state = EP0_STATE_IDLE;
     }
 
-    if (g_ep0_state == EP0_STATE_STATUS_SET_ADDR) {
-        MAP_USBDevAddrSet(USB0_BASE, g_pending_addr);
-        g_ep0_state = EP0_STATE_IDLE;
+    if (s_usb.ep0.state == EP0_STATE_STATUS_SET_ADDR) {
+        MAP_USBDevAddrSet(USB0_BASE, s_usb.ep0.pending_addr);
+        s_usb.ep0.state = EP0_STATE_IDLE;
         return;
     }
 
-    if (g_ep0_state == EP0_STATE_TX_DATA) {
+    if (s_usb.ep0.state == EP0_STATE_TX_DATA) {
         ep0_send_next_chunk();
         return;
     }
@@ -716,18 +745,18 @@ static void ep0_handle_interrupt(void)
         return;
     }
 
-    if (g_ep0_state == EP0_STATE_RX_DATA) {
-        uint32_t got = sizeof(g_ep0_rx_scratch);
-        MAP_USBEndpointDataGet(USB0_BASE, USB_EP_0, g_ep0_rx_scratch, &got);
-        if ((got >= USB_CDC_LINE_CODING_LEN) && (g_ep0_rx_rem >= USB_CDC_LINE_CODING_LEN) &&
-            (g_ep0_rx_cdc_port < USB_CDC_PORT_COUNT)) {
-            usb_unpack_line_coding(g_ep0_rx_scratch, &g_cdc_coding[g_ep0_rx_cdc_port]);
-            g_cdc_coding_dirty[g_ep0_rx_cdc_port] = true;
+    if (s_usb.ep0.state == EP0_STATE_RX_DATA) {
+        uint32_t got = sizeof(s_usb.ep0.rx_scratch);
+        MAP_USBEndpointDataGet(USB0_BASE, USB_EP_0, s_usb.ep0.rx_scratch, &got);
+        if ((got >= USB_CDC_LINE_CODING_LEN) && (s_usb.ep0.rx_rem >= USB_CDC_LINE_CODING_LEN) &&
+            (s_usb.ep0.rx_cdc_port < USB_CDC_PORT_COUNT)) {
+            usb_unpack_line_coding(s_usb.ep0.rx_scratch, &s_usb.cdc[s_usb.ep0.rx_cdc_port].coding);
+            s_usb.cdc[s_usb.ep0.rx_cdc_port].coding_dirty = true;
         }
-        g_ep0_rx_rem = (got >= g_ep0_rx_rem) ? 0U : (uint16_t)(g_ep0_rx_rem - got);
-        bool is_last = (g_ep0_rx_rem == 0U);
+        s_usb.ep0.rx_rem = (got >= s_usb.ep0.rx_rem) ? 0U : (uint16_t)(s_usb.ep0.rx_rem - got);
+        bool is_last = (s_usb.ep0.rx_rem == 0U);
         if (is_last) {
-            g_ep0_state = EP0_STATE_IDLE;
+            s_usb.ep0.state = EP0_STATE_IDLE;
         }
         MAP_USBDevEndpointDataAck(USB0_BASE, USB_EP_0, is_last);
         return;
@@ -762,40 +791,40 @@ void usb0_irq_handler(void)
     uint32_t ep_status = MAP_USBIntStatusEndpoint(USB0_BASE);
 
     if ((ctrl_status & USB_INTCTRL_RESET) != 0U) {
-        g_usb_configured = false;
-        g_ep0_state = EP0_STATE_IDLE;
-        g_pending_addr = 0U;
-        g_cmd_tx_busy = false;
-        g_cmd_tx_need_zlp = false;
-        g_data_tx_busy = false;
-        g_cdc_tx_busy[0] = false;
-        g_cdc_tx_busy[1] = false;
-        g_cdc_ctrl_state[0] = 0U;
-        g_cdc_ctrl_state[1] = 0U;
+        s_usb.configured = false;
+        s_usb.ep0.state = EP0_STATE_IDLE;
+        s_usb.ep0.pending_addr = 0U;
+        s_usb.cmd.tx_busy = false;
+        s_usb.cmd.tx_need_zlp = false;
+        s_usb.data.tx_busy = false;
+        s_usb.cdc[0].tx_busy = false;
+        s_usb.cdc[1].tx_busy = false;
+        s_usb.cdc[0].ctrl_state = 0U;
+        s_usb.cdc[1].ctrl_state = 0U;
 
-        ring_reset(&g_cmd_rx_ring);
-        ring_reset(&g_cmd_tx_ring);
-        ring_reset(&g_data_rx_ring);
-        ring_reset(&g_data_tx_ring);
-        ring_reset(&g_cdc_rx_rings[0]);
-        ring_reset(&g_cdc_rx_rings[1]);
-        ring_reset(&g_cdc_tx_rings[0]);
-        ring_reset(&g_cdc_tx_rings[1]);
+        ring_reset(&s_usb.cmd.rx_ring);
+        ring_reset(&s_usb.cmd.tx_ring);
+        ring_reset(&s_usb.data.rx_ring);
+        ring_reset(&s_usb.data.tx_ring);
+        ring_reset(&s_usb.cdc[0].rx_ring);
+        ring_reset(&s_usb.cdc[1].rx_ring);
+        ring_reset(&s_usb.cdc[0].tx_ring);
+        ring_reset(&s_usb.cdc[1].tx_ring);
         dap_queues_reset();
 
-        g_usb_high_speed = (MAP_USBDevSpeedGet(USB0_BASE) == USB_HIGH_SPEED);
-        g_bulk_mps = g_usb_high_speed ? USB_BULK_MPS_HS : USB_BULK_MPS_FS;
-        usb_descriptors_set_speed(g_usb_high_speed);
+        s_usb.high_speed = (MAP_USBDevSpeedGet(USB0_BASE) == USB_HIGH_SPEED);
+        s_usb.bulk_mps = s_usb.high_speed ? USB_BULK_MPS_HS : USB_BULK_MPS_FS;
+        usb_descriptors_set_speed(s_usb.high_speed);
     }
 
     if ((ctrl_status & USB_INTCTRL_DISCONNECT) != 0U) {
-        g_usb_configured = false;
-        g_cmd_tx_busy = false;
-        g_data_tx_busy = false;
-        g_cdc_tx_busy[0] = false;
-        g_cdc_tx_busy[1] = false;
-        g_cdc_ctrl_state[0] = 0U;
-        g_cdc_ctrl_state[1] = 0U;
+        s_usb.configured = false;
+        s_usb.cmd.tx_busy = false;
+        s_usb.data.tx_busy = false;
+        s_usb.cdc[0].tx_busy = false;
+        s_usb.cdc[1].tx_busy = false;
+        s_usb.cdc[0].ctrl_state = 0U;
+        s_usb.cdc[1].ctrl_state = 0U;
         dap_queues_reset();
     }
 
@@ -805,43 +834,44 @@ void usb0_irq_handler(void)
 
     /* Bulk 0 — XDS110 Command (OUT 0x02 / IN 0x83) */
     if ((ep_status & USB_INTEP_DEV_OUT_2) != 0U) {
-        usb_handle_bulk_out(USB_EP_2, &g_cmd_rx_ring);
+        usb_handle_bulk_out(USB_EP_2, &s_usb.cmd.rx_ring);
     }
 
     if ((ep_status & USB_INTEP_DEV_IN_3) != 0U) {
-        g_cmd_tx_busy = false;
-        usb_kick_bulk_in(USB_EP_3, &g_cmd_tx_ring, &g_cmd_tx_busy, &g_cmd_tx_need_zlp, USB_CMD_IN_FIFO_BYTES);
+        s_usb.cmd.tx_busy = false;
+        usb_kick_bulk_in(
+            USB_EP_3, &s_usb.cmd.tx_ring, &s_usb.cmd.tx_busy, &s_usb.cmd.tx_need_zlp, USB_CMD_IN_FIFO_BYTES);
     }
 
     /* Bulk 1 — EnergyTrace Data (OUT 0x06 / IN 0x87) */
     if ((ep_status & USB_INTEP_DEV_OUT_6) != 0U) {
-        usb_handle_bulk_out(USB_EP_6, &g_data_rx_ring);
+        usb_handle_bulk_out(USB_EP_6, &s_usb.data.rx_ring);
     }
 
     if ((ep_status & USB_INTEP_DEV_IN_7) != 0U) {
-        g_data_tx_busy = false;
-        usb_kick_bulk_in(USB_EP_7, &g_data_tx_ring, &g_data_tx_busy, NULL, USB_BULK_MPS_HS);
+        s_usb.data.tx_busy = false;
+        usb_kick_bulk_in(USB_EP_7, &s_usb.data.tx_ring, &s_usb.data.tx_busy, NULL, USB_BULK_MPS_HS);
     }
 
     /* CDC 0 — App UART (OUT 0x01 / IN 0x82) */
     if ((ep_status & USB_INTEP_DEV_OUT_1) != 0U) {
-        usb_handle_bulk_out(USB_EP_1, &g_cdc_rx_rings[USB_CDC_PORT_APP]);
+        usb_handle_bulk_out(USB_EP_1, &s_usb.cdc[USB_CDC_PORT_APP].rx_ring);
     }
 
     if ((ep_status & USB_INTEP_DEV_IN_2) != 0U) {
-        g_cdc_tx_busy[USB_CDC_PORT_APP] = false;
-        usb_kick_bulk_in(USB_EP_2, &g_cdc_tx_rings[USB_CDC_PORT_APP], &g_cdc_tx_busy[USB_CDC_PORT_APP], NULL,
+        s_usb.cdc[USB_CDC_PORT_APP].tx_busy = false;
+        usb_kick_bulk_in(USB_EP_2, &s_usb.cdc[USB_CDC_PORT_APP].tx_ring, &s_usb.cdc[USB_CDC_PORT_APP].tx_busy, NULL,
             USB_CDC0_IN_FIFO_BYTES);
     }
 
     /* CDC 1 — Aux / SWO UART (OUT 0x04 / IN 0x85) */
     if ((ep_status & USB_INTEP_DEV_OUT_4) != 0U) {
-        usb_handle_bulk_out(USB_EP_4, &g_cdc_rx_rings[USB_CDC_PORT_AUX]);
+        usb_handle_bulk_out(USB_EP_4, &s_usb.cdc[USB_CDC_PORT_AUX].rx_ring);
     }
 
     if ((ep_status & USB_INTEP_DEV_IN_5) != 0U) {
-        g_cdc_tx_busy[USB_CDC_PORT_AUX] = false;
-        usb_kick_bulk_in(USB_EP_5, &g_cdc_tx_rings[USB_CDC_PORT_AUX], &g_cdc_tx_busy[USB_CDC_PORT_AUX], NULL,
+        s_usb.cdc[USB_CDC_PORT_AUX].tx_busy = false;
+        usb_kick_bulk_in(USB_EP_5, &s_usb.cdc[USB_CDC_PORT_AUX].tx_ring, &s_usb.cdc[USB_CDC_PORT_AUX].tx_busy, NULL,
             USB_CDC1_IN_FIFO_BYTES);
     }
 
@@ -851,7 +881,7 @@ void usb0_irq_handler(void)
     }
 
     if ((ep_status & USB_INTEP_DEV_IN_6) != 0U) {
-        g_dap_tx_busy = false;
+        s_usb.dap.tx_busy = false;
         usb_kick_dap_in();
     }
 }
@@ -860,6 +890,8 @@ void usb0_irq_handler(void)
 
 void usb_device_init(const uint8_t fw_version[4])
 {
+    usb_state_init();
+
     char serial[BOARD_SERIAL_LEN + 1U];
     board_read_serial(serial);
     usb_descriptors_init(fw_version, serial);
@@ -916,43 +948,43 @@ void usb_device_disconnect(void)
 {
     NVIC_DisableIRQ(USB0_IRQn);
     MAP_USBDevDisconnect(USB0_BASE);
-    g_usb_configured = false;
-    g_cmd_tx_busy = false;
-    g_data_tx_busy = false;
-    g_cdc_tx_busy[0] = false;
-    g_cdc_tx_busy[1] = false;
-    g_cdc_ctrl_state[0] = 0U;
-    g_cdc_ctrl_state[1] = 0U;
+    s_usb.configured = false;
+    s_usb.cmd.tx_busy = false;
+    s_usb.data.tx_busy = false;
+    s_usb.cdc[0].tx_busy = false;
+    s_usb.cdc[1].tx_busy = false;
+    s_usb.cdc[0].ctrl_state = 0U;
+    s_usb.cdc[1].ctrl_state = 0U;
     dap_queues_reset();
 }
 
 bool usb_device_is_configured(void)
 {
-    return g_usb_configured;
+    return s_usb.configured;
 }
 
 bool usb_device_is_high_speed(void)
 {
-    return g_usb_high_speed;
+    return s_usb.high_speed;
 }
 
 uint32_t usb_cmd_rx_available(void)
 {
-    return ring_used(&g_cmd_rx_ring);
+    return ring_used(&s_usb.cmd.rx_ring);
 }
 
 uint32_t usb_cmd_rx_peek(uint8_t *dst, uint32_t len)
 {
-    return ring_peek(&g_cmd_rx_ring, dst, len);
+    return ring_peek(&s_usb.cmd.rx_ring, dst, len);
 }
 
 uint32_t usb_cmd_rx_read(uint8_t *dst, uint32_t len)
 {
     uint32_t crit = usb_crit_enter();
-    uint32_t got = ring_pop(&g_cmd_rx_ring, dst, len);
+    uint32_t got = ring_pop(&s_usb.cmd.rx_ring, dst, len);
     /* Drain any packet held by NAK back-pressure now that space freed up */
     if (MAP_USBEndpointDataAvail(USB0_BASE, USB_EP_2) > 0U) {
-        usb_handle_bulk_out(USB_EP_2, &g_cmd_rx_ring);
+        usb_handle_bulk_out(USB_EP_2, &s_usb.cmd.rx_ring);
     }
     usb_crit_exit(crit);
     return got;
@@ -961,38 +993,38 @@ uint32_t usb_cmd_rx_read(uint8_t *dst, uint32_t len)
 void usb_cmd_rx_flush(void)
 {
     uint32_t crit = usb_crit_enter();
-    ring_reset(&g_cmd_rx_ring);
+    ring_reset(&s_usb.cmd.rx_ring);
     usb_crit_exit(crit);
 }
 
 uint32_t usb_cmd_tx_space(void)
 {
-    return ring_free(&g_cmd_tx_ring);
+    return ring_free(&s_usb.cmd.tx_ring);
 }
 
 uint32_t usb_cmd_tx_write(const uint8_t *src, uint32_t len)
 {
     uint32_t crit = usb_crit_enter();
-    uint32_t written = ring_push(&g_cmd_tx_ring, src, len);
-    if ((written > 0U) && (USB_CMD_IN_FIFO_BYTES >= g_bulk_mps) && ((written % g_bulk_mps) == 0U)) {
-        g_cmd_tx_need_zlp = true;
+    uint32_t written = ring_push(&s_usb.cmd.tx_ring, src, len);
+    if ((written > 0U) && (USB_CMD_IN_FIFO_BYTES >= s_usb.bulk_mps) && ((written % s_usb.bulk_mps) == 0U)) {
+        s_usb.cmd.tx_need_zlp = true;
     }
-    usb_kick_bulk_in(USB_EP_3, &g_cmd_tx_ring, &g_cmd_tx_busy, &g_cmd_tx_need_zlp, USB_CMD_IN_FIFO_BYTES);
+    usb_kick_bulk_in(USB_EP_3, &s_usb.cmd.tx_ring, &s_usb.cmd.tx_busy, &s_usb.cmd.tx_need_zlp, USB_CMD_IN_FIFO_BYTES);
     usb_crit_exit(crit);
     return written;
 }
 
 uint32_t usb_data_rx_available(void)
 {
-    return ring_used(&g_data_rx_ring);
+    return ring_used(&s_usb.data.rx_ring);
 }
 
 uint32_t usb_data_rx_read(uint8_t *dst, uint32_t len)
 {
     uint32_t crit = usb_crit_enter();
-    uint32_t got = ring_pop(&g_data_rx_ring, dst, len);
+    uint32_t got = ring_pop(&s_usb.data.rx_ring, dst, len);
     if (MAP_USBEndpointDataAvail(USB0_BASE, USB_EP_6) > 0U) {
-        usb_handle_bulk_out(USB_EP_6, &g_data_rx_ring);
+        usb_handle_bulk_out(USB_EP_6, &s_usb.data.rx_ring);
     }
     usb_crit_exit(crit);
     return got;
@@ -1000,14 +1032,14 @@ uint32_t usb_data_rx_read(uint8_t *dst, uint32_t len)
 
 uint32_t usb_data_tx_space(void)
 {
-    return ring_free(&g_data_tx_ring);
+    return ring_free(&s_usb.data.tx_ring);
 }
 
 uint32_t usb_data_tx_write(const uint8_t *src, uint32_t len)
 {
     uint32_t crit = usb_crit_enter();
-    uint32_t written = ring_push(&g_data_tx_ring, src, len);
-    usb_kick_bulk_in(USB_EP_7, &g_data_tx_ring, &g_data_tx_busy, NULL, USB_BULK_MPS_HS);
+    uint32_t written = ring_push(&s_usb.data.tx_ring, src, len);
+    usb_kick_bulk_in(USB_EP_7, &s_usb.data.tx_ring, &s_usb.data.tx_busy, NULL, USB_BULK_MPS_HS);
     usb_crit_exit(crit);
     return written;
 }
@@ -1015,7 +1047,7 @@ uint32_t usb_data_tx_write(const uint8_t *src, uint32_t len)
 void usb_data_tx_flush(void)
 {
     uint32_t crit = usb_crit_enter();
-    ring_reset(&g_data_tx_ring);
+    ring_reset(&s_usb.data.tx_ring);
     usb_crit_exit(crit);
 }
 
@@ -1024,7 +1056,7 @@ uint32_t usb_cdc_rx_available(uint8_t port)
     if (port >= USB_CDC_PORT_COUNT) {
         return 0U;
     }
-    return ring_used(&g_cdc_rx_rings[port]);
+    return ring_used(&s_usb.cdc[port].rx_ring);
 }
 
 uint32_t usb_cdc_rx_read(uint8_t port, uint8_t *dst, uint32_t len)
@@ -1033,10 +1065,10 @@ uint32_t usb_cdc_rx_read(uint8_t port, uint8_t *dst, uint32_t len)
         return 0U;
     }
     uint32_t crit = usb_crit_enter();
-    uint32_t got = ring_pop(&g_cdc_rx_rings[port], dst, len);
-    uint32_t ep = g_cdc_out_ep[port];
+    uint32_t got = ring_pop(&s_usb.cdc[port].rx_ring, dst, len);
+    uint32_t ep = k_cdc_out_ep[port];
     if (MAP_USBEndpointDataAvail(USB0_BASE, ep) > 0U) {
-        usb_handle_bulk_out(ep, &g_cdc_rx_rings[port]);
+        usb_handle_bulk_out(ep, &s_usb.cdc[port].rx_ring);
     }
     usb_crit_exit(crit);
     return got;
@@ -1048,8 +1080,8 @@ void usb_cdc_rx_flush(uint8_t port)
         return;
     }
     uint32_t crit = usb_crit_enter();
-    ring_reset(&g_cdc_rx_rings[port]);
-    uint32_t ep = g_cdc_out_ep[port];
+    ring_reset(&s_usb.cdc[port].rx_ring);
+    uint32_t ep = k_cdc_out_ep[port];
     if (MAP_USBEndpointDataAvail(USB0_BASE, ep) > 0U) {
         uint8_t discard[USB_BULK_MPS_HS];
         uint32_t len = sizeof(discard);
@@ -1064,7 +1096,7 @@ uint32_t usb_cdc_tx_space(uint8_t port)
     if (port >= USB_CDC_PORT_COUNT) {
         return 0U;
     }
-    return ring_free(&g_cdc_tx_rings[port]);
+    return ring_free(&s_usb.cdc[port].tx_ring);
 }
 
 uint32_t usb_cdc_tx_write(uint8_t port, const uint8_t *src, uint32_t len)
@@ -1073,8 +1105,9 @@ uint32_t usb_cdc_tx_write(uint8_t port, const uint8_t *src, uint32_t len)
         return 0U;
     }
     uint32_t crit = usb_crit_enter();
-    uint32_t written = ring_push(&g_cdc_tx_rings[port], src, len);
-    usb_kick_bulk_in(g_cdc_in_ep[port], &g_cdc_tx_rings[port], &g_cdc_tx_busy[port], NULL, g_cdc_in_fifo_bytes[port]);
+    uint32_t written = ring_push(&s_usb.cdc[port].tx_ring, src, len);
+    usb_kick_bulk_in(
+        k_cdc_in_ep[port], &s_usb.cdc[port].tx_ring, &s_usb.cdc[port].tx_busy, NULL, k_cdc_in_fifo_bytes[port]);
     usb_crit_exit(crit);
     return written;
 }
@@ -1085,7 +1118,7 @@ void usb_cdc_tx_flush(uint8_t port)
         return;
     }
     uint32_t crit = usb_crit_enter();
-    ring_reset(&g_cdc_tx_rings[port]);
+    ring_reset(&s_usb.cdc[port].tx_ring);
     usb_crit_exit(crit);
 }
 
@@ -1095,10 +1128,10 @@ bool usb_cdc_take_line_coding(uint8_t port, usb_cdc_line_coding_t *out_coding)
         return false;
     }
     uint32_t crit = usb_crit_enter();
-    bool changed = g_cdc_coding_dirty[port];
+    bool changed = s_usb.cdc[port].coding_dirty;
     if (changed) {
-        g_cdc_coding_dirty[port] = false;
-        *out_coding = g_cdc_coding[port];
+        s_usb.cdc[port].coding_dirty = false;
+        *out_coding = s_usb.cdc[port].coding;
     }
     usb_crit_exit(crit);
     return changed;
@@ -1110,7 +1143,7 @@ void usb_cdc_get_line_coding(uint8_t port, usb_cdc_line_coding_t *out_coding)
         return;
     }
     uint32_t crit = usb_crit_enter();
-    *out_coding = g_cdc_coding[port];
+    *out_coding = s_usb.cdc[port].coding;
     usb_crit_exit(crit);
 }
 
@@ -1119,35 +1152,35 @@ bool usb_cdc_is_dtr_asserted(uint8_t port)
     if (port >= USB_CDC_PORT_COUNT) {
         return false;
     }
-    return (g_cdc_ctrl_state[port] & 0x0001U) != 0U;
+    return (s_usb.cdc[port].ctrl_state & 0x0001U) != 0U;
 }
 
 uint16_t usb_dap_packet_size(void)
 {
-    return g_bulk_mps;
+    return s_usb.bulk_mps;
 }
 
 bool usb_dap_rx_available(void)
 {
-    return (g_dap_rx_count > 0U);
+    return (s_usb.dap.rx_count > 0U);
 }
 
 uint16_t usb_dap_rx_pop(uint8_t *out_pkt, uint16_t max_len)
 {
     uint32_t crit = usb_crit_enter();
-    if (g_dap_rx_count == 0U) {
+    if (s_usb.dap.rx_count == 0U) {
         usb_crit_exit(crit);
         return 0U;
     }
 
-    uint8_t tail = g_dap_rx_tail;
-    uint16_t pkt_len = g_dap_rx_queue[tail].len;
+    uint8_t tail = s_usb.dap.rx_tail;
+    uint16_t pkt_len = s_usb.dap.rx_queue[tail].len;
     if (pkt_len > max_len) {
         pkt_len = max_len;
     }
-    memcpy(out_pkt, g_dap_rx_queue[tail].data, pkt_len);
-    g_dap_rx_tail = (uint8_t)((tail + 1U) % USB_DAP_QUEUE_DEPTH);
-    g_dap_rx_count--;
+    memcpy(out_pkt, s_usb.dap.rx_queue[tail].data, pkt_len);
+    s_usb.dap.rx_tail = (uint8_t)((tail + 1U) % USB_DAP_QUEUE_DEPTH);
+    s_usb.dap.rx_count--;
 
     /* Drain any DAP Bulk OUT packet held in hardware FIFO by NAK back-pressure */
     if (MAP_USBEndpointDataAvail(USB0_BASE, USB_EP_5) > 0U) {
@@ -1160,26 +1193,26 @@ uint16_t usb_dap_rx_pop(uint8_t *out_pkt, uint16_t max_len)
 
 bool usb_dap_tx_space(void)
 {
-    return (g_dap_tx_count < USB_DAP_QUEUE_DEPTH);
+    return (s_usb.dap.tx_count < USB_DAP_QUEUE_DEPTH);
 }
 
 bool usb_dap_tx_push(const uint8_t *pkt, uint16_t len)
 {
-    if ((len == 0U) || (len > g_bulk_mps)) {
+    if ((len == 0U) || (len > s_usb.bulk_mps)) {
         return false;
     }
 
     uint32_t crit = usb_crit_enter();
-    if (g_dap_tx_count >= USB_DAP_QUEUE_DEPTH) {
+    if (s_usb.dap.tx_count >= USB_DAP_QUEUE_DEPTH) {
         usb_crit_exit(crit);
         return false;
     }
 
-    uint8_t head = g_dap_tx_head;
-    memcpy(g_dap_tx_queue[head].data, pkt, len);
-    g_dap_tx_queue[head].len = len;
-    g_dap_tx_head = (uint8_t)((head + 1U) % USB_DAP_QUEUE_DEPTH);
-    g_dap_tx_count++;
+    uint8_t head = s_usb.dap.tx_head;
+    memcpy(s_usb.dap.tx_queue[head].data, pkt, len);
+    s_usb.dap.tx_queue[head].len = len;
+    s_usb.dap.tx_head = (uint8_t)((head + 1U) % USB_DAP_QUEUE_DEPTH);
+    s_usb.dap.tx_count++;
 
     usb_kick_dap_in();
     usb_crit_exit(crit);

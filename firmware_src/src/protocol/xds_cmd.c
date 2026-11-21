@@ -22,26 +22,29 @@
 #include "gpio/aux_gpio.h"
 #include "usb/usb_device.h"
 
-static uint8_t g_fw_version[4];
-static bool g_session_connected = false;
+typedef struct {
+    uint8_t fw_version[4];
+    bool session_connected;
+    uint8_t req_buf[XDS_MAX_FRAME_SIZE];
+    uint8_t resp_buf[XDS_MAX_FRAME_SIZE];
+    uint8_t loopback_buf[512];
+} xds_cmd_state_t;
 
-static uint8_t g_req_buf[XDS_MAX_FRAME_SIZE];
-static uint8_t g_resp_buf[XDS_MAX_FRAME_SIZE];
-static uint8_t g_loopback_buf[512];
+static xds_cmd_state_t s_xds_cmd = {0};
 
 static void xds_send_response(int32_t err_code, uint16_t data_len)
 {
     uint16_t payload_len = (uint16_t)(4U + data_len);
-    g_resp_buf[0] = XDS_FRAME_MAGIC;
-    write_u16le(&g_resp_buf[1], payload_len);
-    write_i32le(&g_resp_buf[3], err_code);
+    s_xds_cmd.resp_buf[0] = XDS_FRAME_MAGIC;
+    write_u16le(&s_xds_cmd.resp_buf[1], payload_len);
+    write_i32le(&s_xds_cmd.resp_buf[3], err_code);
 
-    usb_cmd_tx_write(g_resp_buf, (uint32_t)(XDS_REQ_HEADER_SIZE + payload_len));
+    usb_cmd_tx_write(s_xds_cmd.resp_buf, (uint32_t)(XDS_REQ_HEADER_SIZE + payload_len));
 }
 
 static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t args_len)
 {
-    uint8_t *resp_data = &g_resp_buf[XDS_RESP_HEADER_SIZE];
+    uint8_t *resp_data = &s_xds_cmd.resp_buf[XDS_RESP_HEADER_SIZE];
     int32_t err = XDS_ERR_OK;
     uint16_t resp_len = 0U;
 
@@ -65,7 +68,7 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
 
     case XDS_CMD_CONNECT:
     case XDS_CMD_CONNECT_ET:
-        g_session_connected = true;
+        s_xds_cmd.session_connected = true;
         break;
 
     case XDS_CMD_DISCONNECT:
@@ -75,11 +78,11 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
         if (xds_swd_is_active()) {
             (void)xds_swd_disconnect();
         }
-        g_session_connected = false;
+        s_xds_cmd.session_connected = false;
         break;
 
     case XDS_CMD_VERSION:
-        memcpy(resp_data, g_fw_version, sizeof(g_fw_version));
+        memcpy(resp_data, s_xds_cmd.fw_version, sizeof(s_xds_cmd.fw_version));
         write_u16le(&resp_data[4], board_get_hw_version());
         resp_len = 6U;
         break;
@@ -472,10 +475,10 @@ static bool xds_poll_cmd_channel(void)
         return false;
     }
 
-    usb_cmd_rx_read(g_req_buf, frame_len);
+    usb_cmd_rx_read(s_xds_cmd.req_buf, frame_len);
 
     board_led_red_set(true);
-    xds_dispatch_frame(g_req_buf[3], &g_req_buf[4], (uint16_t)(payload_len - 1U));
+    xds_dispatch_frame(s_xds_cmd.req_buf[3], &s_xds_cmd.req_buf[4], (uint16_t)(payload_len - 1U));
     board_led_red_set(false);
     return true;
 }
@@ -491,31 +494,31 @@ static bool xds_poll_data_loopback(void)
         return false;
     }
 
-    uint32_t chunk = (avail > sizeof(g_loopback_buf)) ? sizeof(g_loopback_buf) : avail;
+    uint32_t chunk = (avail > sizeof(s_xds_cmd.loopback_buf)) ? sizeof(s_xds_cmd.loopback_buf) : avail;
     if (chunk > usb_data_tx_space()) {
         return false;
     }
 
-    uint32_t got = usb_data_rx_read(g_loopback_buf, chunk);
+    uint32_t got = usb_data_rx_read(s_xds_cmd.loopback_buf, chunk);
     if (got == 0U) {
         return false;
     }
 
     /* Reverse received bytes and echo back on Bulk 1 IN (matches firmware 0x00004DBC) */
     for (uint32_t i = 0U, j = got - 1U; i < j; i++, j--) {
-        uint8_t tmp = g_loopback_buf[i];
-        g_loopback_buf[i] = g_loopback_buf[j];
-        g_loopback_buf[j] = tmp;
+        uint8_t tmp = s_xds_cmd.loopback_buf[i];
+        s_xds_cmd.loopback_buf[i] = s_xds_cmd.loopback_buf[j];
+        s_xds_cmd.loopback_buf[j] = tmp;
     }
 
-    usb_data_tx_write(g_loopback_buf, got);
+    usb_data_tx_write(s_xds_cmd.loopback_buf, got);
     return true;
 }
 
 void xds_cmd_init(const uint8_t fw_version[4])
 {
-    memcpy(g_fw_version, fw_version, sizeof(g_fw_version));
-    g_session_connected = false;
+    memcpy(s_xds_cmd.fw_version, fw_version, sizeof(s_xds_cmd.fw_version));
+    s_xds_cmd.session_connected = false;
     xds_swd_init();
 }
 
@@ -533,5 +536,5 @@ bool xds_cmd_poll(void)
 
 bool xds_cmd_is_connected(void)
 {
-    return g_session_connected;
+    return s_xds_cmd.session_connected;
 }

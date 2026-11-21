@@ -66,17 +66,17 @@ typedef struct {
     volatile uint32_t tail;
 } uart_ring_t;
 
-static uint8_t g_uart_rx_storage[USB_CDC_PORT_COUNT][CDC_UART_RX_RING_SIZE];
-static uint8_t g_uart0_tx_storage[CDC_UART_TX_RING_SIZE];
+typedef struct {
+    uint8_t rx_storage[USB_CDC_PORT_COUNT][CDC_UART_RX_RING_SIZE];
+    uint8_t tx0_storage[CDC_UART_TX_RING_SIZE];
+    uart_ring_t rx_rings[USB_CDC_PORT_COUNT];
+    uart_ring_t tx0_ring;
+} cdc_uart_state_t;
 
-static uart_ring_t g_uart_rx_rings[USB_CDC_PORT_COUNT] = {
-    {g_uart_rx_storage[0], CDC_UART_RX_RING_SIZE - 1U, 0U, 0U},
-    {g_uart_rx_storage[1], CDC_UART_RX_RING_SIZE - 1U, 0U, 0U},
-};
-static uart_ring_t g_uart0_tx_ring = {g_uart0_tx_storage, CDC_UART_TX_RING_SIZE - 1U, 0U, 0U};
+static cdc_uart_state_t s_uart;
 
-static const uint32_t g_uart_bases[USB_CDC_PORT_COUNT] = {BOARD_APP_UART_BASE, BOARD_AUX_UART_BASE};
-static const IRQn_Type g_uart_irqs[USB_CDC_PORT_COUNT] = {UART0_IRQn, UART7_IRQn};
+static const uint32_t k_uart_bases[USB_CDC_PORT_COUNT] = {BOARD_APP_UART_BASE, BOARD_AUX_UART_BASE};
+static const IRQn_Type k_uart_irqs[USB_CDC_PORT_COUNT] = {UART0_IRQn, UART7_IRQn};
 
 /* ---- Lock-Free Single-Byte / Block Ring Helpers ---- */
 
@@ -196,8 +196,8 @@ static uint32_t cdc_clamp_baud(uint32_t baud)
 
 static void uart0_tx_fill_fifo(void)
 {
-    while ((uart_ring_used(&g_uart0_tx_ring) > 0U) && MAP_UARTSpaceAvail(BOARD_APP_UART_BASE)) {
-        uint8_t ch = uart_ring_pop_byte(&g_uart0_tx_ring);
+    while ((uart_ring_used(&s_uart.tx0_ring) > 0U) && MAP_UARTSpaceAvail(BOARD_APP_UART_BASE)) {
+        uint8_t ch = uart_ring_pop_byte(&s_uart.tx0_ring);
         MAP_UARTCharPutNonBlocking(BOARD_APP_UART_BASE, ch);
     }
 }
@@ -208,8 +208,8 @@ static void cdc_uart_apply_line_coding(uint8_t port, const usb_cdc_line_coding_t
         return;
     }
 
-    uint32_t base = g_uart_bases[port];
-    IRQn_Type irqn = g_uart_irqs[port];
+    uint32_t base = k_uart_bases[port];
+    IRQn_Type irqn = k_uart_irqs[port];
     uint32_t baud = cdc_clamp_baud(coding->baud_rate);
     uint32_t cfg = cdc_coding_to_uart_config(coding);
 
@@ -224,7 +224,7 @@ static void cdc_uart_apply_line_coding(uint8_t port, const usb_cdc_line_coding_t
 
     if (port == USB_CDC_PORT_APP) {
         uart0_tx_fill_fifo();
-        if (uart_ring_used(&g_uart0_tx_ring) > 0U) {
+        if (uart_ring_used(&s_uart.tx0_ring) > 0U) {
             MAP_UARTIntEnable(base, UART_INT_TX);
         }
     }
@@ -254,12 +254,12 @@ void uart0_irq_handler(void)
     MAP_UARTIntClear(BOARD_APP_UART_BASE, status);
 
     if ((status & (UART_INT_RX | UART_INT_RT)) != 0U) {
-        uart_rx_drain_isr(BOARD_APP_UART_BASE, &g_uart_rx_rings[USB_CDC_PORT_APP]);
+        uart_rx_drain_isr(BOARD_APP_UART_BASE, &s_uart.rx_rings[USB_CDC_PORT_APP]);
     }
 
     if ((status & UART_INT_TX) != 0U) {
         uart0_tx_fill_fifo();
-        if (uart_ring_used(&g_uart0_tx_ring) == 0U) {
+        if (uart_ring_used(&s_uart.tx0_ring) == 0U) {
             MAP_UARTIntDisable(BOARD_APP_UART_BASE, UART_INT_TX);
         }
     }
@@ -271,7 +271,7 @@ void uart7_irq_handler(void)
     MAP_UARTIntClear(BOARD_AUX_UART_BASE, status);
 
     if ((status & (UART_INT_RX | UART_INT_RT)) != 0U) {
-        uart_rx_drain_isr(BOARD_AUX_UART_BASE, &g_uart_rx_rings[USB_CDC_PORT_AUX]);
+        uart_rx_drain_isr(BOARD_AUX_UART_BASE, &s_uart.rx_rings[USB_CDC_PORT_AUX]);
     }
 }
 
@@ -279,9 +279,14 @@ void uart7_irq_handler(void)
 
 void cdc_uart_init(void)
 {
-    uart_ring_reset(&g_uart_rx_rings[USB_CDC_PORT_APP]);
-    uart_ring_reset(&g_uart_rx_rings[USB_CDC_PORT_AUX]);
-    uart_ring_reset(&g_uart0_tx_ring);
+    for (uint8_t port = 0U; port < USB_CDC_PORT_COUNT; port++) {
+        s_uart.rx_rings[port].buf = s_uart.rx_storage[port];
+        s_uart.rx_rings[port].mask = CDC_UART_RX_RING_SIZE - 1U;
+        uart_ring_reset(&s_uart.rx_rings[port]);
+    }
+    s_uart.tx0_ring.buf = s_uart.tx0_storage;
+    s_uart.tx0_ring.mask = CDC_UART_TX_RING_SIZE - 1U;
+    uart_ring_reset(&s_uart.tx0_ring);
 
     /* Enable UART0 (CDC0 App UART) and UART7 (CDC1 Aux/SWO RX-only) */
     MAP_SysCtlPeripheralReset(BOARD_APP_UART_PERIPH);
@@ -342,23 +347,23 @@ bool cdc_uart_poll(void)
 
     if (!usb_device_is_configured()) {
         /* Discard idle UART RX data while USB host is disconnected */
-        uart_ring_discard(&g_uart_rx_rings[USB_CDC_PORT_APP]);
-        uart_ring_discard(&g_uart_rx_rings[USB_CDC_PORT_AUX]);
+        uart_ring_discard(&s_uart.rx_rings[USB_CDC_PORT_APP]);
+        uart_ring_discard(&s_uart.rx_rings[USB_CDC_PORT_AUX]);
         return did_work;
     }
 
     if (rtt_active) {
         /* Discard idle UART0 RX bytes while CDC0 is owned by BMP RTT */
-        uart_ring_discard(&g_uart_rx_rings[USB_CDC_PORT_APP]);
+        uart_ring_discard(&s_uart.rx_rings[USB_CDC_PORT_APP]);
     }
     if (bmp_active) {
         /* Discard idle UART7 RX bytes while CDC1 is owned by BMP GDB server */
-        uart_ring_discard(&g_uart_rx_rings[USB_CDC_PORT_AUX]);
+        uart_ring_discard(&s_uart.rx_rings[USB_CDC_PORT_AUX]);
     }
 
     /* 2. Forward UART0 (unless RTT owns CDC0) and UART7 (Normal mode) RX rings -> USB CDC IN */
     for (uint8_t port = uart_port_start; port < uart_port_limit; port++) {
-        uint32_t rx_avail = uart_ring_used(&g_uart_rx_rings[port]);
+        uint32_t rx_avail = uart_ring_used(&s_uart.rx_rings[port]);
         if (rx_avail == 0U) {
             continue;
         }
@@ -370,7 +375,7 @@ bool cdc_uart_poll(void)
         if (to_send > sizeof(chunk_buf)) {
             to_send = sizeof(chunk_buf);
         }
-        uint32_t got = uart_ring_pop_chunk(&g_uart_rx_rings[port], chunk_buf, to_send);
+        uint32_t got = uart_ring_pop_chunk(&s_uart.rx_rings[port], chunk_buf, to_send);
         if (got > 0U) {
             (void)usb_cdc_tx_write(port, chunk_buf, got);
             did_work = true;
@@ -380,7 +385,7 @@ bool cdc_uart_poll(void)
     /* 3. Forward USB CDC0 OUT -> UART0 TX ring (skipped while BMP RTT owns CDC0) */
     if (!rtt_active) {
         uint32_t cdc0_avail = usb_cdc_rx_available(USB_CDC_PORT_APP);
-        uint32_t tx_space = uart_ring_free(&g_uart0_tx_ring);
+        uint32_t tx_space = uart_ring_free(&s_uart.tx0_ring);
         if ((cdc0_avail > 0U) && (tx_space > 0U)) {
             uint32_t to_tx = (cdc0_avail < tx_space) ? cdc0_avail : tx_space;
             if (to_tx > sizeof(chunk_buf)) {
@@ -389,11 +394,11 @@ bool cdc_uart_poll(void)
             uint32_t got = usb_cdc_rx_read(USB_CDC_PORT_APP, chunk_buf, to_tx);
             if (got > 0U) {
                 for (uint32_t i = 0U; i < got; i++) {
-                    uart_ring_push_byte(&g_uart0_tx_ring, chunk_buf[i]);
+                    uart_ring_push_byte(&s_uart.tx0_ring, chunk_buf[i]);
                 }
                 uint32_t crit = uart_crit_enter();
                 uart0_tx_fill_fifo();
-                if (uart_ring_used(&g_uart0_tx_ring) > 0U) {
+                if (uart_ring_used(&s_uart.tx0_ring) > 0U) {
                     MAP_UARTIntEnable(BOARD_APP_UART_BASE, UART_INT_TX);
                 }
                 uart_crit_exit(crit);

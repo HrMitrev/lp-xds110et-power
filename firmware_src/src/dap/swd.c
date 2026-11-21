@@ -27,10 +27,19 @@
 #define SWD_DELAY_LOOP_CYCLES    4U
 #define SWD_DEFAULT_CLOCK_HZ     1000000U
 
-static uint32_t g_swd_half_loops = 13U;
-static uint8_t g_swd_turnaround = 1U;
-static bool g_swd_data_phase = false;
-static uint8_t g_swd_idle_cycles = 0U;
+typedef struct {
+    uint32_t half_loops;
+    uint8_t turnaround;
+    bool data_phase;
+    uint8_t idle_cycles;
+} swd_state_t;
+
+static swd_state_t s_swd = {
+    .half_loops = 13U,
+    .turnaround = 1U,
+    .data_phase = false,
+    .idle_cycles = 0U,
+};
 
 static inline __attribute__((always_inline)) void swd_delay_half(uint32_t loops)
 {
@@ -115,9 +124,9 @@ void swd_init(void)
     DWT->CYCCNT = 0U;
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
-    g_swd_turnaround = 1U;
-    g_swd_data_phase = false;
-    g_swd_idle_cycles = 0U;
+    s_swd.turnaround = 1U;
+    s_swd.data_phase = false;
+    s_swd.idle_cycles = 0U;
     swd_set_clock_hz(SWD_DEFAULT_CLOCK_HZ);
     swd_disconnect();
 }
@@ -158,19 +167,19 @@ void swd_set_clock_hz(uint32_t clock_hz)
     uint32_t sys_clk = board_get_sys_clock_hz();
     uint32_t half_cycles = sys_clk / (2U * clock_hz);
     if (half_cycles > SWD_GPIO_OVERHEAD_CYCLES) {
-        g_swd_half_loops = (half_cycles - SWD_GPIO_OVERHEAD_CYCLES) / SWD_DELAY_LOOP_CYCLES;
+        s_swd.half_loops = (half_cycles - SWD_GPIO_OVERHEAD_CYCLES) / SWD_DELAY_LOOP_CYCLES;
     } else {
-        g_swd_half_loops = 0U;
+        s_swd.half_loops = 0U;
     }
 }
 
 void swd_configure(uint8_t turnaround_cycles, bool data_phase, uint8_t idle_cycles)
 {
     if ((turnaround_cycles >= 1U) && (turnaround_cycles <= 4U)) {
-        g_swd_turnaround = turnaround_cycles;
+        s_swd.turnaround = turnaround_cycles;
     }
-    g_swd_data_phase = data_phase;
-    g_swd_idle_cycles = idle_cycles;
+    s_swd.data_phase = data_phase;
+    s_swd.idle_cycles = idle_cycles;
 }
 
 uint8_t swd_pins_read(void)
@@ -220,7 +229,7 @@ void swd_pins_write(uint8_t pin_out, uint8_t pin_sel)
 
 __attribute__((optimize("O2"))) void swd_sequence(uint32_t bit_count, const uint8_t *data)
 {
-    uint32_t loops = g_swd_half_loops;
+    uint32_t loops = s_swd.half_loops;
     swd_dio_dir_out();
 
     uint32_t byte_val = 0U;
@@ -236,7 +245,7 @@ __attribute__((optimize("O2"))) void swd_sequence(uint32_t bit_count, const uint
 
 __attribute__((optimize("O2"))) void swd_idle_cycles(uint32_t count)
 {
-    uint32_t loops = g_swd_half_loops;
+    uint32_t loops = s_swd.half_loops;
     swd_dio_dir_out();
     for (uint32_t i = 0U; i < count; i++) {
         swd_write_bit(0U, loops);
@@ -247,7 +256,8 @@ __attribute__((optimize("O2"))) void swd_idle_cycles(uint32_t count)
 
 __attribute__((optimize("O2"))) uint8_t swd_transfer(uint8_t request, uint32_t *data)
 {
-    uint32_t loops = g_swd_half_loops;
+    uint32_t loops = s_swd.half_loops;
+    uint8_t turnaround = s_swd.turnaround;
 
     /* 1. Build and transmit 8-bit SWD packet header (LSB first) */
     uint32_t req4 = request & 0x0FU;
@@ -262,7 +272,7 @@ __attribute__((optimize("O2"))) uint8_t swd_transfer(uint8_t request, uint32_t *
 
     /* 2. Turnaround: Probe -> Target */
     swd_dio_dir_in();
-    for (uint32_t i = 0U; i < g_swd_turnaround; i++) {
+    for (uint32_t i = 0U; i < turnaround; i++) {
         swd_clock_cycle(loops);
     }
 
@@ -299,7 +309,7 @@ __attribute__((optimize("O2"))) uint8_t swd_transfer(uint8_t request, uint32_t *
             uint32_t rx_parity = swd_read_bit(loops);
 
             /* Turnaround: Target -> Probe */
-            for (uint32_t i = 0U; i < g_swd_turnaround; i++) {
+            for (uint32_t i = 0U; i < turnaround; i++) {
                 swd_clock_cycle(loops);
             }
             swd_dio_dir_out();
@@ -312,7 +322,7 @@ __attribute__((optimize("O2"))) uint8_t swd_transfer(uint8_t request, uint32_t *
             }
         } else {
             /* 4b. Turnaround: Target -> Probe, then write 32-bit word + parity */
-            for (uint32_t i = 0U; i < g_swd_turnaround; i++) {
+            for (uint32_t i = 0U; i < turnaround; i++) {
                 swd_clock_cycle(loops);
             }
             swd_dio_dir_out();
@@ -338,7 +348,7 @@ __attribute__((optimize("O2"))) uint8_t swd_transfer(uint8_t request, uint32_t *
         }
 
         /* 5. Append configured idle cycles with SWDIO LOW, then park SWCLK LOW */
-        for (uint32_t i = 0U; i < g_swd_idle_cycles; i++) {
+        for (uint32_t i = 0U; i < s_swd.idle_cycles; i++) {
             swd_write_bit(0U, loops);
         }
         swd_clk_low();
@@ -348,16 +358,16 @@ __attribute__((optimize("O2"))) uint8_t swd_transfer(uint8_t request, uint32_t *
 
     /* Non-OK response (WAIT, FAULT, or protocol error) */
     if ((ack == SWD_ACK_WAIT) || (ack == SWD_ACK_FAULT)) {
-        if (g_swd_data_phase && ((request & SWD_REQ_RnW) != 0U)) {
+        if (s_swd.data_phase && ((request & SWD_REQ_RnW) != 0U)) {
             for (uint32_t i = 0U; i < 33U; i++) {
                 swd_clock_cycle(loops);
             }
         }
-        for (uint32_t i = 0U; i < g_swd_turnaround; i++) {
+        for (uint32_t i = 0U; i < turnaround; i++) {
             swd_clock_cycle(loops);
         }
         swd_dio_dir_out();
-        if (g_swd_data_phase && ((request & SWD_REQ_RnW) == 0U)) {
+        if (s_swd.data_phase && ((request & SWD_REQ_RnW) == 0U)) {
             for (uint32_t i = 0U; i < 33U; i++) {
                 swd_write_bit(0U, loops);
             }
@@ -368,7 +378,7 @@ __attribute__((optimize("O2"))) uint8_t swd_transfer(uint8_t request, uint32_t *
     }
 
     /* Protocol error (e.g. 0x07 no target): clock out 33 dummy cycles and reclaim SWDIO */
-    for (uint32_t i = 0U; i < (33U + g_swd_turnaround); i++) {
+    for (uint32_t i = 0U; i < (33U + turnaround); i++) {
         swd_clock_cycle(loops);
     }
     swd_dio_dir_out();

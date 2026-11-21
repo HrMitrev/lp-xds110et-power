@@ -35,8 +35,14 @@
 #define PROBE_MODE_CAP_GDB_SERVER  (1U << 1U) /* BMP GDB RSP server compiled in */
 #define PROBE_MODE_CAP_DEFAULT_BMP (1U << 2U) /* Firmware boots in BMP mode by default */
 
-/* Initialize probe mode to FW_DEFAULT_BMP_MODE and initialize BMP TAPs if compiled */
-void bmp_mode_init(void);
+/* Cooperative background tick callback invoked during BMP wait/delay loops */
+typedef void (*bmp_bg_poll_fn_t)(void);
+
+/* Initialize probe mode to FW_DEFAULT_BMP_MODE, register bg_poll callback, and init BMP TAPs */
+void bmp_mode_init(bmp_bg_poll_fn_t bg_poll);
+
+/* Invoke the registered background poll callback (safe no-op if NULL) */
+void bmp_mode_background_poll(void);
 
 /* Query current probe mode (PROBE_MODE_NORMAL or PROBE_MODE_BMP) */
 uint8_t bmp_mode_get(void);

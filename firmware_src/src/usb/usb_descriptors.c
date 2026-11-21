@@ -22,7 +22,7 @@
 #define USB_MS_OS_20_CFG_SUB_LEN  168U
 #define USB_MS_OS_20_FUNC_SUB_LEN 160U
 
-static const uint8_t g_device_desc[] = {
+static const uint8_t k_device_desc[] = {
     18U,                         /* bLength */
     USB_DESC_TYPE_DEVICE,        /* bDescriptorType */
     U16_LO(USB_BCD_VERSION_2_1), /* bcdUSB lo (2.10 for BOS) */
@@ -43,7 +43,7 @@ static const uint8_t g_device_desc[] = {
     1U,    /* bNumConfigurations */
 };
 
-static const uint8_t g_device_qualifier_desc[] = {
+static const uint8_t k_device_qualifier_desc[] = {
     10U,                         /* bLength */
     USB_DESC_TYPE_DEV_QUALIFIER, /* bDescriptorType */
     U16_LO(USB_BCD_VERSION_2_1), /* bcdUSB lo */
@@ -57,7 +57,7 @@ static const uint8_t g_device_qualifier_desc[] = {
 };
 
 /* Binary Device Object Store (BOS) Descriptor with MS OS 2.0 Platform Capability */
-static const uint8_t g_bos_desc[] = {
+static const uint8_t k_bos_desc[] = {
     /* BOS Descriptor Header (5 B) */
     5U,
     USB_DESC_TYPE_BOS,
@@ -108,14 +108,14 @@ static const uint8_t g_bos_desc[] = {
     0x00U,                    /* bAltEnumCode */
 };
 
-_Static_assert(sizeof(g_bos_desc) == USB_BOS_DESC_TOTAL_LEN, "USB BOS descriptor length mismatch");
+_Static_assert(sizeof(k_bos_desc) == USB_BOS_DESC_TOTAL_LEN, "USB BOS descriptor length mismatch");
 
 /*
  * Microsoft OS 2.0 Descriptor Set binding Interface 5 (CMSIS-DAP v2) to WinUSB
  * with the standard ARM CMSIS-DAP v2 DeviceInterfaceGUID:
  *   {CDB3B5AD-293B-4663-AA36-1AAE46463776}
  */
-static const uint8_t g_ms_os_20_desc_set[] = {
+static const uint8_t k_ms_os_20_desc_set[] = {
     /* Descriptor Set Header (10 B) */
     0x0AU,
     0x00U, /* wLength */
@@ -246,10 +246,10 @@ static const uint8_t g_ms_os_20_desc_set[] = {
     U16_CH('\0'),
 };
 
-_Static_assert(sizeof(g_ms_os_20_desc_set) == USB_MS_OS_20_DESC_LEN, "MS OS 2.0 descriptor length mismatch");
+_Static_assert(sizeof(k_ms_os_20_desc_set) == USB_MS_OS_20_DESC_LEN, "MS OS 2.0 descriptor length mismatch");
 
-/* Mutable configuration descriptor (bulk wMaxPacketSize patched on speed change) */
-static uint8_t g_config_desc[] = {
+/* Configuration descriptor template (copied to s_desc.config_desc and patched on speed change) */
+static const uint8_t k_config_desc_template[USB_CONFIG_DESC_TOTAL_LEN] = {
     /* Configuration Descriptor (9 B) */
     9U,
     USB_DESC_TYPE_CONFIGURATION,
@@ -502,27 +502,33 @@ static uint8_t g_config_desc[] = {
     0U,
 };
 
-_Static_assert(sizeof(g_config_desc) == USB_CONFIG_DESC_TOTAL_LEN, "USB config descriptor length mismatch");
+_Static_assert(sizeof(k_config_desc_template) == USB_CONFIG_DESC_TOTAL_LEN, "USB config descriptor length mismatch");
 
-static uint8_t g_other_speed_desc[USB_CONFIG_DESC_TOTAL_LEN];
+/* Immutable Language ID string descriptor (US English 0x0409) */
+static const uint8_t k_str_langid[] = {4U, USB_DESC_TYPE_STRING, 0x09U, 0x04U};
 
-/* String descriptor buffers (UTF-16LE encoded at init) */
-static const uint8_t g_str_langid[] = {4U, USB_DESC_TYPE_STRING, 0x09U, 0x04U};
-static uint8_t g_str_manufacturer[64];
-static uint8_t g_str_product[96];
-static uint8_t g_str_serial[32];
-static uint8_t g_str_ctrl_iface[64];
-static uint8_t g_str_config[64];
-static uint8_t g_str_cmsis[64];
+/* Mutable runtime USB descriptors (speed-patched config + UTF-16LE strings) */
+typedef struct {
+    uint8_t config_desc[USB_CONFIG_DESC_TOTAL_LEN];
+    uint8_t other_speed_desc[USB_CONFIG_DESC_TOTAL_LEN];
+    uint8_t str_manufacturer[64];
+    uint8_t str_product[96];
+    uint8_t str_serial[32];
+    uint8_t str_ctrl_iface[64];
+    uint8_t str_config[64];
+    uint8_t str_cmsis[64];
+} usb_desc_state_t;
 
-static const uint8_t *const g_string_table[] = {
-    g_str_langid,
-    g_str_manufacturer,
-    g_str_product,
-    g_str_serial,
-    g_str_ctrl_iface,
-    g_str_config,
-    g_str_cmsis,
+static usb_desc_state_t s_desc;
+
+static const uint8_t *const k_string_table[] = {
+    k_str_langid,
+    s_desc.str_manufacturer,
+    s_desc.str_product,
+    s_desc.str_serial,
+    s_desc.str_ctrl_iface,
+    s_desc.str_config,
+    s_desc.str_cmsis,
 };
 
 static void usb_encode_utf16le_string(uint8_t *dst, uint32_t dst_cap, const char *ascii)
@@ -565,12 +571,13 @@ void usb_descriptors_init(const uint8_t fw_version[4], const char *serial_ascii)
     snprintf(product_buf, sizeof(product_buf), "XDS110 (%02x.%02x.%02x.%02x) OpenFW CMSIS-DAP", (unsigned)fw_version[3],
         (unsigned)fw_version[2], (unsigned)fw_version[1], (unsigned)fw_version[0]);
 
-    usb_encode_utf16le_string(g_str_manufacturer, sizeof(g_str_manufacturer), "Texas Instruments");
-    usb_encode_utf16le_string(g_str_product, sizeof(g_str_product), product_buf);
-    usb_encode_utf16le_string(g_str_serial, sizeof(g_str_serial), serial_ascii);
-    usb_encode_utf16le_string(g_str_ctrl_iface, sizeof(g_str_ctrl_iface), "XDS110 Control Interface");
-    usb_encode_utf16le_string(g_str_config, sizeof(g_str_config), "XDS110 Configuration");
-    usb_encode_utf16le_string(g_str_cmsis, sizeof(g_str_cmsis), "XDS110 CMSIS-DAP v2");
+    memcpy(s_desc.config_desc, k_config_desc_template, sizeof(s_desc.config_desc));
+    usb_encode_utf16le_string(s_desc.str_manufacturer, sizeof(s_desc.str_manufacturer), "Texas Instruments");
+    usb_encode_utf16le_string(s_desc.str_product, sizeof(s_desc.str_product), product_buf);
+    usb_encode_utf16le_string(s_desc.str_serial, sizeof(s_desc.str_serial), serial_ascii);
+    usb_encode_utf16le_string(s_desc.str_ctrl_iface, sizeof(s_desc.str_ctrl_iface), "XDS110 Control Interface");
+    usb_encode_utf16le_string(s_desc.str_config, sizeof(s_desc.str_config), "XDS110 Configuration");
+    usb_encode_utf16le_string(s_desc.str_cmsis, sizeof(s_desc.str_cmsis), "XDS110 CMSIS-DAP v2");
 
     usb_descriptors_set_speed(true);
 }
@@ -580,56 +587,56 @@ void usb_descriptors_set_speed(bool high_speed)
     uint16_t active_mps = high_speed ? USB_BULK_MPS_HS : USB_BULK_MPS_FS;
     uint16_t other_mps = high_speed ? USB_BULK_MPS_FS : USB_BULK_MPS_HS;
 
-    usb_patch_bulk_mps(g_config_desc, sizeof(g_config_desc), active_mps);
+    usb_patch_bulk_mps(s_desc.config_desc, sizeof(s_desc.config_desc), active_mps);
 
-    memcpy(g_other_speed_desc, g_config_desc, sizeof(g_config_desc));
-    g_other_speed_desc[1] = USB_DESC_TYPE_OTHER_SPEED_CFG;
-    usb_patch_bulk_mps(g_other_speed_desc, sizeof(g_other_speed_desc), other_mps);
+    memcpy(s_desc.other_speed_desc, s_desc.config_desc, sizeof(s_desc.config_desc));
+    s_desc.other_speed_desc[1] = USB_DESC_TYPE_OTHER_SPEED_CFG;
+    usb_patch_bulk_mps(s_desc.other_speed_desc, sizeof(s_desc.other_speed_desc), other_mps);
 }
 
 bool usb_descriptors_get(uint8_t desc_type, uint8_t desc_index, const uint8_t **out_data, uint16_t *out_len)
 {
     switch (desc_type) {
     case USB_DESC_TYPE_DEVICE:
-        *out_data = g_device_desc;
-        *out_len = (uint16_t)sizeof(g_device_desc);
+        *out_data = k_device_desc;
+        *out_len = (uint16_t)sizeof(k_device_desc);
         return true;
 
     case USB_DESC_TYPE_CONFIGURATION:
         if (desc_index != 0U) {
             return false;
         }
-        *out_data = g_config_desc;
-        *out_len = (uint16_t)sizeof(g_config_desc);
+        *out_data = s_desc.config_desc;
+        *out_len = (uint16_t)sizeof(s_desc.config_desc);
         return true;
 
     case USB_DESC_TYPE_DEV_QUALIFIER:
-        *out_data = g_device_qualifier_desc;
-        *out_len = (uint16_t)sizeof(g_device_qualifier_desc);
+        *out_data = k_device_qualifier_desc;
+        *out_len = (uint16_t)sizeof(k_device_qualifier_desc);
         return true;
 
     case USB_DESC_TYPE_OTHER_SPEED_CFG:
         if (desc_index != 0U) {
             return false;
         }
-        *out_data = g_other_speed_desc;
-        *out_len = (uint16_t)sizeof(g_other_speed_desc);
+        *out_data = s_desc.other_speed_desc;
+        *out_len = (uint16_t)sizeof(s_desc.other_speed_desc);
         return true;
 
     case USB_DESC_TYPE_BOS:
         if (desc_index != 0U) {
             return false;
         }
-        *out_data = g_bos_desc;
-        *out_len = (uint16_t)sizeof(g_bos_desc);
+        *out_data = k_bos_desc;
+        *out_len = (uint16_t)sizeof(k_bos_desc);
         return true;
 
     case USB_DESC_TYPE_STRING:
-        if (desc_index >= (sizeof(g_string_table) / sizeof(g_string_table[0]))) {
+        if (desc_index >= (sizeof(k_string_table) / sizeof(k_string_table[0]))) {
             return false;
         }
-        *out_data = g_string_table[desc_index];
-        *out_len = g_string_table[desc_index][0];
+        *out_data = k_string_table[desc_index];
+        *out_len = k_string_table[desc_index][0];
         return true;
 
     default:
@@ -639,6 +646,6 @@ bool usb_descriptors_get(uint8_t desc_type, uint8_t desc_index, const uint8_t **
 
 void usb_descriptors_get_ms_os_20(const uint8_t **out_data, uint16_t *out_len)
 {
-    *out_data = g_ms_os_20_desc_set;
-    *out_len = (uint16_t)sizeof(g_ms_os_20_desc_set);
+    *out_data = k_ms_os_20_desc_set;
+    *out_len = (uint16_t)sizeof(k_ms_os_20_desc_set);
 }

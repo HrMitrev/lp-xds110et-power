@@ -25,8 +25,12 @@
 #define AUX_GPIO_BLINK_CYCLES   8U
 #define AUX_GPIO_BLINK_DELAY_MS 133U
 
-static uint8_t g_aux_output_mask = 0U;
-static uint8_t g_aux_output_val = 0U;
+typedef struct {
+    uint8_t output_mask;
+    uint8_t output_val;
+} aux_gpio_state_t;
+
+static aux_gpio_state_t s_aux_gpio = {0};
 
 static void aux_gpio_set_dir_pin(uint8_t gpio_bit, bool is_output)
 {
@@ -42,7 +46,7 @@ static void aux_gpio_set_dir_pin(uint8_t gpio_bit, bool is_output)
         if (dir_pin != 0U) {
             MAP_GPIOPinWrite(BOARD_AUX_DIR_PORT_BASE, dir_pin, dir_pin);
         }
-        MAP_GPIOPinWrite(BOARD_AUX_GPIO_PORT_BASE, gpio_bit, g_aux_output_val & gpio_bit);
+        MAP_GPIOPinWrite(BOARD_AUX_GPIO_PORT_BASE, gpio_bit, s_aux_gpio.output_val & gpio_bit);
         MAP_GPIOPinTypeGPIOOutput(BOARD_AUX_GPIO_PORT_BASE, gpio_bit);
         MAP_GPIOPadConfigSet(BOARD_AUX_GPIO_PORT_BASE, gpio_bit, GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD);
     } else {
@@ -71,8 +75,8 @@ static void aux_gpio_blink_identify(void)
 
 void aux_gpio_init(void)
 {
-    g_aux_output_mask = 0U;
-    g_aux_output_val = 0U;
+    s_aux_gpio.output_mask = 0U;
+    s_aux_gpio.output_val = 0U;
 
     /* Put PF0..PF2 into high-Z input mode first */
     MAP_GPIOPinTypeGPIOInput(BOARD_AUX_GPIO_PORT_BASE, BOARD_AUX_GPIO_ALL_PINS);
@@ -90,7 +94,7 @@ int32_t aux_gpio_get(uint32_t subcmd, uint16_t *out_val)
         uint32_t raw = MAP_GPIOPinRead(BOARD_AUX_GPIO_PORT_BASE, AUX_GPIO_VALID_MASK);
         *out_val = (uint16_t)(raw & AUX_GPIO_VALID_MASK);
     } else if (subcmd == AUX_GPIO_SUBCMD_DIR) {
-        *out_val = (uint16_t)(g_aux_output_mask & AUX_GPIO_VALID_MASK);
+        *out_val = (uint16_t)(s_aux_gpio.output_mask & AUX_GPIO_VALID_MASK);
     } else {
         *out_val = 0U;
     }
@@ -105,9 +109,9 @@ int32_t aux_gpio_set(uint32_t subcmd, uint16_t mask_val)
 
     switch (subcmd) {
     case AUX_GPIO_SUBCMD_VALUE: {
-        uint8_t eff_mask = (uint8_t)(mask & g_aux_output_mask);
+        uint8_t eff_mask = (uint8_t)(mask & s_aux_gpio.output_mask);
         uint8_t eff_val = (uint8_t)(val & eff_mask);
-        g_aux_output_val = (uint8_t)((g_aux_output_val & (uint8_t)(~eff_mask)) | eff_val);
+        s_aux_gpio.output_val = (uint8_t)((s_aux_gpio.output_val & (uint8_t)(~eff_mask)) | eff_val);
         if (eff_mask != 0U) {
             MAP_GPIOPinWrite(BOARD_AUX_GPIO_PORT_BASE, eff_mask, eff_val);
         }
@@ -118,14 +122,14 @@ int32_t aux_gpio_set(uint32_t subcmd, uint16_t mask_val)
         if (mask == 0U) {
             break;
         }
-        uint8_t new_out = (uint8_t)((g_aux_output_mask & (uint8_t)(~mask)) | (val & mask));
-        g_aux_output_mask = (uint8_t)(new_out & AUX_GPIO_VALID_MASK);
+        uint8_t new_out = (uint8_t)((s_aux_gpio.output_mask & (uint8_t)(~mask)) | (val & mask));
+        s_aux_gpio.output_mask = (uint8_t)(new_out & AUX_GPIO_VALID_MASK);
 
         static const uint8_t pins[3] = {BOARD_AUX_GPIO3_PIN, BOARD_AUX_GPIO1_PIN, BOARD_AUX_GPIO2_PIN};
         for (uint32_t i = 0U; i < 3U; i++) {
             uint8_t bit = pins[i];
             if ((mask & bit) != 0U) {
-                aux_gpio_set_dir_pin(bit, (g_aux_output_mask & bit) != 0U);
+                aux_gpio_set_dir_pin(bit, (s_aux_gpio.output_mask & bit) != 0U);
             }
         }
         break;

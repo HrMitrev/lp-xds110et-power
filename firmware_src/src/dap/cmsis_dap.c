@@ -87,24 +87,27 @@
 #define DAP_SWJ_PIN_WAIT_MAX_US 3000000U
 #define DAP_PROTOCOL_VERSION    "2.0.0"
 
-static char g_dap_serial[BOARD_SERIAL_LEN + 1U];
-static char g_dap_product_fw_ver[16];
-static uint8_t g_dap_req_buf[USB_DAP_MAX_PKT_SIZE];
-static uint8_t g_dap_resp_buf[USB_DAP_MAX_PKT_SIZE];
+typedef struct {
+    char serial[BOARD_SERIAL_LEN + 1U];
+    char product_fw_ver[16];
+    uint8_t req_buf[USB_DAP_MAX_PKT_SIZE];
+    uint8_t resp_buf[USB_DAP_MAX_PKT_SIZE];
+    uint8_t port;
+    bool host_connected;
+    uint8_t idle_cycles;
+    uint16_t wait_retry;
+    uint16_t match_retry;
+    uint32_t match_mask;
+    uint8_t swd_turnaround;
+    bool swd_data_phase;
+} cmsis_dap_state_t;
 
-static uint8_t g_dap_port = DAP_PORT_DISABLED;
-static bool g_dap_host_connected = false;
-static uint8_t g_dap_idle_cycles = 0U;
-static uint16_t g_dap_wait_retry = 100U;
-static uint16_t g_dap_match_retry = 0U;
-static uint32_t g_dap_match_mask = 0xFFFFFFFFU;
-static uint8_t g_dap_swd_turnaround = 1U;
-static bool g_dap_swd_data_phase = false;
+static cmsis_dap_state_t s_dap;
 
 /* Execute SWD transfer with CMSIS-DAP WAIT retry loop */
 static uint8_t dap_swd_xfer_retry(uint8_t req, uint32_t *data)
 {
-    uint32_t retry = g_dap_wait_retry;
+    uint32_t retry = s_dap.wait_retry;
     uint8_t ack;
     do {
         ack = swd_transfer(req, data);
@@ -118,8 +121,8 @@ static uint8_t dap_swd_xfer_retry(uint8_t req, uint32_t *data)
 /* Per ARM ADIv5 B4.2.3, ensure >= 8 trailing SWCLK cycles (SWDIO=0) after a final write */
 static void dap_swd_flush_trailing_write(void)
 {
-    if (g_dap_idle_cycles < 8U) {
-        swd_idle_cycles(8U - g_dap_idle_cycles);
+    if (s_dap.idle_cycles < 8U) {
+        swd_idle_cycles(8U - s_dap.idle_cycles);
     }
 }
 
@@ -156,7 +159,7 @@ static uint32_t dap_handle_info(const uint8_t *req, uint8_t *resp, uint32_t resp
         return dap_write_info_string(resp, resp_max, "XDS110 OpenFW CMSIS-DAP");
 
     case DAP_INFO_SER_NUM:
-        return dap_write_info_string(resp, resp_max, g_dap_serial);
+        return dap_write_info_string(resp, resp_max, s_dap.serial);
 
     case DAP_INFO_FW_VER:
         return dap_write_info_string(resp, resp_max, DAP_PROTOCOL_VERSION);
@@ -168,7 +171,7 @@ static uint32_t dap_handle_info(const uint8_t *req, uint8_t *resp, uint32_t resp
         return dap_write_info_string(resp, resp_max, "LP-XDS110ET");
 
     case DAP_INFO_PRODUCT_FW_VER:
-        return dap_write_info_string(resp, resp_max, g_dap_product_fw_ver);
+        return dap_write_info_string(resp, resp_max, s_dap.product_fw_ver);
 
     case DAP_INFO_CAPABILITIES:
         if (resp_max >= 3U) {
@@ -210,7 +213,7 @@ static void dap_handle_host_status(const uint8_t *req, uint8_t *resp)
 
     resp[0] = DAP_CMD_HOST_STATUS;
     if (type == DAP_HOST_STATUS_CONNECT) {
-        g_dap_host_connected = active;
+        s_dap.host_connected = active;
         resp[1] = DAP_STATUS_OK;
     } else if (type == DAP_HOST_STATUS_RUNNING) {
         board_led_red_set(active);
@@ -226,44 +229,44 @@ static void dap_handle_connect(const uint8_t *req, uint8_t *resp)
     resp[0] = DAP_CMD_CONNECT;
 
     if (bmp_mode_is_active()) {
-        g_dap_port = DAP_PORT_DISABLED;
+        s_dap.port = DAP_PORT_DISABLED;
         resp[1] = DAP_PORT_DISABLED;
         return;
     }
 
     if ((port == DAP_PORT_AUTODETECT) || (port == DAP_PORT_SWD)) {
         swd_connect();
-        g_dap_port = DAP_PORT_SWD;
+        s_dap.port = DAP_PORT_SWD;
         resp[1] = DAP_PORT_SWD;
     } else {
-        g_dap_port = DAP_PORT_DISABLED;
+        s_dap.port = DAP_PORT_DISABLED;
         resp[1] = DAP_PORT_DISABLED;
     }
 }
 
 void cmsis_dap_force_disconnect(void)
 {
-    if (g_dap_port != DAP_PORT_DISABLED) {
+    if (s_dap.port != DAP_PORT_DISABLED) {
         swd_disconnect();
-        g_dap_port = DAP_PORT_DISABLED;
+        s_dap.port = DAP_PORT_DISABLED;
     }
 }
 
 static void dap_handle_disconnect(uint8_t *resp)
 {
     swd_disconnect();
-    g_dap_port = DAP_PORT_DISABLED;
+    s_dap.port = DAP_PORT_DISABLED;
     resp[0] = DAP_CMD_DISCONNECT;
     resp[1] = DAP_STATUS_OK;
 }
 
 static void dap_handle_transfer_configure(const uint8_t *req, uint8_t *resp)
 {
-    g_dap_idle_cycles = req[1];
-    g_dap_wait_retry = read_u16le(&req[2]);
-    g_dap_match_retry = read_u16le(&req[4]);
+    s_dap.idle_cycles = req[1];
+    s_dap.wait_retry = read_u16le(&req[2]);
+    s_dap.match_retry = read_u16le(&req[4]);
 
-    swd_configure(g_dap_swd_turnaround, g_dap_swd_data_phase, g_dap_idle_cycles);
+    swd_configure(s_dap.swd_turnaround, s_dap.swd_data_phase, s_dap.idle_cycles);
 
     resp[0] = DAP_CMD_TRANSFER_CONFIGURE;
     resp[1] = DAP_STATUS_OK;
@@ -283,7 +286,7 @@ static void dap_handle_transfer(const uint8_t *req, uint32_t req_max, uint8_t *r
 
     resp[0] = DAP_CMD_TRANSFER;
 
-    if (g_dap_port == DAP_PORT_SWD) {
+    if (s_dap.port == DAP_PORT_SWD) {
         for (; executed < xfer_count; executed++) {
             if (req_off >= req_max) {
                 break;
@@ -347,13 +350,13 @@ static void dap_handle_transfer(const uint8_t *req, uint32_t req_max, uint8_t *r
                     }
 
                     uint32_t val = 0U;
-                    uint32_t retry = g_dap_match_retry;
+                    uint32_t retry = s_dap.match_retry;
                     do {
                         resp_val = dap_swd_xfer_retry(xfer_req, &val);
                         if (resp_val != SWD_ACK_OK) {
                             break;
                         }
-                        if ((val & g_dap_match_mask) == match_val) {
+                        if ((val & s_dap.match_mask) == match_val) {
                             break;
                         }
                     } while (retry-- > 0U);
@@ -362,7 +365,7 @@ static void dap_handle_transfer(const uint8_t *req, uint32_t req_max, uint8_t *r
                         executed++;
                         break;
                     }
-                    if ((val & g_dap_match_mask) != match_val) {
+                    if ((val & s_dap.match_mask) != match_val) {
                         resp_val |= DAP_TRANSFER_MISMATCH;
                         executed++;
                         break;
@@ -415,7 +418,7 @@ static void dap_handle_transfer(const uint8_t *req, uint32_t req_max, uint8_t *r
                 req_off += 4U;
 
                 if ((xfer_req & DAP_TRANSFER_MATCH_MASK) != 0U) {
-                    g_dap_match_mask = wdata;
+                    s_dap.match_mask = wdata;
                     resp_val = SWD_ACK_OK;
                 } else {
                     resp_val = dap_swd_xfer_retry(xfer_req, &wdata);
@@ -474,7 +477,7 @@ static void dap_handle_transfer_block(const uint8_t *req, uint32_t req_max, uint
 
     resp[0] = DAP_CMD_TRANSFER_BLOCK;
 
-    if ((g_dap_port == DAP_PORT_SWD) && (xfer_count > 0U)) {
+    if ((s_dap.port == DAP_PORT_SWD) && (xfer_count > 0U)) {
         if ((xfer_req & DAP_TRANSFER_RnW) != 0U) {
             /* Block Read */
             if ((xfer_req & DAP_TRANSFER_APnDP) != 0U) {
@@ -545,7 +548,7 @@ static void dap_handle_transfer_block(const uint8_t *req, uint32_t req_max, uint
 static void dap_handle_write_abort(const uint8_t *req, uint8_t *resp)
 {
     resp[0] = DAP_CMD_WRITE_ABORT;
-    if (g_dap_port != DAP_PORT_SWD) {
+    if (s_dap.port != DAP_PORT_SWD) {
         resp[1] = DAP_STATUS_ERROR;
         return;
     }
@@ -614,10 +617,10 @@ static uint32_t dap_handle_swj_sequence(const uint8_t *req, uint32_t req_max, ui
 static void dap_handle_swd_configure(const uint8_t *req, uint8_t *resp)
 {
     uint8_t cfg = req[1];
-    g_dap_swd_turnaround = (uint8_t)((cfg & 0x03U) + 1U);
-    g_dap_swd_data_phase = (cfg & 0x04U) != 0U;
+    s_dap.swd_turnaround = (uint8_t)((cfg & 0x03U) + 1U);
+    s_dap.swd_data_phase = (cfg & 0x04U) != 0U;
 
-    swd_configure(g_dap_swd_turnaround, g_dap_swd_data_phase, g_dap_idle_cycles);
+    swd_configure(s_dap.swd_turnaround, s_dap.swd_data_phase, s_dap.idle_cycles);
 
     resp[0] = DAP_CMD_SWD_CONFIGURE;
     resp[1] = DAP_STATUS_OK;
@@ -823,19 +826,18 @@ static uint16_t dap_process_packet(const uint8_t *req, uint32_t req_len, uint8_t
 
 void cmsis_dap_init(const uint8_t fw_version[4])
 {
-    board_read_serial(g_dap_serial);
-    snprintf(g_dap_product_fw_ver, sizeof(g_dap_product_fw_ver), "%02x.%02x.%02x.%02x", (unsigned)fw_version[3],
+    board_read_serial(s_dap.serial);
+    snprintf(s_dap.product_fw_ver, sizeof(s_dap.product_fw_ver), "%02x.%02x.%02x.%02x", (unsigned)fw_version[3],
         (unsigned)fw_version[2], (unsigned)fw_version[1], (unsigned)fw_version[0]);
 
-    g_dap_port = DAP_PORT_DISABLED;
-    g_dap_host_connected = false;
-    g_dap_idle_cycles = 0U;
-    g_dap_wait_retry = 100U;
-    g_dap_match_retry = 0U;
-    g_dap_match_mask = 0xFFFFFFFFU;
-    g_dap_swd_turnaround = 1U;
-    g_dap_swd_data_phase = false;
-    (void)g_dap_host_connected;
+    s_dap.port = DAP_PORT_DISABLED;
+    s_dap.host_connected = false;
+    s_dap.idle_cycles = 0U;
+    s_dap.wait_retry = 100U;
+    s_dap.match_retry = 0U;
+    s_dap.match_mask = 0xFFFFFFFFU;
+    s_dap.swd_turnaround = 1U;
+    s_dap.swd_data_phase = false;
 
     swd_init();
 }
@@ -847,14 +849,14 @@ bool cmsis_dap_poll(void)
     }
 
     uint16_t max_pkt = usb_dap_packet_size();
-    uint16_t req_len = usb_dap_rx_pop(g_dap_req_buf, max_pkt);
+    uint16_t req_len = usb_dap_rx_pop(s_dap.req_buf, max_pkt);
     if (req_len == 0U) {
         return false;
     }
 
-    uint16_t resp_len = dap_process_packet(g_dap_req_buf, req_len, g_dap_resp_buf, max_pkt);
+    uint16_t resp_len = dap_process_packet(s_dap.req_buf, req_len, s_dap.resp_buf, max_pkt);
     if (resp_len > 0U) {
-        (void)usb_dap_tx_push(g_dap_resp_buf, resp_len);
+        (void)usb_dap_tx_push(s_dap.resp_buf, resp_len);
     }
     return true;
 }

@@ -7,6 +7,8 @@
 
 #include "bmp_mode.h"
 
+#include <stddef.h>
+
 #include "dap/cmsis_dap.h"
 #include "dap/swd.h"
 #include "dap/xds_swd.h"
@@ -31,7 +33,15 @@
 #include "target.h"
 #endif
 
-static uint8_t g_probe_mode = (FW_DEFAULT_BMP_MODE != 0U) ? PROBE_MODE_BMP : PROBE_MODE_NORMAL;
+typedef struct {
+    uint8_t mode;
+    bmp_bg_poll_fn_t bg_poll;
+} bmp_mode_state_t;
+
+static bmp_mode_state_t s_bmp_mode = {
+    .mode = (FW_DEFAULT_BMP_MODE != 0U) ? PROBE_MODE_BMP : PROBE_MODE_NORMAL,
+    .bg_poll = NULL,
+};
 
 #if (FW_BMP_GDB_COMPILED != 0)
 
@@ -54,7 +64,7 @@ static void bmp_gdb_poll_step(void)
     SET_IDLE_STATE(false);
     while (gdb_target_running && (cur_target != NULL)) {
         gdb_poll_target();
-        app_background_poll();
+        bmp_mode_background_poll();
 
         if (!bmp_mode_is_active()) {
             target_list_free();
@@ -94,12 +104,17 @@ static void bmp_gdb_poll_step(void)
 
 #endif /* FW_BMP_GDB_COMPILED */
 
-void bmp_mode_init(void)
+void bmp_mode_init(bmp_bg_poll_fn_t bg_poll)
 {
-    g_probe_mode = (FW_DEFAULT_BMP_MODE != 0U) ? PROBE_MODE_BMP : PROBE_MODE_NORMAL;
+    s_bmp_mode.mode = (FW_DEFAULT_BMP_MODE != 0U) ? PROBE_MODE_BMP : PROBE_MODE_NORMAL;
+    s_bmp_mode.bg_poll = bg_poll;
 
 #if (FW_BMP_GDB_COMPILED != 0)
+    platform_init();
     (void)gdb_if_init();
+#ifdef ENABLE_RTT
+    (void)rtt_if_init();
+#endif
     swdptap_init();
     jtagtap_init();
     /* Leave target SWD/JTAG lines in high-Z idle until BMP scan actually runs */
@@ -107,9 +122,16 @@ void bmp_mode_init(void)
 #endif
 }
 
+void bmp_mode_background_poll(void)
+{
+    if (s_bmp_mode.bg_poll != NULL) {
+        s_bmp_mode.bg_poll();
+    }
+}
+
 uint8_t bmp_mode_get(void)
 {
-    return g_probe_mode;
+    return s_bmp_mode.mode;
 }
 
 uint8_t bmp_mode_get_caps(void)
@@ -126,7 +148,7 @@ uint8_t bmp_mode_get_caps(void)
 
 bool bmp_mode_is_active(void)
 {
-    return g_probe_mode == PROBE_MODE_BMP;
+    return s_bmp_mode.mode == PROBE_MODE_BMP;
 }
 
 bool bmp_rtt_is_active(void)
@@ -144,7 +166,7 @@ int32_t bmp_mode_set(uint8_t mode)
         return XDS_ERR_INVALID_PARAM;
     }
 
-    if (mode == g_probe_mode) {
+    if (mode == s_bmp_mode.mode) {
         return XDS_ERR_OK;
     }
 
@@ -157,7 +179,7 @@ int32_t bmp_mode_set(uint8_t mode)
         swd_disconnect();
         usb_cdc_rx_flush(USB_CDC_PORT_AUX);
         usb_cdc_tx_flush(USB_CDC_PORT_AUX);
-        g_probe_mode = PROBE_MODE_BMP;
+        s_bmp_mode.mode = PROBE_MODE_BMP;
     } else {
         /* Detach any active BMP target, tri-state SWD pins, and flush CDC1 */
 #if (FW_BMP_GDB_COMPILED != 0)
@@ -167,7 +189,7 @@ int32_t bmp_mode_set(uint8_t mode)
 #endif
         usb_cdc_rx_flush(USB_CDC_PORT_AUX);
         usb_cdc_tx_flush(USB_CDC_PORT_AUX);
-        g_probe_mode = PROBE_MODE_NORMAL;
+        s_bmp_mode.mode = PROBE_MODE_NORMAL;
     }
 
     return XDS_ERR_OK;

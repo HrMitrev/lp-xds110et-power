@@ -30,10 +30,17 @@ typedef enum {
     BMP_SWDIO_DRIVE,
 } bmp_swdio_dir_t;
 
+typedef struct {
+    bmp_swdio_dir_t swdio_dir;
+} bmp_tap_state_t;
+
+/* Required external dispatch tables populated for upstream BMP swd.h / jtagtap.h */
 swd_proc_s swd_proc;
 jtag_proc_s jtag_proc;
 
-static bmp_swdio_dir_t g_swdio_dir = BMP_SWDIO_FLOAT;
+static bmp_tap_state_t s_bmp_tap = {
+    .swdio_dir = BMP_SWDIO_FLOAT,
+};
 
 static inline __attribute__((always_inline)) void bmp_tap_delay(uint32_t loops)
 {
@@ -77,10 +84,10 @@ void bmp_tap_clk_output_enable(bool enable)
 
 __attribute__((optimize("O2"))) static void bmp_swd_turnaround(bmp_swdio_dir_t dir)
 {
-    if (dir == g_swdio_dir) {
+    if (dir == s_bmp_tap.swdio_dir) {
         return;
     }
-    g_swdio_dir = dir;
+    s_bmp_tap.swdio_dir = dir;
 
     uint32_t loops = target_clk_divider;
     if (dir == BMP_SWDIO_FLOAT) {
@@ -201,7 +208,7 @@ void swdptap_init(void)
 {
     swd_connect();
     HWREG(BMP_REG_TCK) = 0U;
-    g_swdio_dir = BMP_SWDIO_DRIVE;
+    s_bmp_tap.swdio_dir = BMP_SWDIO_DRIVE;
 
     swd_proc.seq_in = bmp_swd_seq_in;
     swd_proc.seq_in_parity = bmp_swd_seq_in_parity;
@@ -272,7 +279,7 @@ void jtagtap_init(void)
 {
     swd_connect();
     HWREG(BMP_REG_TCK) = 0U;
-    g_swdio_dir = BMP_SWDIO_DRIVE;
+    s_bmp_tap.swdio_dir = BMP_SWDIO_DRIVE;
 
     jtag_proc.jtagtap_reset = bmp_jtag_reset;
     jtag_proc.jtagtap_next = bmp_jtag_next;

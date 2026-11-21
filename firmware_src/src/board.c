@@ -14,21 +14,27 @@
 
 #include "board_lp_xds110et.h"
 
-static uint32_t g_sys_clock_hz = 0U;
-static uint32_t g_flash_size_bytes = 0U;
-static uint32_t g_config_flash_addr = 0x000FC000U;
-static uint16_t g_hw_version = 0U;
-static bool g_has_ulpi_phy = false;
-static volatile uint32_t g_uptime_ms = 0U;
+typedef struct {
+    uint32_t sys_clock_hz;
+    uint32_t flash_size_bytes;
+    uint32_t config_flash_addr;
+    uint16_t hw_version;
+    bool has_ulpi_phy;
+    volatile uint32_t uptime_ms;
+} board_state_t;
+
+static board_state_t s_board = {
+    .config_flash_addr = 0x000FC000U,
+};
 
 void systick_handler(void)
 {
-    g_uptime_ms++;
+    s_board.uptime_ms++;
 }
 
 static void board_init_systick(void)
 {
-    MAP_SysTickPeriodSet(g_sys_clock_hz / 1000U);
+    MAP_SysTickPeriodSet(s_board.sys_clock_hz / 1000U);
     MAP_SysTickIntEnable();
     MAP_SysTickEnable();
     MAP_IntMasterEnable();
@@ -61,7 +67,7 @@ static void board_detect_ulpi_phy(void)
     board_delay_us(10U);
 
     uint32_t nxt_val = MAP_GPIOPinRead(BOARD_ULPI_DATA_HI_BASE, BOARD_ULPI_NXT_PIN);
-    g_has_ulpi_phy = (nxt_val == 0U);
+    s_board.has_ulpi_phy = (nxt_val == 0U);
 }
 
 static void board_detect_hw_version(void)
@@ -71,7 +77,7 @@ static void board_detect_hw_version(void)
     board_delay_us(10U);
 
     uint32_t strap_nibble = (MAP_GPIOPinRead(BOARD_HWID_PORT_BASE, BOARD_HWID_PINS) >> 4U) & 0x0FU;
-    g_hw_version = (uint16_t)(0x20U | strap_nibble);
+    s_board.hw_version = (uint16_t)(0x20U | strap_nibble);
 }
 
 static void board_init_safe_defaults(void)
@@ -108,12 +114,12 @@ static void board_init_safe_defaults(void)
 
 void board_init(void)
 {
-    g_sys_clock_hz = MAP_SysCtlClockFreqSet(BOARD_SYS_CLOCK_CONFIG, BOARD_SYS_CLOCK_HZ);
+    s_board.sys_clock_hz = MAP_SysCtlClockFreqSet(BOARD_SYS_CLOCK_CONFIG, BOARD_SYS_CLOCK_HZ);
 
-    g_flash_size_bytes = MAP_SysCtlFlashSizeGet();
+    s_board.flash_size_bytes = MAP_SysCtlFlashSizeGet();
     uint32_t sector_size = MAP_SysCtlFlashSectorSizeGet();
-    if (g_flash_size_bytes > sector_size) {
-        g_config_flash_addr = g_flash_size_bytes - sector_size;
+    if (s_board.flash_size_bytes > sector_size) {
+        s_board.config_flash_addr = s_board.flash_size_bytes - sector_size;
     }
 
     board_init_leds();
@@ -145,27 +151,27 @@ void board_init(void)
 
 uint32_t board_get_sys_clock_hz(void)
 {
-    return g_sys_clock_hz;
+    return s_board.sys_clock_hz;
 }
 
 uint32_t board_get_flash_size_bytes(void)
 {
-    return g_flash_size_bytes;
+    return s_board.flash_size_bytes;
 }
 
 uint16_t board_get_hw_version(void)
 {
-    return g_hw_version;
+    return s_board.hw_version;
 }
 
 bool board_has_ulpi_phy(void)
 {
-    return g_has_ulpi_phy;
+    return s_board.has_ulpi_phy;
 }
 
 void board_read_serial(char out_serial[BOARD_SERIAL_LEN + 1U])
 {
-    const char *flash_serial = (const char *)g_config_flash_addr;
+    const char *flash_serial = (const char *)s_board.config_flash_addr;
     bool valid = true;
 
     for (uint32_t i = 0U; i < BOARD_SERIAL_LEN; i++) {
@@ -185,7 +191,7 @@ void board_read_serial(char out_serial[BOARD_SERIAL_LEN + 1U])
 
 uint32_t board_read_config_word(void)
 {
-    const uint32_t *config_word_ptr = (const uint32_t *)(g_config_flash_addr + BOARD_CONFIG_WORD_OFFSET);
+    const uint32_t *config_word_ptr = (const uint32_t *)(s_board.config_flash_addr + BOARD_CONFIG_WORD_OFFSET);
     uint32_t word = *config_word_ptr;
 
     if ((word & 0xFFFF0000U) != 0xAA550000U) {
@@ -217,13 +223,13 @@ bool board_srst_get(void)
 
 uint32_t board_get_uptime_ms(void)
 {
-    return g_uptime_ms;
+    return s_board.uptime_ms;
 }
 
 void board_delay_ms(uint32_t ms)
 {
     /* SysCtlDelay executes 3 CPU cycles per iteration */
-    uint32_t cycles_per_ms = g_sys_clock_hz / 3000U;
+    uint32_t cycles_per_ms = s_board.sys_clock_hz / 3000U;
     while (ms > 0U) {
         MAP_SysCtlDelay(cycles_per_ms);
         ms--;
@@ -232,7 +238,7 @@ void board_delay_ms(uint32_t ms)
 
 void board_delay_us(uint32_t us)
 {
-    uint32_t cycles_per_us = g_sys_clock_hz / 3000000U;
+    uint32_t cycles_per_us = s_board.sys_clock_hz / 3000000U;
     if ((us > 0U) && (cycles_per_us > 0U)) {
         MAP_SysCtlDelay(us * cycles_per_us);
     }

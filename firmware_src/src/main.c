@@ -43,40 +43,44 @@ __attribute__((used, section(".rodata.version"))) const uint8_t g_firmware_versi
     FW_VERSION_MAJOR,
 };
 
-static bool g_board_ok = false;
-static bool g_led_on = false;
-static uint32_t g_last_toggle_ms = 0U;
+typedef struct {
+    bool board_ok;
+    bool led_on;
+    uint32_t last_toggle_ms;
+} app_state_t;
+
+static app_state_t s_app = {0};
 
 static void app_update_leds(void)
 {
     uint32_t now_ms = board_get_uptime_ms();
 
-    if (!g_board_ok) {
+    if (!s_app.board_ok) {
         /* Fast Red fault blink if board ID or ULPI PHY was not detected */
-        if ((uint32_t)(now_ms - g_last_toggle_ms) >= 150U) {
-            g_last_toggle_ms = now_ms;
-            g_led_on = !g_led_on;
-            board_led_red_set(g_led_on);
+        if ((uint32_t)(now_ms - s_app.last_toggle_ms) >= 150U) {
+            s_app.last_toggle_ms = now_ms;
+            s_app.led_on = !s_app.led_on;
+            board_led_red_set(s_app.led_on);
         }
     } else if (usb_device_is_configured()) {
         /* Solid Green when USB host has enumerated and configured the probe */
         board_led_green_set(true);
     } else {
         /* Slow Green blink while awaiting USB host enumeration */
-        if ((uint32_t)(now_ms - g_last_toggle_ms) >= 500U) {
-            g_last_toggle_ms = now_ms;
-            g_led_on = !g_led_on;
-            board_led_green_set(g_led_on);
+        if ((uint32_t)(now_ms - s_app.last_toggle_ms) >= 500U) {
+            s_app.last_toggle_ms = now_ms;
+            s_app.led_on = !s_app.led_on;
+            board_led_green_set(s_app.led_on);
         }
     }
 }
 
 /*
- * Cooperative background tick shared between main() and BMP GDB wait loops:
+ * Cooperative background callback registered with bmp_mode_init():
  * keeps EnergyTrace control, XDS110 mode switch (0x63), DFU (0x26), and CDC0
- * App UART (ttyACM0) running at full speed even while BMP is waiting on GDB.
+ * App UART (ttyACM0) running at full speed while BMP is waiting on GDB.
  */
-void app_background_poll(void)
+static void app_background_poll(void)
 {
     (void)xds_cmd_poll();
     (void)cdc_uart_poll();
@@ -90,9 +94,9 @@ int main(void)
 
     uint16_t hw_version = board_get_hw_version();
     bool ulpi_present = board_has_ulpi_phy();
-    g_board_ok = (hw_version == BOARD_HW_VERSION_LP_XDS110ET) && ulpi_present;
+    s_app.board_ok = (hw_version == BOARD_HW_VERSION_LP_XDS110ET) && ulpi_present;
 
-    if (g_board_ok) {
+    if (s_app.board_ok) {
         et_hdr_init();
         et_hdr_boot_calibrate();
     }
@@ -101,11 +105,11 @@ int main(void)
     cmsis_dap_init(g_firmware_version);
     aux_gpio_init();
     cdc_uart_init();
-    bmp_mode_init();
+    bmp_mode_init(app_background_poll);
     usb_device_init(g_firmware_version);
 
-    g_led_on = false;
-    g_last_toggle_ms = board_get_uptime_ms();
+    s_app.led_on = false;
+    s_app.last_toggle_ms = board_get_uptime_ms();
 
     while (1) {
         bool did_work = xds_cmd_poll();
