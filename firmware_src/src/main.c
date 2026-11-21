@@ -1,13 +1,14 @@
 /*
  * main.c - Open-source bare-metal firmware entry point for TI LP-XDS110ET.
  *
- * Phase 3B (EnergyTrace HDR 256 kS/s + Dual Virtual COM Ports):
+ * Phase 3C (EnergyTrace HDR 256 kS/s + Dual Virtual COM Ports + Target Aux GPIOs):
  *   - LP-XDS110ET BSP & 1 kHz SysTick uptime timebase
  *   - Boot-time double-reset DFU failsafe
  *   - Boot-time EnergyTrace HDR calibration (ADS127L01 + SSI1 + uDMA Ch5/Ch24)
  *   - USB3300-EZK ULPI HS-USB enumeration (0451:BEF3 composite device)
  *   - XDS110 0x2A command framing, core control opcodes, & EnergyTrace streaming
  *   - Dual CDC ACM Virtual COM Ports (UART0 App UART + UART7 Aux/SWO RX)
+ *   - Target Aux GPIOs (PF0..PF2 + PJ0..PJ1 level-shifter dir, opcodes 0x29/0x2A)
  */
 
 #include <stdbool.h>
@@ -16,6 +17,7 @@
 #include "board_lp_xds110et.h"
 #include "dfu_jump.h"
 #include "energytrace/et_hdr.h"
+#include "gpio/aux_gpio.h"
 #include "protocol/xds_cmd.h"
 #include "uart/cdc_uart.h"
 #include "usb/usb_device.h"
@@ -52,6 +54,7 @@ int main(void)
     }
 
     xds_cmd_init(g_firmware_version);
+    aux_gpio_init();
     cdc_uart_init();
     usb_device_init(g_firmware_version);
 

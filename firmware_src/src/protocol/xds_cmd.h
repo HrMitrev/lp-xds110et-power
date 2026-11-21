@@ -33,6 +33,8 @@
 #define XDS_CMD_ET_CLEANUP  0x21U
 #define XDS_CMD_ENTER_DFU   0x26U
 #define XDS_CMD_CONNECT_ET  0x28U
+#define XDS_CMD_GPIO_GET    0x29U
+#define XDS_CMD_GPIO_SET    0x2AU
 #define XDS_CMD_ET_RANGE    0x30U
 #define XDS_CMD_ET_DIG      0x31U
 #define XDS_CMD_ET_DIG_ARGS 0x44U

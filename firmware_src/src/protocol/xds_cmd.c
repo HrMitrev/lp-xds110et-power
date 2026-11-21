@@ -21,6 +21,7 @@
 #include "board_lp_xds110et.h"
 #include "dfu_jump.h"
 #include "energytrace/et_hdr.h"
+#include "gpio/aux_gpio.h"
 #include "usb/usb_device.h"
 
 static uint8_t g_fw_version[4];
@@ -195,6 +196,26 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
         (void)et_hdr_cleanup();
         /* No USB reply is sent; host expects immediate disconnect and DFU re-enumeration */
         dfu_jump_enter();
+        break;
+
+    case XDS_CMD_GPIO_GET: {
+        if (args_len < 4U) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        uint16_t gpio_val = 0U;
+        err = aux_gpio_get(read_u32le(args), &gpio_val);
+        write_u16le(resp_data, gpio_val);
+        resp_len = 2U;
+        break;
+    }
+
+    case XDS_CMD_GPIO_SET:
+        if (args_len < 6U) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        err = aux_gpio_set(read_u32le(args), read_u16le(&args[4]));
         break;
 
     case XDS_CMD_PING:
