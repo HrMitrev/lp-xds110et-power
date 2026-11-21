@@ -67,9 +67,9 @@ A phased, clean-room engineering plan for the open-source bare-metal firmware in
 
 ---
 
-## Phase 6 — Native OpenOCD `interface/xds110.cfg` SWD Opcodes on Interface 2 (Completed & Verified)
+## Phase 6 — Native OpenOCD `interface/xds110.cfg` & TI UniFlash `DSLite` SWD on Interface 2 (Completed & Verified)
 
 - [x] **Native XDS110 SWD Protocol (`dap/xds_swd.{h,c}`)**:
-  - Implemented `0x04` (`XDS_SET_TCK`), `0x05` (`XDS_SET_TRST`), `0x07` (`XDS_CYCLE_TCK`), `0x0F..0x12` (`CMAPI_CONNECT`/`DISCONNECT`/`ACQUIRE`/`RELEASE`), `0x15..0x16` (`CMAPI_REG_READ`/`WRITE`), `0x17..0x1A` (`SWD_CONNECT`/`DISCONNECT`/`CLEAR_ERRORS`/`DORMANT_WAKE`), `0x2B..0x2C` (`CJTAG_CONNECT`/`DISCONNECT`), and `0x3A` (`OCD_DAP_REQUEST` batched raw SWD queue up to 4 KiB).
-  - Verified live against STM32G0 with OpenOCD `interface/xds110.cfg` (`connect_assert_srst`, `reset halt`, 64 KiB Flash dump/verify, SRAM R/W/restore).
-- [ ] **Future TI CCS / UniFlash `DSLite` Compatibility**: Investigating remaining proprietary `uscif` opcodes (`0x13`/`0x14` `CMAPI_READ/WRITE_MEM`, `0x27` `READ_CONFIG`, `0x33..0x38` block memory access, and version-check handling so UniFlash does not force-downgrade/overwrite OpenFW).
+  - Implemented `0x04` (`XDS_SET_TCK`), `0x05`/`0x06` (`XDS_SET/GET_TRST`), `0x07` (`XDS_CYCLE_TCK`), `0x09` (`JTAG_GOTO_STATE`), `0x0F..0x12` (`CMAPI_CONNECT`/`DISCONNECT`/`ACQUIRE`/`RELEASE`), `0x13..0x14` (`CMAPI_READ/WRITE_MEM`), `0x15..0x16` (`CMAPI_REG_READ`/`WRITE`), `0x17..0x1A` (`SWD_CONNECT` with ADIv5.2 Dormant-to-SWD fallback / `SWD_DISCONNECT` / SWO routing no-ops), `0x2B..0x2C` (`CJTAG_CONNECT`/`DISCONNECT`), `0x32` (`SET_SUPPLY`), `0x39` (`JTAG_SET_MODE_EX`), `0x3A` (`OCD_DAP_REQUEST` batched raw SWD queue up to 4 KiB), `0x3D..0x3E` (`CMAPI_READ/WRITE_MEM_64` with CSW `SProt` + cache), `0x45` (`JTAG_SET_FREQ_EX`), `0x49` (`SET_OPTION`), `0x50..0x51` (`SEC_AP` SACI mailbox write/read), and `0x5A` (`CMAPI_CONNECT_EX` with DP power-up + automatic SWD `FAULT` sticky-error recovery).
+  - Updated reported BCD firmware version to `3.0.0.45` so TI UniFlash / `xds110reset` accepts the probe without forcing a proprietary firmware overwrite.
+  - Verified live against STM32G0 with OpenOCD `interface/xds110.cfg` (`connect_assert_srst`, `reset halt`, 64 KiB Flash dump/verify, SRAM R/W/restore) and against **TI CC2340R5** with **TI UniFlash `DSLite` (`noConnectFlash`)** (full `xds110reset`, `SEC_AP` SACI debug unlock, Chip Erase, 83+ KiB program + CCFG @ `0x4e020000`, Fast Verify, and Run).
