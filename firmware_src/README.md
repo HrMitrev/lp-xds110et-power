@@ -12,7 +12,7 @@ Clean-room, bare-metal ARM Cortex-M4F open-source firmware for the **Texas Instr
 - **USB 2.1 High-Speed Composite Stack (`USB3300-EZK` ULPI PHY, `0451:BEF3`)**:
   - **Interfaces 0 / 1 (CDC0)**: Application UART (`UART0` on `PA0`/`PA1`, full-duplex, verified bit-exact up to **2,000,000 bps** concurrently with EnergyTrace).
   - **Interface 2 (Vendor Bulk `0x02`/`0x83`)**: XDS110 `0x2A` command channel (session control, `nSRST`, DFU jump, EnergyTrace control, Target Aux GPIOs, **OpenOCD `interface/xds110.cfg` SWD**, and **TI UniFlash `DSLite` SWD + `SEC_AP` SACI**).
-  - **Interfaces 3 / 4 (CDC1)**: Auxiliary / SWO UART (`UART7` RX-only on `PC4`; `PC5` preserved for `U10` `XDS_TMS_DIR`).
+  - **Interfaces 3 / 4 (CDC1)**: Auxiliary / SWO UART (`UART7` RX-only on `PC4`; `PC5` preserved for `U10` `XDS_TMS_DIR`) in Normal mode, or **Black Magic Debug GDB RSP Server** (`target extended-remote /dev/ttyACM1`) in BMP mode (`xds110-et mode bmp`, opcode `0x63`, zero USB re-enumeration).
   - **Interface 5 (Vendor Bulk `0x05`/`0x86`)**: **CMSIS-DAP v2.0.0 WinUSB Bulk** (`512 B` HS / `64 B` FS, 4-deep queues, USB 2.1 BOS + Microsoft OS 2.0 Descriptors for zero-driver WinUSB binding, Atomic Commands `0x7E`/`0x7F`, SWD).
   - **Interface 6 (Vendor Bulk `0x06`/`0x87`)**: EnergyTrace HDR 256 kS/s data stream (64 KiB ring buffer) + byte-reversal loopback self-test when idle.
 - **EnergyTrace HDR 256 kS/s Engine**:
@@ -30,7 +30,7 @@ Clean-room, bare-metal ARM Cortex-M4F open-source firmware for the **Texas Instr
 | Memory Region | Address Range | Size | Description |
 |---|---|---|---|
 | **DFU Bootloader** | `0x0000_0000 - 0x0000_3FFF` | 16 KiB | Preserved primary TI USB DFU bootloader |
-| **Application Flash** | `0x0000_4000 - 0x000F_BFFF` | 992 KiB | **This firmware binary** (~25 KiB used) |
+| **Application Flash** | `0x0000_4000 - 0x000F_BFFF` | 992 KiB | **This firmware binary** (~125 KiB with BMP, ~26 KiB with `BMP_ENABLE=0`) |
 | **Config / Serial** | `0x000F_C000 - 0x000F_FFFF` | 16 KiB | Factory 8-char serial number & config word |
 | **Internal SRAM** | `0x2000_0000 - 0x2003_FFFF` | 256 KiB | Data, BSS, Ring Buffers, uDMA & Stack |
 
@@ -43,29 +43,35 @@ firmware_src/
 ├── Makefile                        # Build, format, clangd-check, DFU flash, HIL & SWD test targets
 ├── msp432e401y.ld                  # Linker script (flash offset 0x4000, 256 KiB SRAM)
 ├── scripts/
+│   ├── fetch_bmp.py                # Automated Black Magic Debug (main branch) downloader
 │   ├── fetch_sdk.py                # Automated TI MSP432E4 DriverLib & CMSIS downloader
 │   ├── fetch_toolchain.py          # Optional standalone GCC 16 arm-none-eabi fetcher
 │   └── gen_compile_commands.py     # Generates compile_commands.json for clangd
 ├── src/
 │   ├── main.c                      # Super-loop, BCD version (3.0.0.45), subsystem dispatch
 │   ├── startup_gcc.c               # Cortex-M4F vector table (CAN1 @ IRQ 39, USB0 @ IRQ 42)
-│   ├── board_lp_xds110et.h / .c    # LP-XDS110ET BSP (120 MHz PLL, LEDs, HW ID, nSRST, SysTick)
+│   ├── board_lp_xds110et.h / .c    # LP-XDS110ET BSP (120 MHz PLL, LEDs, HW ID, nSRST, SysTick, LE helpers)
 │   ├── dfu_jump.h / .c             # Double-reset failsafe & safe DFU bootloader jump
 │   ├── usb/
 │   │   ├── usb_descriptors.h / .c  # USB 2.1 HS composite + BOS / MS OS 2.0 WinUSB descriptors
 │   │   └── usb_device.h / .c       # MUSB HS ULPI stack, 4 KiB FIFO layout, Bulk/CDC/DAP queues
 │   ├── protocol/
-│   │   └── xds_cmd.h / .c          # XDS110 0x2A framing & opcode dispatcher
+│   │   └── xds_cmd.h / .c          # XDS110 0x2A framing & opcode dispatcher (incl. 0x63 probe mode)
 │   ├── energytrace/
 │   │   └── et_hdr.h / .c           # ADS127L01 SPI + uDMA Ch5/Ch24 ping-pong + boot cal cache
 │   ├── uart/
 │   │   └── cdc_uart.h / .c         # UART0 (CDC0) & UART7 RX (CDC1) prio-1 ISR bridges
 │   ├── gpio/
 │   │   └── aux_gpio.h / .c         # Target Aux GPIOs (PF0..PF2, U49 PJ0/PJ1) & LED identify
+│   ├── bmp/
+│   │   ├── bmp_mode.h / .c         # Runtime Normal/BMP mode manager & cooperative GDB poll bridge
+│   │   ├── platform.h              # BMP platform configuration & LED/background-poll macros
+│   │   ├── bmp_platform.c          # BMP platform HAL, CDC1 GDB RSP transport & guarded _sbrk
+│   │   └── bmp_tap.c               # Bit-masked GPIO SWD & 4-wire JTAG TAP drivers for BMP
 │   └── dap/
 │       ├── swd.h / .c              # High-speed bit-masked GPIO SWD engine (PA2/PA3/PA6 + PC5 TMS_DIR)
 │       ├── cmsis_dap.h / .c        # CMSIS-DAP v2.0.0 WinUSB Bulk + Atomic Commands (0x7E/0x7F)
-│       └── xds_swd.h / .c          # Native XDS110 Interface 2 SWD (CMAPI + OCD_DAP_REQUEST 0x3A)
+│       └── xds_swd.h / .c          # Native XDS110 Interface 2 SWD (CMAPI + SACI + OpenOCD 0x3A)
 └── tests/
     ├── hil_stress_test.py          # Probe HIL suite (info, Aux GPIO, DAPv2/BOS, UART0/7, ET)
     └── swd_target_test.py          # Live SWD target suite (OpenOCD DAPv2 & xds110, probe-rs, pyocd, ET coex)
@@ -76,8 +82,11 @@ firmware_src/
 ## Build, Flash & Test Commands
 
 ```bash
-# Build firmware (auto-fetches MSP432E4 DriverLib SDK on first run)
+# Build firmware (auto-fetches MSP432E4 DriverLib SDK and Black Magic Debug main)
 make -C firmware_src
+# Optional: build without BMP or boot directly into BMP mode
+make -C firmware_src BMP_ENABLE=0
+make -C firmware_src BMP_DEFAULT_MODE=1
 
 # Format & static analysis
 make -C firmware_src clang-format
@@ -107,6 +116,11 @@ openocd -f interface/xds110.cfg -c "transport select swd" -f target/stm32g0x.cfg
 /opt/ti/uniflash/deskdb/content/TICloudAgent/linux/ccs_base/DebugServer/bin/DSLite noConnectFlash \
   --config cc2340r5.ccxml --setting "DebugPassword=Open Sesame!" \
   --setting "FlashEraseSetting=Chip Erase" --flash --verify --run image.hex
+
+# Black Magic Debug Probe (GDB RSP over CDC1 / ttyACM1, concurrent with EnergyTrace & ttyACM0)
+cargo run --release --manifest-path xds110-et/Cargo.toml -- mode bmp
+arm-none-eabi-gdb -ex "target extended-remote /dev/serial/by-id/usb-Texas_Instruments_XDS110*if03" \
+  -ex "monitor swd_scan" -ex "attach 1"
 
 # probe-rs / pyOCD (auto-detects CMSIS-DAP v2 WinUSB)
 probe-rs info --speed 2000

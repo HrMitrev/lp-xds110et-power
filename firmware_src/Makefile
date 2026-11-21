@@ -84,7 +84,6 @@ APP_SRCS    = src/main.c src/startup_gcc.c src/board.c src/dfu_jump.c \
               src/energytrace/et_hdr.c \
               src/uart/cdc_uart.c \
               src/gpio/aux_gpio.c \
-              src/bmp/bmp_mode.c \
               src/dap/cmsis_dap.c src/dap/swd.c src/dap/xds_swd.c
 DL_DIR      = sdk/ti/devices/msp432e4/driverlib
 DL_SRCS     = $(DL_DIR)/sysctl.c $(DL_DIR)/gpio.c $(DL_DIR)/cpu.c \
@@ -110,8 +109,7 @@ BMP_CFLAGS    = $(MCU_FLAGS) $(DEFINES) $(BMP_DEFINES) $(BMP_INCLUDES) $(INCLUDE
                 -ffunction-sections -fdata-sections \
                 -MMD -MP \
                 -std=gnu11
-BMP_BRIDGE_SRCS = src/bmp/bmp_bridge.c src/bmp/bmp_platform.c src/bmp/bmp_gdb_if.c \
-                  src/bmp/bmp_swdptap.c src/bmp/bmp_jtagtap.c
+BMP_BRIDGE_SRCS = src/bmp/bmp_mode.c src/bmp/bmp_platform.c src/bmp/bmp_tap.c
 BMP_CORE_SRCS = $(BMP_DIR)/command.c $(BMP_DIR)/crc32.c $(BMP_DIR)/exception.c \
                 $(BMP_DIR)/gdb_main.c $(BMP_DIR)/gdb_packet.c $(BMP_DIR)/hex_utils.c \
                 $(BMP_DIR)/maths_utils.c $(BMP_DIR)/morse.c $(BMP_DIR)/remote.c \
@@ -145,7 +143,7 @@ BMP_TARGET_SRCS = $(BMP_DIR)/target/adi.c $(BMP_DIR)/target/adiv5.c \
 BMP_SRCS      = $(BMP_BRIDGE_SRCS) $(BMP_CORE_SRCS) $(BMP_TARGET_SRCS)
 BMP_OBJS      = $(patsubst %.c,$(BUILD_DIR)/%.o,$(BMP_SRCS))
 else
-APP_SRCS     += src/bmp/bmp_bridge.c
+APP_SRCS     += src/bmp/bmp_mode.c
 BMP_SRCS      =
 BMP_OBJS      =
 endif

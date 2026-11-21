@@ -82,7 +82,7 @@ Black Magic Debug's `gdb_main_loop()` expects a blocking `gdb_if_getchar()` / `g
 - In `main.c`:
   - In **Normal Mode**: run `app_background_poll()` + `cmsis_dap_poll()` + `__WFI()`.
   - In **BMP Mode**: enter `bmp_service_loop()`, which invokes BMP's `gdb_main_loop()` inside `TRY/CATCH` whenever BMP mode is active.
-- Inside our BMP platform shims (`src/bmp/bmp_gdb_if.c` & `src/bmp/bmp_platform.c`):
+- Inside our BMP platform shims (`src/bmp/bmp_platform.c` & `src/bmp/bmp_mode.c`):
   - `gdb_if_getchar()` and `gdb_if_getchar_to(timeout)` continuously call `app_background_poll()` while waiting for bytes from `usb_cdc_rx_available(USB_CDC_PORT_AUX)` (calling `__WFI()` when idle).
   - If `bmp_mode_is_active()` becomes `false` (via opcode `0x63 00` on Interface 2!) or CDC1 `DTR` drops, `gdb_if_getchar*()` immediately returns `'\x04'` (EOF) so `gdb_main_loop()` unwinds cleanly back to `main.c`.
   - `platform_delay(ms)` also pumps `app_background_poll()` while waiting on `board_get_uptime_ms()`.
@@ -93,44 +93,22 @@ Black Magic Debug's `gdb_main_loop()` expects a blocking `gdb_if_getchar()` / `g
 
 ## 4. Phased Implementation Plan
 
-### Phase 7.0 — Submodule Setup & Build System Isolation
-- [ ] Add upstream Black Magic Debug tracking the **`main`** branch (explicitly overriding the repo's default `archive` branch):
-  ```bash
-  git submodule add -b main https://github.com/blackmagic-debug/blackmagic.git firmware_src/third_party/blackmagic
-  ```
-- [ ] Pin a known-good commit on `main` and document `git submodule update --init` in `firmware_src/README.md`.
-- [ ] Update `firmware_src/Makefile`:
-  - Add `BMP_ENABLE ?= 1` and `BMP_DEFAULT_MODE ?= 0`.
-  - Compile BMP core + target C sources under a dedicated `BMP_CFLAGS` (`-std=gnu11`, `-DPC_HOSTED=0`, `-DENABLE_DEBUG=0`, `-DNO_LIBOPENCM3`, relaxed third-party warning flags `-Wno-sign-compare -Wno-unused-function`) while keeping our own `APP_SRCS` strict `-std=c99 -Wall -Wextra`.
-  - Start with a curated high-value target set (generic Cortex-M `cortexm.c`, `adiv5.c`, `adiv5_swd.c`, `stm32g0.c`, `stm32f1.c`, `stm32f4.c`, `stm32h7.c`, `stm32l4.c`, `nrf51.c`, `nrf54l.c`, `rp2040.c`, `ti_cc23xx` / MSPM0 / TM4C if supported upstream, `lpc*`, `sam*`, etc.) and expand easily via a `BMP_TARGET_SRCS` list.
-- [ ] Audit `firmware_src/msp432e401y.ld` and add a safe stack-collision-guarded `_sbrk()` (reserving 16 KiB stack at top of SRAM so BMP heap allocations via `calloc()`/`malloc()` have ~100 KiB safe room).
-- [ ] Verify `scripts/gen_compile_commands.py` and `make -C firmware_src clang-format` exclude `third_party/blackmagic/` so upstream submodule files stay completely unmodified.
+### Phase 7.0 — Upstream Fetch & Build System Isolation ✅
+- [x] Added `firmware_src/scripts/fetch_bmp.py` cloning upstream Black Magic Debug **`main`** branch into `firmware_src/third_party/blackmagic` (git-ignored, matching `fetch_sdk.py`).
+- [x] Updated `firmware_src/Makefile` with `BMP_ENABLE ?= 1`, `BMP_DEFAULT_MODE ?= 0`, auto-generated `build/bmp/version.h`, and dedicated `BMP_CFLAGS` (`-std=gnu11`) while keeping `APP_SRCS` strict `-std=c99 -Wall -Wextra`.
+- [x] Updated `firmware_src/msp432e401y.ld` with `__heap_start__` / `__heap_end__` (16 KiB reserved stack, ~108 KiB heap) and stack-guarded `_sbrk()` in `src/bmp/bmp_platform.c`.
 
-### Phase 7.1 — Mode Manager & `CDC1` Multiplexing
-- [ ] Create `firmware_src/src/bmp/bmp_mode.{h,c}`:
-  - Global default macro `FW_DEFAULT_BMP_MODE` (`0` = Normal, `1` = BMP).
-  - Clean transition routines (`bmp_mode_set()`, `bmp_mode_is_active()`).
-- [ ] Add opcode `0x63` (`XDS_CMD_PROBE_MODE`) in `xds_cmd.{h,c}` and guard XDS110 SWD opcodes (`0x17`, `0x0F`, `0x5A`, `0x3A`, etc.) and CMSIS-DAP `DAP_Connect` when BMP mode is active.
-- [ ] Gate `UART7` RX → `CDC1` forwarding in `cdc_uart.c` behind `!bmp_mode_is_active()`, plus add `usb_cdc_rx_flush()` / `usb_cdc_tx_flush()` helpers in `usb_device.{h,c}`.
-- [ ] *(Optional FIFO tuning)* Consider rebalancing `CDC1 IN` FIFO from `32 B → 64 B` (matching standard FS BMP packet size) if GDB RSP throughput benefits, while preserving `512 B` on `CMD IN`, `CMD OUT`, `DATA IN`, `DAP IN/OUT`, and `CDC0 OUT`.
-- [ ] Add `xds110-et mode [normal|bmp|status]` CLI subcommand in `xds110-et/`.
+### Phase 7.1 — Mode Manager & `CDC1` Multiplexing ✅
+- [x] Implemented `firmware_src/src/bmp/bmp_mode.{h,c}` with `FW_DEFAULT_BMP_MODE`, `bmp_mode_set()`, `bmp_mode_is_active()`, and cooperative `bmp_mode_poll()`.
+- [x] Added opcode `0x63` (`XDS_CMD_PROBE_MODE`) in `xds_cmd.{h,c}`, gated Normal-mode SWD & `UART7` → `CDC1` forwarding, and added `usb_cdc_rx_flush()` / `usb_cdc_tx_flush()`.
+- [x] Added `xds110-et mode [normal|bmp|status]` CLI subcommand and protocol/unit tests in `xds110-et/`.
 
-### Phase 7.2 — BMP Platform Layer & SWD TAP Bridge (`firmware_src/src/bmp/`)
-Create a clean, minimal platform adapter directory under `firmware_src/src/bmp/`:
-- [ ] **`platform.h`**:
-  - Define `PLATFORM_IDENT "(LP-XDS110ET)"`, `SWDIO_MODE_FLOAT()`, `SWDIO_MODE_DRIVE()`, pin/clock macros, `SET_RUN_STATE()`, `SET_IDLE_STATE()`, `SET_ERROR_STATE()` (mapped to `board_led_green_set()` / `board_led_red_set()`).
-  - Map `platform_time_ms()` → `board_get_uptime_ms()`.
-- [ ] **`bmp_platform.c`**:
-  - Implement `platform_nrst_set_val(bool assert)` / `platform_nrst_get_val()` via `board_srst_set()` / `PA6` readback.
-  - Implement `platform_target_voltage()` (`"3.3V"`), `platform_delay(ms)` (pumping `app_background_poll()`), `platform_max_frequency_set()` / `platform_max_frequency_get()` (bridging to `swd_set_clock_hz()`), and `platform_buffer_flush()`.
-  - Implement custom monitor commands (`monitor xds_normal`, `monitor dfu`).
-- [ ] **`bmp_gdb_if.c`**:
-  - Implement `gdb_if_init()`, `gdb_if_getchar()`, `gdb_if_getchar_to(int timeout)`, `gdb_if_putchar(char c, int flush)`, and `gdb_if_update_buf()` directly over `usb_cdc_* (USB_CDC_PORT_AUX)`.
-  - Ensure `app_background_poll()` is pumped in every wait loop and mode-exit / DTR-drop returns `'\x04'` promptly.
-- [ ] **`bmp_swdptap.c` (and stub `bmp_jtagtap.c`)**:
-  - Implement BMP's `swd_proc` callbacks (`seq_in`, `seq_in_parity`, `seq_out`, `seq_out_parity`) directly on top of our fast bit-masked GPIO `HWREG` engine in `dap/swd.c` (reusing `PA2` SWCLK, `PA3` SWDIO, `PC5` `U10` `TMS_DIR` glitch-free turnaround!).
-  - Provide clean `jtagtap_init()` stub returning `false` initially (until Phase 5 4-wire JTAG is implemented, at which point `bmp_jtagtap.c` plugs straight in!).
-- [ ] **Check BMP `version.h` generation**: Generate `build/bmp/version.h` in `Makefile` from `git -C third_party/blackmagic describe` so BMP compiles cleanly without Meson.
+### Phase 7.2 — BMP Platform Layer & SWD/JTAG TAP Bridge (`firmware_src/src/bmp/`) ✅
+Consolidated into 5 cohesive files under `firmware_src/src/bmp/`:
+- [x] **`bmp_mode.{h,c}`**: Runtime Normal/BMP mode manager and cooperative GDB super-loop bridge (replaces upstream `main.c`).
+- [x] **`platform.h`**: BMP platform macros (`PLATFORM_IDENT "(LP-XDS110ET) "`, `NO_LIBOPENCM3`, LED & background-poll hooks).
+- [x] **`bmp_platform.c`**: Platform HAL (`platform_nrst_*`, `platform_delay`, `platform_max_frequency_*`, `platform_target_clk_output_enable`, `platform_request_boot`), GDB RSP transport over `CDC1` (`gdb_if_*`), and stack-guarded `_sbrk` / nosys syscall stubs.
+- [x] **`bmp_tap.c`**: Bit-masked `HWREG` SWD (`swd_proc`) and 4-wire JTAG (`jtag_proc`) TAP drivers on `PA2..PA5` + `PC5` (`U10` `TMS_DIR`), plus SWCLK-only `bmp_tap_clk_output_enable()`.
 
 ### Phase 7.3 — Hardware Verification & Coexistence Testing
 - [ ] **Mode switching test**:

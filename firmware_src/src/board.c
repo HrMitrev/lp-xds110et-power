@@ -210,6 +210,11 @@ void board_srst_set(bool assert_low)
     MAP_GPIOPinWrite(BOARD_JTAG_PORT_BASE, BOARD_TARGET_SRST_PIN, val);
 }
 
+bool board_srst_get(void)
+{
+    return MAP_GPIOPinRead(BOARD_JTAG_PORT_BASE, BOARD_TARGET_SRST_PIN) == 0U;
+}
+
 uint32_t board_get_uptime_ms(void)
 {
     return g_uptime_ms;

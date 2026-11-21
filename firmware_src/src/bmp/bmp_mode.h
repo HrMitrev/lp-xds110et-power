@@ -1,9 +1,9 @@
 /*
- * bmp_mode.h - Runtime probe mode manager (Normal XDS110/CMSIS-DAP vs BMP mode).
+ * bmp_mode.h - Runtime probe mode manager & cooperative BMP GDB poll loop.
  *
- * Controls ownership of CDC1 (if03 / ttyACM1) and the target SWD pins:
+ * Controls ownership of CDC1 (if03 / ttyACM1) and the target SWD/JTAG pins:
  *   - PROBE_MODE_NORMAL (0): CDC1 = Aux/SWO RX UART (UART7), SWD = CMSIS-DAP v2 / XDS110
- *   - PROBE_MODE_BMP    (1): CDC1 = Black Magic Debug GDB RSP server, SWD = BMP
+ *   - PROBE_MODE_BMP    (1): CDC1 = Black Magic Debug GDB RSP server, SWD/JTAG = BMP
  *
  * In both modes, CDC0 (ttyACM0 App UART) and EnergyTrace HDR (IF 2 / IF 6)
  * remain fully operational with zero USB re-enumeration.
@@ -20,7 +20,7 @@
 #define FW_DEFAULT_BMP_MODE 0U
 #endif
 
-/* Set to 1 once the Black Magic Debug core is linked in (Phase 7.2) */
+/* Set to 1 when the upstream Black Magic Debug core is linked in */
 #ifndef FW_BMP_GDB_COMPILED
 #define FW_BMP_GDB_COMPILED 0U
 #endif
@@ -35,7 +35,7 @@
 #define PROBE_MODE_CAP_GDB_SERVER  (1U << 1U) /* BMP GDB RSP server compiled in */
 #define PROBE_MODE_CAP_DEFAULT_BMP (1U << 2U) /* Firmware boots in BMP mode by default */
 
-/* Initialize probe mode to FW_DEFAULT_BMP_MODE */
+/* Initialize probe mode to FW_DEFAULT_BMP_MODE and initialize BMP TAPs if compiled */
 void bmp_mode_init(void);
 
 /* Query current probe mode (PROBE_MODE_NORMAL or PROBE_MODE_BMP) */
@@ -52,5 +52,14 @@ bool bmp_mode_is_active(void);
  * Returns XDS_ERR_OK on success or XDS_ERR_INVALID_PARAM for unknown mode.
  */
 int32_t bmp_mode_set(uint8_t mode);
+
+/*
+ * Cooperative super-loop poll when BMP mode is active:
+ *   - Returns false immediately when idle (no DTR or no pending RX bytes and target
+ *     not running), allowing main() to execute __WFI().
+ *   - Otherwise processes target polling and/or one GDB RSP packet while pumping
+ *     app_background_poll() so EnergyTrace HDR, UART0, and XDS CMD 0x63 never stall.
+ */
+bool bmp_mode_poll(void);
 
 #endif /* BMP_MODE_H */

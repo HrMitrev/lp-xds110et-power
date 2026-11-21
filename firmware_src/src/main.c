@@ -16,7 +16,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "bmp/bmp_bridge.h"
 #include "bmp/bmp_mode.h"
 #include "board_lp_xds110et.h"
 #include "dap/cmsis_dap.h"
@@ -98,12 +97,11 @@ int main(void)
         et_hdr_boot_calibrate();
     }
 
-    bmp_mode_init();
     xds_cmd_init(g_firmware_version);
     cmsis_dap_init(g_firmware_version);
     aux_gpio_init();
     cdc_uart_init();
-    bmp_bridge_init();
+    bmp_mode_init();
     usb_device_init(g_firmware_version);
 
     g_led_on = false;
@@ -115,7 +113,7 @@ int main(void)
             did_work = true;
         }
         if (bmp_mode_is_active()) {
-            if (bmp_bridge_poll()) {
+            if (bmp_mode_poll()) {
                 did_work = true;
             }
         } else {

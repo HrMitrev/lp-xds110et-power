@@ -125,8 +125,39 @@ void board_led_green_set(bool on);
 void board_led_red_set(bool on);
 
 void board_srst_set(bool assert_low);
+bool board_srst_get(void);
 uint32_t board_get_uptime_ms(void);
 void board_delay_ms(uint32_t ms);
 void board_delay_us(uint32_t us);
+
+/* Shared little-endian wire serialization helpers */
+static inline uint16_t read_u16le(const uint8_t *src)
+{
+    return (uint16_t)src[0] | ((uint16_t)src[1] << 8U);
+}
+
+static inline uint32_t read_u32le(const uint8_t *src)
+{
+    return (uint32_t)src[0] | ((uint32_t)src[1] << 8U) | ((uint32_t)src[2] << 16U) | ((uint32_t)src[3] << 24U);
+}
+
+static inline void write_u16le(uint8_t *dst, uint16_t val)
+{
+    dst[0] = (uint8_t)(val & 0xFFU);
+    dst[1] = (uint8_t)((val >> 8U) & 0xFFU);
+}
+
+static inline void write_u32le(uint8_t *dst, uint32_t val)
+{
+    dst[0] = (uint8_t)(val & 0xFFU);
+    dst[1] = (uint8_t)((val >> 8U) & 0xFFU);
+    dst[2] = (uint8_t)((val >> 16U) & 0xFFU);
+    dst[3] = (uint8_t)((val >> 24U) & 0xFFU);
+}
+
+static inline void write_i32le(uint8_t *dst, int32_t val)
+{
+    write_u32le(dst, (uint32_t)val);
+}
 
 #endif /* BOARD_LP_XDS110ET_H */

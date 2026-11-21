@@ -11,6 +11,7 @@
 #include <stddef.h>
 
 #include "bmp/bmp_mode.h"
+#include "board_lp_xds110et.h"
 #include "protocol/xds_cmd.h"
 #include "swd.h"
 
@@ -59,30 +60,6 @@ static bool g_xds_select_valid = false;
 static uint32_t g_xds_select_cache = 0U;
 static uint32_t g_xds_csw_cache[XDS_AP_CSW_CACHE_MAX];
 static bool g_xds_csw_valid[XDS_AP_CSW_CACHE_MAX];
-
-static uint16_t read_u16le(const uint8_t *src)
-{
-    return (uint16_t)src[0] | ((uint16_t)src[1] << 8U);
-}
-
-static void write_u16le(uint8_t *dst, uint16_t val)
-{
-    dst[0] = (uint8_t)(val & 0xFFU);
-    dst[1] = (uint8_t)((val >> 8U) & 0xFFU);
-}
-
-static uint32_t read_u32le(const uint8_t *src)
-{
-    return (uint32_t)src[0] | ((uint32_t)src[1] << 8U) | ((uint32_t)src[2] << 16U) | ((uint32_t)src[3] << 24U);
-}
-
-static void write_u32le(uint8_t *dst, uint32_t val)
-{
-    dst[0] = (uint8_t)(val & 0xFFU);
-    dst[1] = (uint8_t)((val >> 8U) & 0xFFU);
-    dst[2] = (uint8_t)((val >> 16U) & 0xFFU);
-    dst[3] = (uint8_t)((val >> 24U) & 0xFFU);
-}
 
 static int32_t xds_swd_ack_to_err(uint8_t ack)
 {

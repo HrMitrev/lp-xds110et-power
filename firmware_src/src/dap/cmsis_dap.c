@@ -101,30 +101,6 @@ static uint32_t g_dap_match_mask = 0xFFFFFFFFU;
 static uint8_t g_dap_swd_turnaround = 1U;
 static bool g_dap_swd_data_phase = false;
 
-static uint16_t read_u16le(const uint8_t *src)
-{
-    return (uint16_t)src[0] | ((uint16_t)src[1] << 8U);
-}
-
-static uint32_t read_u32le(const uint8_t *src)
-{
-    return (uint32_t)src[0] | ((uint32_t)src[1] << 8U) | ((uint32_t)src[2] << 16U) | ((uint32_t)src[3] << 24U);
-}
-
-static void write_u16le(uint8_t *dst, uint16_t val)
-{
-    dst[0] = (uint8_t)(val & 0xFFU);
-    dst[1] = (uint8_t)((val >> 8U) & 0xFFU);
-}
-
-static void write_u32le(uint8_t *dst, uint32_t val)
-{
-    dst[0] = (uint8_t)(val & 0xFFU);
-    dst[1] = (uint8_t)((val >> 8U) & 0xFFU);
-    dst[2] = (uint8_t)((val >> 16U) & 0xFFU);
-    dst[3] = (uint8_t)((val >> 24U) & 0xFFU);
-}
-
 /* Execute SWD transfer with CMSIS-DAP WAIT retry loop */
 static uint8_t dap_swd_xfer_retry(uint8_t req, uint32_t *data)
 {
