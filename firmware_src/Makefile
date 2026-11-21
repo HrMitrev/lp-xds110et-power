@@ -71,11 +71,12 @@ LDFLAGS     = $(MCU_FLAGS) \
 # Source files
 APP_SRCS    = src/main.c src/startup_gcc.c src/board.c src/dfu_jump.c \
               src/usb/usb_descriptors.c src/usb/usb_device.c \
-              src/protocol/xds_cmd.c
+              src/protocol/xds_cmd.c \
+              src/energytrace/et_hdr.c
 DL_DIR      = sdk/ti/devices/msp432e4/driverlib
 DL_SRCS     = $(wildcard $(DL_DIR)/sysctl.c $(DL_DIR)/gpio.c $(DL_DIR)/cpu.c \
                          $(DL_DIR)/interrupt.c $(DL_DIR)/fpu.c $(DL_DIR)/systick.c \
-                         $(DL_DIR)/usb.c)
+                         $(DL_DIR)/usb.c $(DL_DIR)/ssi.c $(DL_DIR)/udma.c)
 
 FORMAT_FILES = $(wildcard src/*.c src/*.h src/*/*.c src/*/*.h)
 
@@ -128,7 +129,7 @@ inspect: $(BUILD_DIR)/$(TARGET).bin
 	$(Q)$(PYTHON) ../py_ref/firmware_analysis/inspect_firmware.py $<
 
 flash: $(BUILD_DIR)/$(TARGET).bin
-	$(Q)cargo run --release --manifest-path ../xds110-et/Cargo.toml -- dfu-flash -f $< -r
+	$(Q)cargo run --release --manifest-path ../xds110-et/Cargo.toml -- dfu-flash -r $<
 
 clang-format:
 	$(ECHO) "  FMT   $(FORMAT_FILES)"
