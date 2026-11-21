@@ -6,14 +6,13 @@
  * default states for the EnergyTrace analog front-end switches.
  */
 
-#include "board_lp_xds110et.h"
-
 #include <string.h>
+#include <driverlib/rom.h>
+#include <driverlib/rom_map.h>
+#include <driverlib/systick.h>
+#include <driverlib/interrupt.h>
 
-#include "driverlib/interrupt.h"
-#include "driverlib/rom.h"
-#include "driverlib/rom_map.h"
-#include "driverlib/systick.h"
+#include "board_lp_xds110et.h"
 
 static uint32_t g_sys_clock_hz = 0U;
 static uint32_t g_flash_size_bytes = 0U;

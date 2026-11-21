@@ -12,6 +12,8 @@ __pycache__/
 env/
 venv/
 
+.cache/
+
 # Capture logs
 logs/
 *.csv

@@ -80,9 +80,9 @@ FORMAT_FILES = $(wildcard src/*.c src/*.h src/*/*.c src/*/*.h)
 SRCS        = $(APP_SRCS) $(DL_SRCS)
 OBJS        = $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 
-.PHONY: all clean fetch-sdk sdk fetch-toolchain toolchain inspect flash clang-format
+.PHONY: all clean fetch-sdk sdk fetch-toolchain toolchain inspect flash clang-format compile-commands
 
-all: $(BUILD_DIR)/$(TARGET).bin $(BUILD_DIR)/$(TARGET).hex
+all: $(BUILD_DIR)/$(TARGET).bin $(BUILD_DIR)/$(TARGET).hex compile_commands.json
 
 # Ensure SDK is fetched before compiling
 $(OBJS): | $(BUILD_DIR) check-sdk
@@ -132,5 +132,13 @@ clang-format:
 	$(ECHO) "  FMT   $(FORMAT_FILES)"
 	$(Q)uvx clang-format@latest -i $(FORMAT_FILES)
 
+compile_commands.json: Makefile scripts/gen_compile_commands.py
+	$(ECHO) "  CDB   $@"
+	$(Q)$(PYTHON) scripts/gen_compile_commands.py .
+
+compile-commands:
+	$(ECHO) "  CDB   compile_commands.json"
+	$(Q)$(PYTHON) scripts/gen_compile_commands.py .
+
 clean:
-	$(Q)rm -rf $(BUILD_DIR)
+	$(Q)rm -rf $(BUILD_DIR) compile_commands.json

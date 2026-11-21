@@ -47,7 +47,7 @@ int main(void)
         uint32_t now_ms = board_get_uptime_ms();
         uint32_t interval_ms = board_ok ? (led_on ? 900U : 100U) : 150U;
 
-        if ((uint32_t)(now_ms - last_toggle_ms) >= interval_ms) {
+        if ((now_ms - last_toggle_ms) >= interval_ms) {
             last_toggle_ms = now_ms;
             led_on = !led_on;
             if (board_ok) {
