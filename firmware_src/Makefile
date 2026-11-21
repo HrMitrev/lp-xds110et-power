@@ -50,7 +50,7 @@ INCLUDES    = -Isrc \
 #   BMP_ENABLE=1       Compile & link Black Magic Debug GDB/RTT server (GPLv3)
 #   BMP_DEFAULT_MODE=0 Boot in Normal mode (0, default; auto-switches to BMP on GDB packet) or BMP mode (1)
 BMP_ENABLE       ?= 1
-BMP_DEFAULT_MODE ?= 0
+BMP_DEFAULT_MODE ?= 1
 
 ifeq ($(BMP_ENABLE),0)
 EFFECTIVE_BMP_DEFAULT_MODE := 0
@@ -68,7 +68,7 @@ DEFINES     = -Dgcc \
 
 # Compiler options (size optimization, dead code stripping, standards compliance)
 CFLAGS      = $(MCU_FLAGS) $(DEFINES) $(INCLUDES) \
-              -Os -g3 -Wall -Wextra \
+              -O3 -flto -g3 -Wall -Wextra \
               -Wno-unused-parameter -Wno-old-style-declaration \
               -ffunction-sections -fdata-sections \
               -MMD -MP \
@@ -111,7 +111,7 @@ BMP_DEFINES   = -DNO_LIBOPENCM3=1 -DCONFIG_BMDA=0 -DENABLE_DEBUG=0 -DENABLE_RTT=
                 -DCONFIG_TI_ICEPICK=1 -DCONFIG_LPC=1 -DCONFIG_SAM=1 -DCONFIG_NXP=1 \
                 -DCONFIG_RA=1 -DCONFIG_PUYA=1 -DCONFIG_GD32=1
 BMP_CFLAGS    = $(MCU_FLAGS) $(DEFINES) $(BMP_DEFINES) $(BMP_INCLUDES) $(INCLUDES) \
-                -Os -g3 -Wall \
+                -O3 -flto -g3 -Wall \
                 -Wno-unused-parameter -Wno-sign-compare -Wno-unused-function \
                 -ffunction-sections -fdata-sections \
                 -MMD -MP \
