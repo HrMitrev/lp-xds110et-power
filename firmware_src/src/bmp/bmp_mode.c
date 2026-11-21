@@ -4,6 +4,7 @@
 
 #include "bmp_mode.h"
 
+#include "bmp_bridge.h"
 #include "dap/cmsis_dap.h"
 #include "dap/swd.h"
 #include "dap/xds_swd.h"
@@ -60,8 +61,8 @@ int32_t bmp_mode_set(uint8_t mode)
         usb_cdc_tx_flush(USB_CDC_PORT_AUX);
         g_probe_mode = PROBE_MODE_BMP;
     } else {
-        /* Tri-state SWD pins and flush CDC1 before returning port to Aux/SWO UART */
-        swd_disconnect();
+        /* Detach any active BMP target, tri-state SWD pins, and flush CDC1 */
+        bmp_bridge_on_mode_exit();
         usb_cdc_rx_flush(USB_CDC_PORT_AUX);
         usb_cdc_tx_flush(USB_CDC_PORT_AUX);
         g_probe_mode = PROBE_MODE_NORMAL;

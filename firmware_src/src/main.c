@@ -16,6 +16,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "bmp/bmp_bridge.h"
 #include "bmp/bmp_mode.h"
 #include "board_lp_xds110et.h"
 #include "dap/cmsis_dap.h"
@@ -43,6 +44,46 @@ __attribute__((used, section(".rodata.version"))) const uint8_t g_firmware_versi
     FW_VERSION_MAJOR,
 };
 
+static bool g_board_ok = false;
+static bool g_led_on = false;
+static uint32_t g_last_toggle_ms = 0U;
+
+static void app_update_leds(void)
+{
+    uint32_t now_ms = board_get_uptime_ms();
+
+    if (!g_board_ok) {
+        /* Fast Red fault blink if board ID or ULPI PHY was not detected */
+        if ((uint32_t)(now_ms - g_last_toggle_ms) >= 150U) {
+            g_last_toggle_ms = now_ms;
+            g_led_on = !g_led_on;
+            board_led_red_set(g_led_on);
+        }
+    } else if (usb_device_is_configured()) {
+        /* Solid Green when USB host has enumerated and configured the probe */
+        board_led_green_set(true);
+    } else {
+        /* Slow Green blink while awaiting USB host enumeration */
+        if ((uint32_t)(now_ms - g_last_toggle_ms) >= 500U) {
+            g_last_toggle_ms = now_ms;
+            g_led_on = !g_led_on;
+            board_led_green_set(g_led_on);
+        }
+    }
+}
+
+/*
+ * Cooperative background tick shared between main() and BMP GDB wait loops:
+ * keeps EnergyTrace control, XDS110 mode switch (0x63), DFU (0x26), and CDC0
+ * App UART (ttyACM0) running at full speed even while BMP is waiting on GDB.
+ */
+void app_background_poll(void)
+{
+    (void)xds_cmd_poll();
+    (void)cdc_uart_poll();
+    app_update_leds();
+}
+
 int main(void)
 {
     board_init();
@@ -50,9 +91,9 @@ int main(void)
 
     uint16_t hw_version = board_get_hw_version();
     bool ulpi_present = board_has_ulpi_phy();
-    bool board_ok = (hw_version == BOARD_HW_VERSION_LP_XDS110ET) && ulpi_present;
+    g_board_ok = (hw_version == BOARD_HW_VERSION_LP_XDS110ET) && ulpi_present;
 
-    if (board_ok) {
+    if (g_board_ok) {
         et_hdr_init();
         et_hdr_boot_calibrate();
     }
@@ -62,39 +103,27 @@ int main(void)
     cmsis_dap_init(g_firmware_version);
     aux_gpio_init();
     cdc_uart_init();
+    bmp_bridge_init();
     usb_device_init(g_firmware_version);
 
-    bool led_on = false;
-    uint32_t last_toggle_ms = board_get_uptime_ms();
+    g_led_on = false;
+    g_last_toggle_ms = board_get_uptime_ms();
 
     while (1) {
         bool did_work = xds_cmd_poll();
-        if (cmsis_dap_poll()) {
-            did_work = true;
-        }
         if (cdc_uart_poll()) {
             did_work = true;
         }
-        uint32_t now_ms = board_get_uptime_ms();
-
-        if (!board_ok) {
-            /* Fast Red fault blink if board ID or ULPI PHY was not detected */
-            if ((uint32_t)(now_ms - last_toggle_ms) >= 150U) {
-                last_toggle_ms = now_ms;
-                led_on = !led_on;
-                board_led_red_set(led_on);
+        if (bmp_mode_is_active()) {
+            if (bmp_bridge_poll()) {
+                did_work = true;
             }
-        } else if (usb_device_is_configured()) {
-            /* Solid Green when USB host has enumerated and configured the probe */
-            board_led_green_set(true);
         } else {
-            /* Slow Green blink while awaiting USB host enumeration */
-            if ((uint32_t)(now_ms - last_toggle_ms) >= 500U) {
-                last_toggle_ms = now_ms;
-                led_on = !led_on;
-                board_led_green_set(led_on);
+            if (cmsis_dap_poll()) {
+                did_work = true;
             }
         }
+        app_update_leds();
 
         if (!did_work) {
             __WFI();

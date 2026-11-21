@@ -91,13 +91,16 @@ SECTIONS
         __noinit_end__ = .;
     } > SRAM
 
-    /* User heap and stack space check */
+    /* User heap and stack space (reserve 16 KiB stack at top of 256 KiB SRAM) */
     ._user_heap_stack :
     {
         . = ALIGN(8);
         PROVIDE(end = .);
         PROVIDE(_end = .);
+        PROVIDE(__heap_start__ = .);
         . = . + 0x1000; /* Minimum 4 KB heap */
         . = ALIGN(8);
     } > SRAM
+
+    PROVIDE(__heap_end__ = ORIGIN(SRAM) + LENGTH(SRAM) - 0x4000);
 }
