@@ -25,12 +25,12 @@
 #include "usb/usb_device.h"
 
 /* SSI1 clock rate: 120 MHz / 8 = 15.0 MHz SCLK (32 clocks = 2.13 us per sample) */
-#define ET_SSI_BITRATE_HZ   15000000U
-#define ET_CAL_SETTLE_MS    30U
-#define ET_BOOT_ISOLATE_MS  300U
-#define ET_CAL_CACHE_SLOTS  4U
-#define ET_DMA_IRQ_PRIORITY 1U
-#define ET_USB_IRQ_PRIORITY 2U
+#define ET_SSI_BITRATE_HZ  15000000U
+#define ET_CAL_SETTLE_MS   30U
+#define ET_BOOT_ISOLATE_MS 300U
+#define ET_CAL_CACHE_SLOTS 4U
+#define ET_GPIOB_IRQ_PRIO  1U
+#define ET_STREAM_IRQ_PRIO 2U /* Shared by SSI1 & USB0 so neither preempts ring/FIFO access */
 
 typedef enum {
     ET_DMA_IDLE = 0,
@@ -382,10 +382,14 @@ void et_hdr_init(void)
     MAP_SSIConfigSetExpClk(
         BOARD_ET_SSI_BASE, board_get_sys_clock_hz(), SSI_FRF_MOTO_MODE_1, SSI_MODE_MASTER, ET_SSI_BITRATE_HZ, 8U);
 
-    /* Give SSI1/GPIOB DMA re-arming higher priority than USB0 */
-    NVIC_SetPriority(GPIOB_IRQn, ET_DMA_IRQ_PRIORITY);
-    NVIC_SetPriority(SSI1_IRQn, ET_DMA_IRQ_PRIORITY);
-    NVIC_SetPriority(USB0_IRQn, ET_USB_IRQ_PRIORITY);
+    /*
+     * GPIOB (uDMA Ch5 TX trigger) has highest priority and never touches USB.
+     * SSI1 and USB0 share the same priority so SSI1 cannot preempt USB0
+     * mid-transfer when pushing completed 1030-byte frames to EP7 IN.
+     */
+    NVIC_SetPriority(GPIOB_IRQn, ET_GPIOB_IRQ_PRIO);
+    NVIC_SetPriority(SSI1_IRQn, ET_STREAM_IRQ_PRIO);
+    NVIC_SetPriority(USB0_IRQn, ET_STREAM_IRQ_PRIO);
 
     et_adc_reset_pulse();
     g_hw_initialized = true;

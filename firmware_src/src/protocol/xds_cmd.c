@@ -20,6 +20,7 @@
 
 #include "board_lp_xds110et.h"
 #include "dfu_jump.h"
+#include "energytrace/et_hdr.h"
 #include "usb/usb_device.h"
 
 static uint8_t g_fw_version[4];
@@ -98,6 +99,9 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
         break;
 
     case XDS_CMD_DISCONNECT:
+        if (et_hdr_is_running()) {
+            (void)et_hdr_cleanup();
+        }
         g_session_connected = false;
         break;
 
@@ -120,7 +124,75 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
         board_srst_set(args[0] == 0U);
         break;
 
+    case XDS_CMD_ET_HWINFO: {
+        uint32_t hw_type = 0U;
+        uint8_t caps = 0U;
+        err = et_hdr_get_hw_info(&hw_type, &caps);
+        write_u32le(resp_data, hw_type);
+        resp_data[4] = caps;
+        resp_len = 5U;
+        break;
+    }
+
+    case XDS_CMD_ET_RANGE:
+        if (args_len < 1U) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        err = et_hdr_set_range(args[0]);
+        break;
+
+    case XDS_CMD_ET_DIG:
+        if (args_len < 1U) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        err = et_hdr_set_dig(args[0]);
+        break;
+
+    case XDS_CMD_ET_DIG_ARGS:
+        if (args_len < 1U) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        break;
+
+    case XDS_CMD_ET_SETUP:
+        if (args_len < 7U) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        err = et_hdr_setup(args[0], args[1], read_u32le(&args[2]), args[6]);
+        break;
+
+    case XDS_CMD_ET_CAL: {
+        if (args_len < 2U) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        int32_t cal_sum = 0;
+        uint32_t cal_cnt = 0U;
+        err = et_hdr_get_calibration(read_u16le(args), &cal_sum, &cal_cnt);
+        write_i32le(resp_data, cal_sum);
+        write_u32le(&resp_data[4], cal_cnt);
+        resp_len = 8U;
+        break;
+    }
+
+    case XDS_CMD_ET_START:
+        err = et_hdr_start();
+        break;
+
+    case XDS_CMD_ET_STOP:
+        err = et_hdr_stop();
+        break;
+
+    case XDS_CMD_ET_CLEANUP:
+        err = et_hdr_cleanup();
+        break;
+
     case XDS_CMD_ENTER_DFU:
+        (void)et_hdr_cleanup();
         /* No USB reply is sent; host expects immediate disconnect and DFU re-enumeration */
         dfu_jump_enter();
         break;
@@ -181,6 +253,10 @@ static bool xds_poll_cmd_channel(void)
 
 static bool xds_poll_data_loopback(void)
 {
+    if (et_hdr_is_running()) {
+        return false;
+    }
+
     uint32_t avail = usb_data_rx_available();
     if (avail == 0U) {
         return false;

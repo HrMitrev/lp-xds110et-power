@@ -1,11 +1,12 @@
 /*
  * main.c - Open-source bare-metal firmware entry point for TI LP-XDS110ET.
  *
- * Phase 1B (Core XDS110 Control Channel):
+ * Phase 2B (EnergyTrace HDR 256 kS/s MVP):
  *   - LP-XDS110ET BSP & 1 kHz SysTick uptime timebase
  *   - Boot-time double-reset DFU failsafe
+ *   - Boot-time EnergyTrace HDR calibration (ADS127L01 + SSI1 + uDMA Ch5/Ch24)
  *   - USB3300-EZK ULPI HS-USB enumeration (0451:BEF3 composite device)
- *   - XDS110 0x2A command framing & core control opcodes (info, reset, DFU)
+ *   - XDS110 0x2A command framing, core control opcodes, & EnergyTrace streaming
  */
 
 #include <stdbool.h>
@@ -13,6 +14,7 @@
 
 #include "board_lp_xds110et.h"
 #include "dfu_jump.h"
+#include "energytrace/et_hdr.h"
 #include "protocol/xds_cmd.h"
 #include "usb/usb_device.h"
 
@@ -30,6 +32,11 @@ int main(void)
     uint16_t hw_version = board_get_hw_version();
     bool ulpi_present = board_has_ulpi_phy();
     bool board_ok = (hw_version == BOARD_HW_VERSION_LP_XDS110ET) && ulpi_present;
+
+    if (board_ok) {
+        et_hdr_init();
+        et_hdr_boot_calibrate();
+    }
 
     xds_cmd_init(g_firmware_version);
     usb_device_init(g_firmware_version);
