@@ -37,15 +37,18 @@ void dfu_failsafe_check(void)
 
     /* Arm the double-reset window briefly while indicating boot on both LEDs */
     g_dfu_reset_cookie = DFU_DOUBLE_RESET_MAGIC;
-    board_led_set(true, true);
+    board_led_green_set(true);
+    board_led_red_set(true);
     board_delay_ms(DFU_DOUBLE_RESET_WINDOW_MS);
     g_dfu_reset_cookie = 0U;
-    board_led_set(false, false);
+    board_led_green_set(false);
+    board_led_red_set(false);
 }
 
 void dfu_jump_enter(void)
 {
-    board_led_set(false, false);
+    board_led_green_set(false);
+    board_led_red_set(false);
 
     MAP_IntMasterDisable();
     MAP_SysTickIntDisable();

@@ -105,11 +105,11 @@ bool board_has_ulpi_phy(void);
 void board_read_serial(char out_serial[BOARD_SERIAL_LEN + 1U]);
 uint32_t board_read_config_word(void);
 
-void board_led_set(bool green_on, bool red_on);
 void board_led_green_set(bool on);
 void board_led_red_set(bool on);
 
 void board_srst_set(bool assert_low);
+uint32_t board_get_uptime_ms(void);
 void board_delay_ms(uint32_t ms);
 void board_delay_us(uint32_t us);
 

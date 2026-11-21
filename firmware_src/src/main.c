@@ -32,23 +32,32 @@ int main(void)
     uint16_t hw_version = board_get_hw_version();
     bool ulpi_present = board_has_ulpi_phy();
 
-    /* Indicate healthy LP-XDS110ET hardware detection via Green/Red LED pattern */
+    /* Indicate healthy LP-XDS110ET hardware detection via non-blocking LED heartbeat */
     bool board_ok = (hw_version == BOARD_HW_VERSION_LP_XDS110ET) && ulpi_present;
+    bool led_on = true;
+    uint32_t last_toggle_ms = board_get_uptime_ms();
+
+    if (board_ok) {
+        board_led_green_set(true);
+    } else {
+        board_led_red_set(true);
+    }
 
     while (1) {
-        if (board_ok) {
-            /* Steady Green ready heartbeat */
-            board_led_set(true, false);
-            board_delay_ms(900U);
-            board_led_set(false, false);
-            board_delay_ms(100U);
-        } else {
-            /* Fast Red fault blink if board ID or ULPI PHY was not detected */
-            board_led_set(false, true);
-            board_delay_ms(150U);
-            board_led_set(false, false);
-            board_delay_ms(150U);
+        uint32_t now_ms = board_get_uptime_ms();
+        uint32_t interval_ms = board_ok ? (led_on ? 900U : 100U) : 150U;
+
+        if ((uint32_t)(now_ms - last_toggle_ms) >= interval_ms) {
+            last_toggle_ms = now_ms;
+            led_on = !led_on;
+            if (board_ok) {
+                board_led_green_set(led_on);
+            } else {
+                board_led_red_set(led_on);
+            }
         }
+
+        __WFI();
     }
 
     return 0;

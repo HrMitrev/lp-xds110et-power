@@ -10,16 +10,30 @@
 
 #include <string.h>
 
+#include "driverlib/interrupt.h"
 #include "driverlib/rom.h"
 #include "driverlib/rom_map.h"
+#include "driverlib/systick.h"
 
 static uint32_t g_sys_clock_hz = 0U;
 static uint32_t g_flash_size_bytes = 0U;
 static uint32_t g_config_flash_addr = 0x000FC000U;
 static uint16_t g_hw_version = 0U;
 static bool g_has_ulpi_phy = false;
-static bool g_led_green_state = false;
-static bool g_led_red_state = false;
+static volatile uint32_t g_uptime_ms = 0U;
+
+void systick_handler(void)
+{
+    g_uptime_ms++;
+}
+
+static void board_init_systick(void)
+{
+    MAP_SysTickPeriodSet(g_sys_clock_hz / 1000U);
+    MAP_SysTickIntEnable();
+    MAP_SysTickEnable();
+    MAP_IntMasterEnable();
+}
 
 static void board_enable_peripheral(uint32_t periph)
 {
@@ -33,7 +47,8 @@ static void board_init_leds(void)
     board_enable_peripheral(BOARD_LED_PORT_PERIPH);
     MAP_GPIOPinTypeGPIOOutput(BOARD_LED_PORT_BASE, BOARD_LED_ALL_PINS);
     MAP_GPIOPadConfigSet(BOARD_LED_PORT_BASE, BOARD_LED_ALL_PINS, GPIO_STRENGTH_8MA, GPIO_PIN_TYPE_STD);
-    board_led_set(false, false);
+    board_led_green_set(false);
+    board_led_red_set(false);
 }
 
 static void board_detect_ulpi_phy(void)
@@ -126,6 +141,7 @@ void board_init(void)
     board_detect_ulpi_phy();
     board_detect_hw_version();
     board_init_safe_defaults();
+    board_init_systick();
 }
 
 uint32_t board_get_sys_clock_hz(void)
@@ -179,41 +195,25 @@ uint32_t board_read_config_word(void)
     return word;
 }
 
-static void board_led_apply(void)
-{
-    uint8_t val = 0U;
-    if (g_led_green_state) {
-        val |= BOARD_LED_GREEN_PIN;
-    }
-    if (g_led_red_state) {
-        val |= BOARD_LED_RED_PIN;
-    }
-    MAP_GPIOPinWrite(BOARD_LED_PORT_BASE, BOARD_LED_ALL_PINS, val);
-}
-
-void board_led_set(bool green_on, bool red_on)
-{
-    g_led_green_state = green_on;
-    g_led_red_state = red_on;
-    board_led_apply();
-}
-
 void board_led_green_set(bool on)
 {
-    g_led_green_state = on;
-    board_led_apply();
+    MAP_GPIOPinWrite(BOARD_LED_PORT_BASE, BOARD_LED_GREEN_PIN, on ? BOARD_LED_GREEN_PIN : 0U);
 }
 
 void board_led_red_set(bool on)
 {
-    g_led_red_state = on;
-    board_led_apply();
+    MAP_GPIOPinWrite(BOARD_LED_PORT_BASE, BOARD_LED_RED_PIN, on ? BOARD_LED_RED_PIN : 0U);
 }
 
 void board_srst_set(bool assert_low)
 {
     uint8_t val = assert_low ? 0U : BOARD_TARGET_SRST_PIN;
     MAP_GPIOPinWrite(BOARD_JTAG_PORT_BASE, BOARD_TARGET_SRST_PIN, val);
+}
+
+uint32_t board_get_uptime_ms(void)
+{
+    return g_uptime_ms;
 }
 
 void board_delay_ms(uint32_t ms)
