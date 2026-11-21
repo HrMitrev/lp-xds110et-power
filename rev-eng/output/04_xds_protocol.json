@@ -1,0 +1,2911 @@
+{
+  "tbh_addr": "0x0000688A",
+  "default_case": "0x000074A8",
+  "opcodes": [
+    {
+      "opcode": "0x00",
+      "supported": true,
+      "hint": "XDS_ECHO / LOOPBACK",
+      "addr": "0x00006954",
+      "size": 18,
+      "callees": [
+        "0x00023CD0"
+      ],
+      "req_reads": [
+        "ldr@+4",
+        "ldr@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x0000722A"
+      ],
+      "disasm": [
+        "0x00006954: f01d       adds      r0, r6, #7                  ",
+        "0x00006956: 07f10801   add.w     r1, r7, #8                  ",
+        "0x0000695a: 7a68       ldr       r2, [r7, #4]                ",
+        "0x0000695c: 1df0b8f9   bl        #0x23cd0                    ",
+        "0x00006960: 7c68       ldr       r4, [r7, #4]                ",
+        "0x00006962: 00f062bc   b.w       #0x722a                     "
+      ]
+    },
+    {
+      "opcode": "0x01",
+      "supported": true,
+      "hint": "XDS_CONNECT",
+      "addr": "0x00006966",
+      "size": 14,
+      "callees": [
+        "0x0000EFE0"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x00006966: 544b       ldr       r3, [pc, #0x150]              ; =0x20026D50",
+        "0x00006968: 0024       movs      r4, #0                      ",
+        "0x0000696a: 1c70       strb      r4, [r3]                    ",
+        "0x0000696c: 08f038fb   bl        #0xefe0                     ",
+        "0x00006970: 00f06fbd   b.w       #0x7452                     "
+      ]
+    },
+    {
+      "opcode": "0x02",
+      "supported": true,
+      "hint": "XDS_DISCONNECT",
+      "addr": "0x00006974",
+      "size": 8,
+      "callees": [
+        "0x0000DC38"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006974: 07f060f9   bl        #0xdc38                     ",
+        "0x00006978: 00f093bd   b.w       #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x03",
+      "supported": true,
+      "hint": "XDS_VERSION",
+      "addr": "0x0000697C",
+      "size": 30,
+      "callees": [],
+      "req_reads": [],
+      "resp_writes": [
+        "strb@+3",
+        "strb@+4",
+        "strb@+5",
+        "strb@+6"
+      ],
+      "epilogue": [
+        "0x000074B8"
+      ],
+      "disasm": [
+        "0x0000697c: 4f4b       ldr       r3, [pc, #0x13c]              ; =0x03000045",
+        "0x0000697e: c6f80730   str.w     r3, [r6, #7]                ",
+        "0x00006982: 4f4b       ldr       r3, [pc, #0x13c]              ; =0x2000760C",
+        "0x00006984: 1b88       ldrh      r3, [r3]                    ",
+        "0x00006986: a6f80b30   strh.w    r3, [r6, #0xb]              ",
+        "0x0000698a: 0023       movs      r3, #0                      ",
+        "0x0000698c: f370       strb      r3, [r6, #3]                ",
+        "0x0000698e: 3371       strb      r3, [r6, #4]                ",
+        "0x00006990: 7371       strb      r3, [r6, #5]                ",
+        "0x00006992: b371       strb      r3, [r6, #6]                ",
+        "0x00006994: 0624       movs      r4, #6                      ",
+        "0x00006996: 00f08fbd   b.w       #0x74b8                     "
+      ]
+    },
+    {
+      "opcode": "0x04",
+      "supported": true,
+      "hint": "XDS_SET_TCK_DELAY",
+      "addr": "0x0000699A",
+      "size": 10,
+      "callees": [
+        "0x0000EE20"
+      ],
+      "req_reads": [
+        "ldr@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x0000699a: 7868       ldr       r0, [r7, #4]                ",
+        "0x0000699c: 08f040fa   bl        #0xee20                     ",
+        "0x000069a0: 00f07fbd   b.w       #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x05",
+      "supported": true,
+      "hint": "XDS_SET_TRST",
+      "addr": "0x000069A4",
+      "size": 10,
+      "callees": [
+        "0x0000DE18"
+      ],
+      "req_reads": [
+        "ldrb@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x000069a4: 3879       ldrb      r0, [r7, #4]                ",
+        "0x000069a6: 07f037fa   bl        #0xde18                     ",
+        "0x000069aa: 00f07abd   b.w       #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x06",
+      "supported": true,
+      "hint": "XDS_CYCLE_TCK",
+      "addr": "0x000069AE",
+      "size": 16,
+      "callees": [
+        "0x0000DE8C"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074B8"
+      ],
+      "disasm": [
+        "0x000069ae: f01d       adds      r0, r6, #7                  ",
+        "0x000069b0: 07f06cfa   bl        #0xde8c                     ",
+        "0x000069b4: 0124       movs      r4, #1                      ",
+        "0x000069b6: c6f80300   str.w     r0, [r6, #3]                ",
+        "0x000069ba: 00f07dbd   b.w       #0x74b8                     "
+      ]
+    },
+    {
+      "opcode": "0x07",
+      "supported": true,
+      "hint": "XDS_SET_JTAG_MODE / CONFIG_JTAG",
+      "addr": "0x000069BE",
+      "size": 12,
+      "callees": [],
+      "req_reads": [
+        "ldr@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x000069be: 414b       ldr       r3, [pc, #0x104]              ; =0x200017E8",
+        "0x000069c0: 7868       ldr       r0, [r7, #4]                ",
+        "0x000069c2: 1b68       ldr       r3, [r3]                    ",
+        "0x000069c4: 9847       blx       r3                          ",
+        "0x000069c6: 00f06cbd   b.w       #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x08",
+      "supported": true,
+      "hint": "XDS_GET_POWER / TARGET_VOLTAGE",
+      "addr": "0x000069CA",
+      "size": 22,
+      "callees": [
+        "0x0000DED8"
+      ],
+      "req_reads": [],
+      "resp_writes": [
+        "strb@+3",
+        "strb@+4",
+        "strb@+5",
+        "strb@+6"
+      ],
+      "epilogue": [
+        "0x00007242"
+      ],
+      "disasm": [
+        "0x000069ca: 07f085fa   bl        #0xded8                     ",
+        "0x000069ce: 0023       movs      r3, #0                      ",
+        "0x000069d0: c6f80700   str.w     r0, [r6, #7]                ",
+        "0x000069d4: f370       strb      r3, [r6, #3]                ",
+        "0x000069d6: 3371       strb      r3, [r6, #4]                ",
+        "0x000069d8: 7371       strb      r3, [r6, #5]                ",
+        "0x000069da: b371       strb      r3, [r6, #6]                ",
+        "0x000069dc: 00f031bc   b.w       #0x7242                     "
+      ]
+    },
+    {
+      "opcode": "0x09",
+      "supported": true,
+      "hint": "XDS_SET_SRST / CONFIG_TARGET",
+      "addr": "0x000069E0",
+      "size": 14,
+      "callees": [],
+      "req_reads": [
+        "ldrb@+4",
+        "ldrb@+8"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x000069e0: 394b       ldr       r3, [pc, #0xe4]               ; =0x200017F0",
+        "0x000069e2: 3879       ldrb      r0, [r7, #4]                ",
+        "0x000069e4: 1b68       ldr       r3, [r3]                    ",
+        "0x000069e6: 397a       ldrb      r1, [r7, #8]                ",
+        "0x000069e8: 9847       blx       r3                          ",
+        "0x000069ea: 00f05abd   b.w       #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x0A",
+      "supported": true,
+      "hint": "XDS_JTAG_SCAN / IR_DR",
+      "addr": "0x000069EE",
+      "size": 96,
+      "callees": [],
+      "req_reads": [
+        "ldrb@+9",
+        "ldrh@+10",
+        "ldrh@+12",
+        "ldrh@+14",
+        "ldrh@+16",
+        "ldrb@+18"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074B6"
+      ],
+      "disasm": [
+        "0x000069ee: 7b7a       ldrb      r3, [r7, #9]                ",
+        "0x000069f0: 7c89       ldrh      r4, [r7, #0xa]              ",
+        "0x000069f2: bd89       ldrh      r5, [r7, #0xc]              ",
+        "0x000069f4: fa89       ldrh      r2, [r7, #0xe]              ",
+        "0x000069f6: b7f80480   ldrh.w    r8, [r7, #4]                ",
+        "0x000069fa: 97f80690   ldrb.w    sb, [r7, #6]                ",
+        "0x000069fe: 97f807a0   ldrb.w    sl, [r7, #7]                ",
+        "0x00006a02: 97f808b0   ldrb.w    fp, [r7, #8]                ",
+        "0x00006a06: 0b94       str       r4, [sp, #0x2c]             ",
+        "0x00006a08: 0a93       str       r3, [sp, #0x28]             ",
+        "0x00006a0a: 0c95       str       r5, [sp, #0x30]             ",
+        "0x00006a0c: 0d92       str       r2, [sp, #0x34]             ",
+        "0x00006a0e: 3c8a       ldrh      r4, [r7, #0x10]             ",
+        "0x00006a10: bd7c       ldrb      r5, [r7, #0x12]             ",
+        "0x00006a12: 0020       movs      r0, #0                      ",
+        "0x00006a14: 3746       mov       r7, r6                      ",
+        "0x00006a16: 12e0       b         #0x6a3e                     ",
+        "0x00006a18: 0a9b       ldr       r3, [sp, #0x28]             ",
+        "0x00006a1a: 0b9a       ldr       r2, [sp, #0x2c]             ",
+        "0x00006a1c: 0193       str       r3, [sp, #4]                ",
+        "0x00006a1e: 0c9b       ldr       r3, [sp, #0x30]             ",
+        "0x00006a20: 0292       str       r2, [sp, #8]                ",
+        "0x00006a22: 0d9a       ldr       r2, [sp, #0x34]             ",
+        "0x00006a24: 0393       str       r3, [sp, #0xc]              ",
+        "0x00006a26: 294b       ldr       r3, [pc, #0xa4]               ; =0x200017F8",
+        "0x00006a28: 0492       str       r2, [sp, #0x10]             ",
+        "0x00006a2a: cdf800b0   str.w     fp, [sp]                    ",
+        "0x00006a2e: 1e68       ldr       r6, [r3]                    "
+      ]
+    },
+    {
+      "opcode": "0x0B",
+      "supported": true,
+      "hint": "XDS_JTAG_DR_SHIFT",
+      "addr": "0x00006A4E",
+      "size": 134,
+      "callees": [],
+      "req_reads": [
+        "ldrb@+9",
+        "ldrh@+10",
+        "ldrh@+12",
+        "ldrh@+14",
+        "ldrh@+16"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006a4e: 7b7a       ldrb      r3, [r7, #9]                ",
+        "0x00006a50: 7c89       ldrh      r4, [r7, #0xa]              ",
+        "0x00006a52: bd89       ldrh      r5, [r7, #0xc]              ",
+        "0x00006a54: fa89       ldrh      r2, [r7, #0xe]              ",
+        "0x00006a56: b7f812c0   ldrh.w    ip, [r7, #0x12]             ",
+        "0x00006a5a: b7f80480   ldrh.w    r8, [r7, #4]                ",
+        "0x00006a5e: 97f80690   ldrb.w    sb, [r7, #6]                ",
+        "0x00006a62: 97f807a0   ldrb.w    sl, [r7, #7]                ",
+        "0x00006a66: 97f808b0   ldrb.w    fp, [r7, #8]                ",
+        "0x00006a6a: 0b94       str       r4, [sp, #0x2c]             ",
+        "0x00006a6c: 0a93       str       r3, [sp, #0x28]             ",
+        "0x00006a6e: 3c8a       ldrh      r4, [r7, #0x10]             ",
+        "0x00006a70: 0c95       str       r5, [sp, #0x30]             ",
+        "0x00006a72: 0e96       str       r6, [sp, #0x38]             ",
+        "0x00006a74: 0d92       str       r2, [sp, #0x34]             ",
+        "0x00006a76: 1437       adds      r7, #0x14                   ",
+        "0x00006a78: 0020       movs      r0, #0                      ",
+        "0x00006a7a: 6646       mov       r6, ip                      ",
+        "0x00006a7c: 13e0       b         #0x6aa6                     ",
+        "0x00006a7e: 0a9b       ldr       r3, [sp, #0x28]             ",
+        "0x00006a80: 0b9d       ldr       r5, [sp, #0x2c]             ",
+        "0x00006a82: 0193       str       r3, [sp, #4]                ",
+        "0x00006a84: 0d9b       ldr       r3, [sp, #0x34]             ",
+        "0x00006a86: 0c9a       ldr       r2, [sp, #0x30]             ",
+        "0x00006a88: 0493       str       r3, [sp, #0x10]             ",
+        "0x00006a8a: 114b       ldr       r3, [pc, #0x44]               ; =0x200017EC",
+        "0x00006a8c: 0392       str       r2, [sp, #0xc]              ",
+        "0x00006a8e: cdf800b0   str.w     fp, [sp]                    "
+      ]
+    },
+    {
+      "opcode": "0x0C",
+      "supported": true,
+      "hint": "XDS_JTAG_IR_SHIFT",
+      "addr": "0x00006AD4",
+      "size": 146,
+      "callees": [],
+      "req_reads": [
+        "ldrb@+6",
+        "ldrb@+7",
+        "ldrh@+10",
+        "ldrb@+8",
+        "ldrh@+12",
+        "ldrb@+9",
+        "ldrh@+16",
+        "ldrh@+14"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074B8"
+      ],
+      "disasm": [
+        "0x00006ad4: bc79       ldrb      r4, [r7, #6]                ",
+        "0x00006ad6: b7f804b0   ldrh.w    fp, [r7, #4]                ",
+        "0x00006ada: 0a94       str       r4, [sp, #0x28]             ",
+        "0x00006adc: fd79       ldrb      r5, [r7, #7]                ",
+        "0x00006ade: 7c89       ldrh      r4, [r7, #0xa]              ",
+        "0x00006ae0: 0b95       str       r5, [sp, #0x2c]             ",
+        "0x00006ae2: 3a7a       ldrb      r2, [r7, #8]                ",
+        "0x00006ae4: bd89       ldrh      r5, [r7, #0xc]              ",
+        "0x00006ae6: 0c92       str       r2, [sp, #0x30]             ",
+        "0x00006ae8: 7b7a       ldrb      r3, [r7, #9]                ",
+        "0x00006aea: b7f814a0   ldrh.w    sl, [r7, #0x14]             ",
+        "0x00006aee: 0f95       str       r5, [sp, #0x3c]             ",
+        "0x00006af0: 3d8a       ldrh      r5, [r7, #0x10]             ",
+        "0x00006af2: fa89       ldrh      r2, [r7, #0xe]              ",
+        "0x00006af4: 0e94       str       r4, [sp, #0x38]             ",
+        "0x00006af6: 05fb0af4   mul       r4, r5, sl                  ",
+        "0x00006afa: 0d93       str       r3, [sp, #0x34]             ",
+        "0x00006afc: 1092       str       r2, [sp, #0x40]             ",
+        "0x00006afe: b7f812c0   ldrh.w    ip, [r7, #0x12]             ",
+        "0x00006b02: 07f11609   add.w     sb, r7, #0x16               ",
+        "0x00006b06: 06f10708   add.w     r8, r6, #7                  ",
+        "0x00006b0a: e200       lsls      r2, r4, #3                  ",
+        "0x00006b0c: 3319       adds      r3, r6, r4                  ",
+        "0x00006b0e: 01e0       b         #0x6b14                     ",
+        "0x00006b10: d871       strb      r0, [r3, #7]                ",
+        "0x00006b12: 083a       subs      r2, #8                      ",
+        "0x00006b14: 013b       subs      r3, #1                      ",
+        "0x00006b16: 5a45       cmp       r2, fp                      "
+      ]
+    },
+    {
+      "opcode": "0x0D",
+      "supported": true,
+      "hint": "XDS_JTAG_STATE_MOVE",
+      "addr": "0x00006B66",
+      "size": 142,
+      "callees": [
+        "0x0000DEE4"
+      ],
+      "req_reads": [
+        "ldr@+4",
+        "ldr@+16"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006b66: 7d68       ldr       r5, [r7, #4]                ",
+        "0x00006b68: d7f80880   ldr.w     r8, [r7, #8]                ",
+        "0x00006b6c: d7f80c90   ldr.w     sb, [r7, #0xc]              ",
+        "0x00006b70: 9b4a       ldr       r2, [pc, #0x26c]              ; =0x2002C800",
+        "0x00006b72: 3f69       ldr       r7, [r7, #0x10]             ",
+        "0x00006b74: dff884a2   ldr.w     sl, [pc, #0x284]              ; =0x2002C710",
+        "0x00006b78: 0023       movs      r3, #0                      ",
+        "0x00006b7a: 1370       strb      r3, [r2]                    ",
+        "0x00006b7c: 8af80030   strb.w    r3, [sl]                    ",
+        "0x00006b80: 2846       mov       r0, r5                      ",
+        "0x00006b82: 3b46       mov       r3, r7                      ",
+        "0x00006b84: 4146       mov       r1, r8                      ",
+        "0x00006b86: 4a46       mov       r2, sb                      ",
+        "0x00006b88: 07f0acf9   bl        #0xdee4                     ",
+        "0x00006b8c: 954b       ldr       r3, [pc, #0x254]              ; =0x2002C70E",
+        "0x00006b8e: 1b78       ldrb      r3, [r3]                    ",
+        "0x00006b90: 002b       cmp       r3, #0                      ",
+        "0x00006b92: 00f08684   beq.w     #0x74a2                     ",
+        "0x00006b96: 944b       ldr       r3, [pc, #0x250]              ; =0x20001850",
+        "0x00006b98: 9c7a       ldrb      r4, [r3, #0xa]              ",
+        "0x00006b9a: 012c       cmp       r4, #1                      ",
+        "0x00006b9c: 40f08184   bne.w     #0x74a2                     ",
+        "0x00006ba0: 924b       ldr       r3, [pc, #0x248]              ; =0x20026D50",
+        "0x00006ba2: 1b78       ldrb      r3, [r3]                    ",
+        "0x00006ba4: 012b       cmp       r3, #1                      ",
+        "0x00006ba6: 8cbf       ite       hi                          ",
+        "0x00006ba8: 0423       movhi     r3, #4                      ",
+        "0x00006baa: 0023       movls     r3, #0                      "
+      ]
+    },
+    {
+      "opcode": "0x0E",
+      "supported": true,
+      "hint": "XDS_SET_SRST (Assert/Deassert nSRST)",
+      "addr": "0x00006BF4",
+      "size": 10,
+      "callees": [
+        "0x0000DF30"
+      ],
+      "req_reads": [
+        "ldrb@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006bf4: 3879       ldrb      r0, [r7, #4]                ",
+        "0x00006bf6: 07f09bf9   bl        #0xdf30                     ",
+        "0x00006bfa: 00f052bc   b.w       #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x0F",
+      "supported": true,
+      "hint": "CJTAG_CONNECT",
+      "addr": "0x00006BFE",
+      "size": 4,
+      "callees": [],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007238"
+      ],
+      "disasm": [
+        "0x00006bfe: 0520       movs      r0, #5                      ",
+        "0x00006c00: 1ae3       b         #0x7238                     "
+      ]
+    },
+    {
+      "opcode": "0x10",
+      "supported": true,
+      "hint": "CJTAG_DISCONNECT",
+      "addr": "0x00006C02",
+      "size": 8,
+      "callees": [
+        "0x000157E0"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006c02: 0ef0edfd   bl        #0x157e0                    ",
+        "0x00006c06: 00f04cbc   b.w       #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x11",
+      "supported": true,
+      "hint": "CJTAG_SCAN",
+      "addr": "0x00006C0A",
+      "size": 8,
+      "callees": [
+        "0x000157E4"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006c0a: 0ef0ebfd   bl        #0x157e4                    ",
+        "0x00006c0e: 00f048bc   b.w       #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x12",
+      "supported": true,
+      "hint": "CJTAG_ESCAPE",
+      "addr": "0x00006C12",
+      "size": 8,
+      "callees": [
+        "0x00015828"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006c12: 0ef009fe   bl        #0x15828                    ",
+        "0x00006c16: 00f044bc   b.w       #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x13",
+      "supported": true,
+      "hint": "SWD_CONNECT",
+      "addr": "0x00006C1A",
+      "size": 86,
+      "callees": [],
+      "req_reads": [
+        "ldrb@+4",
+        "ldrb@+5",
+        "ldrb@+6"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000072A6",
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x00006c1a: 7549       ldr       r1, [pc, #0x1d4]              ; =0x20026D70",
+        "0x00006c1c: 3879       ldrb      r0, [r7, #4]                ",
+        "0x00006c1e: 91f80d52   ldrb.w    r5, [r1, #0x20d]            ",
+        "0x00006c22: 7a79       ldrb      r2, [r7, #5]                ",
+        "0x00006c24: bb79       ldrb      r3, [r7, #6]                ",
+        "0x00006c26: d7f807c0   ldr.w     ip, [r7, #7]                ",
+        "0x00006c2a: b7f80b40   ldrh.w    r4, [r7, #0xb]              ",
+        "0x00006c2e: 052d       cmp       r5, #5                      ",
+        "0x00006c30: 40f0a983   bne.w     #0x7386                     ",
+        "0x00006c34: b7f80150   ldrh.w    r5, [r7, #1]                ",
+        "0x00006c38: 0a2d       cmp       r5, #0xa                    ",
+        "0x00006c3a: 0cd0       beq       #0x6c56                     ",
+        "0x00006c3c: 0e2d       cmp       r5, #0xe                    ",
+        "0x00006c3e: 14d1       bne       #0x6c6a                     ",
+        "0x00006c40: 03f12205   add.w     r5, r3, #0x22               ",
+        "0x00006c44: 01eb8501   add.w     r1, r1, r5, lsl #2          ",
+        "0x00006c48: 4d68       ldr       r5, [r1, #4]                ",
+        "0x00006c4a: b5f1ff3f   cmp.w     r5, #-1                     ",
+        "0x00006c4e: 04bf       itt       eq                          ",
+        "0x00006c50: d7f80d50   ldreq.w   r5, [r7, #0xd]              ",
+        "0x00006c54: 4d60       streq     r5, [r1, #4]                ",
+        "0x00006c56: f11d       adds      r1, r6, #7                  ",
+        "0x00006c58: 0291       str       r1, [sp, #8]                ",
+        "0x00006c5a: cdf800c0   str.w     ip, [sp]                    ",
+        "0x00006c5e: 02f00101   and       r1, r2, #1                  ",
+        "0x00006c62: 0194       str       r4, [sp, #4]                ",
+        "0x00006c64: c2f34002   ubfx      r2, r2, #1, #1              ",
+        "0x00006c68: 1de3       b         #0x72a6                     "
+      ]
+    },
+    {
+      "opcode": "0x14",
+      "supported": true,
+      "hint": "SWD_DISCONNECT",
+      "addr": "0x00006C70",
+      "size": 82,
+      "callees": [],
+      "req_reads": [
+        "ldrb@+4",
+        "ldrb@+5",
+        "ldrb@+6"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074CA",
+        "0x000074CA",
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006c70: 5f4c       ldr       r4, [pc, #0x17c]              ; =0x20026D70",
+        "0x00006c72: 3879       ldrb      r0, [r7, #4]                ",
+        "0x00006c74: 94f80d52   ldrb.w    r5, [r4, #0x20d]            ",
+        "0x00006c78: 7a79       ldrb      r2, [r7, #5]                ",
+        "0x00006c7a: bb79       ldrb      r3, [r7, #6]                ",
+        "0x00006c7c: d7f807c0   ldr.w     ip, [r7, #7]                ",
+        "0x00006c80: b7f80b10   ldrh.w    r1, [r7, #0xb]              ",
+        "0x00006c84: 052d       cmp       r5, #5                      ",
+        "0x00006c86: 40f00384   bne.w     #0x7490                     ",
+        "0x00006c8a: b7f80150   ldrh.w    r5, [r7, #1]                ",
+        "0x00006c8e: 6d1a       subs      r5, r5, r1                  ",
+        "0x00006c90: 0a2d       cmp       r5, #0xa                    ",
+        "0x00006c92: 02d0       beq       #0x6c9a                     ",
+        "0x00006c94: 0e2d       cmp       r5, #0xe                    ",
+        "0x00006c96: 11d1       bne       #0x6cbc                     ",
+        "0x00006c98: 02e0       b         #0x6ca0                     ",
+        "0x00006c9a: 0d37       adds      r7, #0xd                    ",
+        "0x00006c9c: 00f015bc   b.w       #0x74ca                     ",
+        "0x00006ca0: 03f12205   add.w     r5, r3, #0x22               ",
+        "0x00006ca4: 04eb8504   add.w     r4, r4, r5, lsl #2          ",
+        "0x00006ca8: 6568       ldr       r5, [r4, #4]                ",
+        "0x00006caa: b5f1ff3f   cmp.w     r5, #-1                     ",
+        "0x00006cae: 04bf       itt       eq                          ",
+        "0x00006cb0: d7f80d50   ldreq.w   r5, [r7, #0xd]              ",
+        "0x00006cb4: 6560       streq     r5, [r4, #4]                ",
+        "0x00006cb6: 1137       adds      r7, #0x11                   ",
+        "0x00006cb8: 00f007bc   b.w       #0x74ca                     ",
+        "0x00006cbc: 6ff07900   mvn       r0, #0x79                   "
+      ]
+    },
+    {
+      "opcode": "0x15",
+      "supported": true,
+      "hint": "SWD_CLEAR_ERRORS",
+      "addr": "0x00006D6A",
+      "size": 28,
+      "callees": [
+        "0x00016570"
+      ],
+      "req_reads": [
+        "ldrb@+4",
+        "ldrb@+5",
+        "ldrb@+6"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x00006d6a: 214b       ldr       r3, [pc, #0x84]               ; =0x20026D70",
+        "0x00006d6c: 3879       ldrb      r0, [r7, #4]                ",
+        "0x00006d6e: 93f80d32   ldrb.w    r3, [r3, #0x20d]            ",
+        "0x00006d72: 7979       ldrb      r1, [r7, #5]                ",
+        "0x00006d74: ba79       ldrb      r2, [r7, #6]                ",
+        "0x00006d76: 052b       cmp       r3, #5                      ",
+        "0x00006d78: 40f00583   bne.w     #0x7386                     ",
+        "0x00006d7c: f31d       adds      r3, r6, #7                  ",
+        "0x00006d7e: 0ff0f7fb   bl        #0x16570                    ",
+        "0x00006d82: 0424       movs      r4, #4                      ",
+        "0x00006d84: 65e3       b         #0x7452                     "
+      ]
+    },
+    {
+      "opcode": "0x16",
+      "supported": true,
+      "hint": "SWD_READ_DAP",
+      "addr": "0x00006D86",
+      "size": 22,
+      "callees": [],
+      "req_reads": [
+        "ldrb@+4",
+        "ldrb@+5",
+        "ldrb@+6"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x0000748A"
+      ],
+      "disasm": [
+        "0x00006d86: 1a4b       ldr       r3, [pc, #0x68]               ; =0x20026D70",
+        "0x00006d88: 3879       ldrb      r0, [r7, #4]                ",
+        "0x00006d8a: 93f80d32   ldrb.w    r3, [r3, #0x20d]            ",
+        "0x00006d8e: 7979       ldrb      r1, [r7, #5]                ",
+        "0x00006d90: ba79       ldrb      r2, [r7, #6]                ",
+        "0x00006d92: 052b       cmp       r3, #5                      ",
+        "0x00006d94: 40f07c83   bne.w     #0x7490                     ",
+        "0x00006d98: fb1d       adds      r3, r7, #7                  ",
+        "0x00006d9a: 76e3       b         #0x748a                     "
+      ]
+    },
+    {
+      "opcode": "0x17",
+      "supported": true,
+      "hint": "SWD_WRITE_DAP",
+      "addr": "0x00006D9C",
+      "size": 6,
+      "callees": [
+        "0x00015454"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006d9c: 0ef05afb   bl        #0x15454                    ",
+        "0x00006da0: 7fe3       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x18",
+      "supported": true,
+      "hint": "SWD_DAP_BATCH / TRANSFER",
+      "addr": "0x00006DA2",
+      "size": 6,
+      "callees": [
+        "0x000153A8"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006da2: 0ef001fb   bl        #0x153a8                    ",
+        "0x00006da6: 7ce3       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x19",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00006DA8",
+      "size": 6,
+      "callees": [
+        "0x00014F8C"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006da8: 0ef0f0f8   bl        #0x14f8c                    ",
+        "0x00006dac: 79e3       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x1A",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00006DAE",
+      "size": 6,
+      "callees": [
+        "0x00014FA4"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006dae: 0ef0f9f8   bl        #0x14fa4                    ",
+        "0x00006db2: 76e3       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x1B",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00006DB4",
+      "size": 14,
+      "callees": [],
+      "req_reads": [
+        "ldrb@+4",
+        "ldrb@+5"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x0000723E"
+      ],
+      "disasm": [
+        "0x00006db4: 0f4b       ldr       r3, [pc, #0x3c]               ; =0x200017F4",
+        "0x00006db6: 3879       ldrb      r0, [r7, #4]                ",
+        "0x00006db8: 1b68       ldr       r3, [r3]                    ",
+        "0x00006dba: 7979       ldrb      r1, [r7, #5]                ",
+        "0x00006dbc: f21d       adds      r2, r6, #7                  ",
+        "0x00006dbe: 9847       blx       r3                          ",
+        "0x00006dc0: 3de2       b         #0x723e                     "
+      ]
+    },
+    {
+      "opcode": "0x1C",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00006DC2",
+      "size": 62,
+      "callees": [],
+      "req_reads": [
+        "ldrb@+4",
+        "ldrb@+5",
+        "ldrb@+10"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006dc2: d7f80630   ldr.w     r3, [r7, #6]                ",
+        "0x00006dc6: 3879       ldrb      r0, [r7, #4]                ",
+        "0x00006dc8: 7979       ldrb      r1, [r7, #5]                ",
+        "0x00006dca: 32aa       add       r2, sp, #0xc8               ",
+        "0x00006dcc: 42f8083d   str       r3, [r2, #-0x8]!            ",
+        "0x00006dd0: 094b       ldr       r3, [pc, #0x24]               ; =0x200017E4",
+        "0x00006dd2: 1c68       ldr       r4, [r3]                    ",
+        "0x00006dd4: bb7a       ldrb      r3, [r7, #0xa]              ",
+        "0x00006dd6: a047       blx       r4                          ",
+        "0x00006dd8: 63e3       b         #0x74a2                     ",
+        "0x00006dda: 00bf       nop                                   ",
+        "0x00006ddc: fc17       asrs      r4, r7, #0x1f               ",
+        "0x00006dde: 0020       movs      r0, #0                      "
+      ]
+    },
+    {
+      "opcode": "0x1D",
+      "supported": true,
+      "hint": "ET_SETUP",
+      "addr": "0x00006E00",
+      "size": 32,
+      "callees": [
+        "0x0001C680"
+      ],
+      "req_reads": [
+        "ldrb@+4",
+        "ldrb@+5",
+        "ldrb@+10"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006e00: 3b79       ldrb      r3, [r7, #4]                ",
+        "0x00006e02: 8df84830   strb.w    r3, [sp, #0x48]             ",
+        "0x00006e06: 7b79       ldrb      r3, [r7, #5]                ",
+        "0x00006e08: 8df84930   strb.w    r3, [sp, #0x49]             ",
+        "0x00006e0c: d7f80630   ldr.w     r3, [r7, #6]                ",
+        "0x00006e10: 1393       str       r3, [sp, #0x4c]             ",
+        "0x00006e12: bb7a       ldrb      r3, [r7, #0xa]              ",
+        "0x00006e14: 12a8       add       r0, sp, #0x48               ",
+        "0x00006e16: 8df85030   strb.w    r3, [sp, #0x50]             ",
+        "0x00006e1a: 15f031fc   bl        #0x1c680                    ",
+        "0x00006e1e: 40e3       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x1E",
+      "supported": true,
+      "hint": "ET_CALIBRATE",
+      "addr": "0x00006E3A",
+      "size": 20,
+      "callees": [
+        "0x0001C98C"
+      ],
+      "req_reads": [
+        "ldrh@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074B8"
+      ],
+      "disasm": [
+        "0x00006e3a: b888       ldrh      r0, [r7, #4]                ",
+        "0x00006e3c: f11d       adds      r1, r6, #7                  ",
+        "0x00006e3e: 06f10b02   add.w     r2, r6, #0xb                ",
+        "0x00006e42: 15f0a3fd   bl        #0x1c98c                    ",
+        "0x00006e46: 0824       movs      r4, #8                      ",
+        "0x00006e48: c6f80300   str.w     r0, [r6, #3]                ",
+        "0x00006e4c: 34e3       b         #0x74b8                     "
+      ]
+    },
+    {
+      "opcode": "0x1F",
+      "supported": true,
+      "hint": "ET_START",
+      "addr": "0x00006E4E",
+      "size": 6,
+      "callees": [
+        "0x0001CA10"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006e4e: 15f0dffd   bl        #0x1ca10                    ",
+        "0x00006e52: 26e3       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x20",
+      "supported": true,
+      "hint": "ET_STOP",
+      "addr": "0x00006E54",
+      "size": 6,
+      "callees": [
+        "0x0001CA94"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006e54: 15f01efe   bl        #0x1ca94                    ",
+        "0x00006e58: 23e3       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x21",
+      "supported": true,
+      "hint": "ET_CLEANUP",
+      "addr": "0x00006E5A",
+      "size": 6,
+      "callees": [
+        "0x0001C898"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006e5a: 15f01dfd   bl        #0x1c898                    ",
+        "0x00006e5e: 20e3       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x22",
+      "supported": true,
+      "hint": "ET_DCDC_GET_MCU_VERSION",
+      "addr": "0x00006E60",
+      "size": 14,
+      "callees": [
+        "0x0001CB58"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x0000723E"
+      ],
+      "disasm": [
+        "0x00006e60: 0023       movs      r3, #0                      ",
+        "0x00006e62: c6f80730   str.w     r3, [r6, #7]                ",
+        "0x00006e66: f01d       adds      r0, r6, #7                  ",
+        "0x00006e68: 15f076fe   bl        #0x1cb58                    ",
+        "0x00006e6c: e7e1       b         #0x723e                     "
+      ]
+    },
+    {
+      "opcode": "0x23",
+      "supported": true,
+      "hint": "ET_DCDC_POWER_DOWN_MCU",
+      "addr": "0x00006E6E",
+      "size": 6,
+      "callees": [
+        "0x0001CD6C"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006e6e: 15f07dff   bl        #0x1cd6c                    ",
+        "0x00006e72: 16e3       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x24",
+      "supported": true,
+      "hint": "ET_DCDC_SET_VCC",
+      "addr": "0x00006E74",
+      "size": 8,
+      "callees": [
+        "0x0001CF14"
+      ],
+      "req_reads": [
+        "ldrh@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006e74: b888       ldrh      r0, [r7, #4]                ",
+        "0x00006e76: 16f04df8   bl        #0x1cf14                    ",
+        "0x00006e7a: 12e3       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x25",
+      "supported": true,
+      "hint": "ET_DCDC_RESTART_MCU",
+      "addr": "0x00006E7C",
+      "size": 6,
+      "callees": [
+        "0x0001CC04"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006e7c: 15f0c2fe   bl        #0x1cc04                    ",
+        "0x00006e80: 0fe3       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x26",
+      "supported": true,
+      "hint": "XDS_ENTER_DFU_MODE",
+      "addr": "0x00006EB4",
+      "size": 28,
+      "callees": [
+        "0x0002938E",
+        "0x00025F58"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [],
+      "disasm": [
+        "0x00006eb4: 984b       ldr       r3, [pc, #0x260]              ; =0x20000410",
+        "0x00006eb6: 9948       ldr       r0, [pc, #0x264]              ; =0x40007000 (GPIO_PORTD_APB)",
+        "0x00006eb8: 1968       ldr       r1, [r3]                    ",
+        "0x00006eba: 994b       ldr       r3, [pc, #0x264]              ; =0x20000414",
+        "0x00006ebc: 1b68       ldr       r3, [r3]                    ",
+        "0x00006ebe: 1943       orrs      r1, r3                      ",
+        "0x00006ec0: 984b       ldr       r3, [pc, #0x260]              ; =0x20004B98",
+        "0x00006ec2: c9b2       uxtb      r1, r1                      ",
+        "0x00006ec4: 1a78       ldrb      r2, [r3]                    ",
+        "0x00006ec6: 22f062fa   bl        #0x2938e                    ",
+        "0x00006eca: 1ff045f8   bl        #0x25f58                    ",
+        "0x00006ece: fee7       b         #0x6ece                     "
+      ]
+    },
+    {
+      "opcode": "0x27",
+      "supported": true,
+      "hint": "XDS_GET_SERIAL / READ_CONFIG",
+      "addr": "0x00006ED0",
+      "size": 18,
+      "callees": [
+        "0x0001EDB0"
+      ],
+      "req_reads": [
+        "ldr@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [],
+      "disasm": [
+        "0x00006ed0: 32aa       add       r2, sp, #0xc8               ",
+        "0x00006ed2: 0023       movs      r3, #0                      ",
+        "0x00006ed4: 42f8083d   str       r3, [r2, #-0x8]!            ",
+        "0x00006ed8: 7868       ldr       r0, [r7, #4]                ",
+        "0x00006eda: f11d       adds      r1, r6, #7                  ",
+        "0x00006edc: 17f068ff   bl        #0x1edb0                    ",
+        "0x00006ee0: eae0       b         #0x70b8                     "
+      ]
+    },
+    {
+      "opcode": "0x28",
+      "supported": true,
+      "hint": "XDS_CONNECT_ET",
+      "addr": "0x00006EE2",
+      "size": 6,
+      "callees": [
+        "0x0000EEF4"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006ee2: 08f007f8   bl        #0xeef4                     ",
+        "0x00006ee6: dce2       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x29",
+      "supported": true,
+      "hint": "XDS_DISCONNECT_ET",
+      "addr": "0x00006EE8",
+      "size": 16,
+      "callees": [
+        "0x000181F4"
+      ],
+      "req_reads": [
+        "ldr@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074B8"
+      ],
+      "disasm": [
+        "0x00006ee8: 7868       ldr       r0, [r7, #4]                ",
+        "0x00006eea: f11d       adds      r1, r6, #7                  ",
+        "0x00006eec: 11f082f9   bl        #0x181f4                    ",
+        "0x00006ef0: 0224       movs      r4, #2                      ",
+        "0x00006ef2: c6f80300   str.w     r0, [r6, #3]                ",
+        "0x00006ef6: dfe2       b         #0x74b8                     "
+      ]
+    },
+    {
+      "opcode": "0x2A",
+      "supported": true,
+      "hint": "GPIO_SET_OUT",
+      "addr": "0x00006EF8",
+      "size": 10,
+      "callees": [
+        "0x0001824C"
+      ],
+      "req_reads": [
+        "ldr@+4",
+        "ldrh@+8"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006ef8: 7868       ldr       r0, [r7, #4]                ",
+        "0x00006efa: 3989       ldrh      r1, [r7, #8]                ",
+        "0x00006efc: 11f0a6f9   bl        #0x1824c                    ",
+        "0x00006f00: cfe2       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x2B",
+      "supported": true,
+      "hint": "GPIO_GET_IN",
+      "addr": "0x00006F02",
+      "size": 8,
+      "callees": [
+        "0x000111FC"
+      ],
+      "req_reads": [
+        "ldr@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006f02: 7868       ldr       r0, [r7, #4]                ",
+        "0x00006f04: 0af07af9   bl        #0x111fc                    ",
+        "0x00006f08: cbe2       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x2C",
+      "supported": true,
+      "hint": "GPIO_CONFIG",
+      "addr": "0x00006F0A",
+      "size": 6,
+      "callees": [
+        "0x000112B0"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006f0a: 0af0d1f9   bl        #0x112b0                    ",
+        "0x00006f0e: c8e2       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x2D",
+      "supported": true,
+      "hint": "GPIO_SET_DIR",
+      "addr": "0x00006F10",
+      "size": 32,
+      "callees": [
+        "0x0000E0D4"
+      ],
+      "req_reads": [
+        "ldr@+20",
+        "ldrb@+24",
+        "ldrb@+25",
+        "ldr@+12",
+        "ldr@+16",
+        "ldr@+4",
+        "ldr@+8"
+      ],
+      "resp_writes": [],
+      "epilogue": [],
+      "disasm": [
+        "0x00006f10: 7b69       ldr       r3, [r7, #0x14]             ",
+        "0x00006f12: 0093       str       r3, [sp]                    ",
+        "0x00006f14: 3b7e       ldrb      r3, [r7, #0x18]             ",
+        "0x00006f16: 0193       str       r3, [sp, #4]                ",
+        "0x00006f18: 7b7e       ldrb      r3, [r7, #0x19]             ",
+        "0x00006f1a: 0293       str       r3, [sp, #8]                ",
+        "0x00006f1c: fa68       ldr       r2, [r7, #0xc]              ",
+        "0x00006f1e: 3b69       ldr       r3, [r7, #0x10]             ",
+        "0x00006f20: 7868       ldr       r0, [r7, #4]                ",
+        "0x00006f22: b968       ldr       r1, [r7, #8]                ",
+        "0x00006f24: 07f0d6f8   bl        #0xe0d4                     ",
+        "0x00006f28: 7f4b       ldr       r3, [pc, #0x1fc]              ; =0x20026D50",
+        "0x00006f2a: 1a78       ldrb      r2, [r3]                    ",
+        "0x00006f2c: 0132       adds      r2, #1                      ",
+        "0x00006f2e: 0ce0       b         #0x6f4a                     "
+      ]
+    },
+    {
+      "opcode": "0x2E",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00006F30",
+      "size": 30,
+      "callees": [
+        "0x0000E3F4"
+      ],
+      "req_reads": [
+        "ldr@+20",
+        "ldrb@+24",
+        "ldr@+12",
+        "ldr@+16",
+        "ldr@+4",
+        "ldr@+8"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006f30: 7b69       ldr       r3, [r7, #0x14]             ",
+        "0x00006f32: 0093       str       r3, [sp]                    ",
+        "0x00006f34: 3b7e       ldrb      r3, [r7, #0x18]             ",
+        "0x00006f36: 0193       str       r3, [sp, #4]                ",
+        "0x00006f38: fa68       ldr       r2, [r7, #0xc]              ",
+        "0x00006f3a: 3b69       ldr       r3, [r7, #0x10]             ",
+        "0x00006f3c: 7868       ldr       r0, [r7, #4]                ",
+        "0x00006f3e: b968       ldr       r1, [r7, #8]                ",
+        "0x00006f40: 07f058fa   bl        #0xe3f4                     ",
+        "0x00006f44: 784b       ldr       r3, [pc, #0x1e0]              ; =0x20026D50",
+        "0x00006f46: 1a78       ldrb      r2, [r3]                    ",
+        "0x00006f48: 013a       subs      r2, #1                      ",
+        "0x00006f4a: 1a70       strb      r2, [r3]                    ",
+        "0x00006f4c: a9e2       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x2F",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00006F4E",
+      "size": 6,
+      "callees": [
+        "0x0000E5EC"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006f4e: 07f04dfb   bl        #0xe5ec                     ",
+        "0x00006f52: a6e2       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x30",
+      "supported": true,
+      "hint": "ET_SETUP_RANGE",
+      "addr": "0x00006E20",
+      "size": 8,
+      "callees": [
+        "0x0001C858"
+      ],
+      "req_reads": [
+        "ldrb@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006e20: 3879       ldrb      r0, [r7, #4]                ",
+        "0x00006e22: 15f019fd   bl        #0x1c858                    ",
+        "0x00006e26: 3ce3       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x31",
+      "supported": true,
+      "hint": "ET_SETUP_DIG",
+      "addr": "0x00006E28",
+      "size": 8,
+      "callees": [
+        "0x0001C864"
+      ],
+      "req_reads": [
+        "ldrb@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006e28: 3879       ldrb      r0, [r7, #4]                ",
+        "0x00006e2a: 15f01bfd   bl        #0x1c864                    ",
+        "0x00006e2e: 38e3       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x32",
+      "supported": true,
+      "hint": "CM_READ_MEM",
+      "addr": "0x00006F54",
+      "size": 10,
+      "callees": [
+        "0x0000E8E0"
+      ],
+      "req_reads": [
+        "ldrb@+8",
+        "ldr@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006f54: 387a       ldrb      r0, [r7, #8]                ",
+        "0x00006f56: 7968       ldr       r1, [r7, #4]                ",
+        "0x00006f58: 07f0c2fc   bl        #0xe8e0                     ",
+        "0x00006f5c: a1e2       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x33",
+      "supported": true,
+      "hint": "CM_WRITE_MEM",
+      "addr": "0x00006F5E",
+      "size": 38,
+      "callees": [
+        "0x000178A4"
+      ],
+      "req_reads": [
+        "ldrb@+14",
+        "ldr@+4",
+        "ldr@+8",
+        "ldrb@+12",
+        "ldrb@+13",
+        "ldrb@+15",
+        "ldr@+16",
+        "ldrb@+20"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x00006f5e: bd7b       ldrb      r5, [r7, #0xe]              ",
+        "0x00006f60: 7868       ldr       r0, [r7, #4]                ",
+        "0x00006f62: b968       ldr       r1, [r7, #8]                ",
+        "0x00006f64: 3a7b       ldrb      r2, [r7, #0xc]              ",
+        "0x00006f66: 7b7b       ldrb      r3, [r7, #0xd]              ",
+        "0x00006f68: 0095       str       r5, [sp]                    ",
+        "0x00006f6a: fd7b       ldrb      r5, [r7, #0xf]              ",
+        "0x00006f6c: 0195       str       r5, [sp, #4]                ",
+        "0x00006f6e: 3d69       ldr       r5, [r7, #0x10]             ",
+        "0x00006f70: 0295       str       r5, [sp, #8]                ",
+        "0x00006f72: 3d7d       ldrb      r5, [r7, #0x14]             ",
+        "0x00006f74: 0c1a       subs      r4, r1, r0                  ",
+        "0x00006f76: 0395       str       r5, [sp, #0xc]              ",
+        "0x00006f78: f51d       adds      r5, r6, #7                  ",
+        "0x00006f7a: 6400       lsls      r4, r4, #1                  ",
+        "0x00006f7c: 0495       str       r5, [sp, #0x10]             ",
+        "0x00006f7e: 10f091fc   bl        #0x178a4                    ",
+        "0x00006f82: 66e2       b         #0x7452                     "
+      ]
+    },
+    {
+      "opcode": "0x34",
+      "supported": true,
+      "hint": "DAP_ACCESS_REG",
+      "addr": "0x00006F84",
+      "size": 40,
+      "callees": [
+        "0x000179E0"
+      ],
+      "req_reads": [
+        "ldrb@+14",
+        "ldrb@+12",
+        "ldrb@+13",
+        "ldrb@+15",
+        "ldr@+16",
+        "ldrb@+20",
+        "ldrb@+21",
+        "ldr@+4",
+        "ldr@+8"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006f84: b97b       ldrb      r1, [r7, #0xe]              ",
+        "0x00006f86: 3a7b       ldrb      r2, [r7, #0xc]              ",
+        "0x00006f88: 7b7b       ldrb      r3, [r7, #0xd]              ",
+        "0x00006f8a: 0091       str       r1, [sp]                    ",
+        "0x00006f8c: f97b       ldrb      r1, [r7, #0xf]              ",
+        "0x00006f8e: 0191       str       r1, [sp, #4]                ",
+        "0x00006f90: 3969       ldr       r1, [r7, #0x10]             ",
+        "0x00006f92: 0291       str       r1, [sp, #8]                ",
+        "0x00006f94: 397d       ldrb      r1, [r7, #0x14]             ",
+        "0x00006f96: 0391       str       r1, [sp, #0xc]              ",
+        "0x00006f98: 797d       ldrb      r1, [r7, #0x15]             ",
+        "0x00006f9a: 0491       str       r1, [sp, #0x10]             ",
+        "0x00006f9c: 07f11801   add.w     r1, r7, #0x18               ",
+        "0x00006fa0: 0591       str       r1, [sp, #0x14]             ",
+        "0x00006fa2: 7868       ldr       r0, [r7, #4]                ",
+        "0x00006fa4: b968       ldr       r1, [r7, #8]                ",
+        "0x00006fa6: 10f01bfd   bl        #0x179e0                    ",
+        "0x00006faa: 7ae2       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x35",
+      "supported": true,
+      "hint": "DAP_ACCESS_MEM",
+      "addr": "0x00007012",
+      "size": 24,
+      "callees": [
+        "0x00017DD8"
+      ],
+      "req_reads": [
+        "ldrb@+17",
+        "ldr@+8",
+        "ldrb@+16",
+        "ldr@+4",
+        "ldr@+12"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x00007012: 7b7c       ldrb      r3, [r7, #0x11]             ",
+        "0x00007014: bc68       ldr       r4, [r7, #8]                ",
+        "0x00007016: 3a7c       ldrb      r2, [r7, #0x10]             ",
+        "0x00007018: 0093       str       r3, [sp]                    ",
+        "0x0000701a: f31d       adds      r3, r6, #7                  ",
+        "0x0000701c: 0193       str       r3, [sp, #4]                ",
+        "0x0000701e: 7868       ldr       r0, [r7, #4]                ",
+        "0x00007020: fb68       ldr       r3, [r7, #0xc]              ",
+        "0x00007022: 2146       mov       r1, r4                      ",
+        "0x00007024: 10f0d8fe   bl        #0x17dd8                    ",
+        "0x00007028: 13e2       b         #0x7452                     "
+      ]
+    },
+    {
+      "opcode": "0x36",
+      "supported": true,
+      "hint": "",
+      "addr": "0x0000702A",
+      "size": 28,
+      "callees": [
+        "0x00017EE8"
+      ],
+      "req_reads": [
+        "ldrb@+17",
+        "ldrb@+16",
+        "ldrb@+18",
+        "ldr@+4",
+        "ldr@+8",
+        "ldr@+12"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x0000702a: 7b7c       ldrb      r3, [r7, #0x11]             ",
+        "0x0000702c: 3a7c       ldrb      r2, [r7, #0x10]             ",
+        "0x0000702e: 0093       str       r3, [sp]                    ",
+        "0x00007030: bb7c       ldrb      r3, [r7, #0x12]             ",
+        "0x00007032: 0193       str       r3, [sp, #4]                ",
+        "0x00007034: 07f11403   add.w     r3, r7, #0x14               ",
+        "0x00007038: 0293       str       r3, [sp, #8]                ",
+        "0x0000703a: 7868       ldr       r0, [r7, #4]                ",
+        "0x0000703c: b968       ldr       r1, [r7, #8]                ",
+        "0x0000703e: fb68       ldr       r3, [r7, #0xc]              ",
+        "0x00007040: 10f052ff   bl        #0x17ee8                    ",
+        "0x00007044: 2de2       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x37",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00007046",
+      "size": 30,
+      "callees": [
+        "0x00017F3C"
+      ],
+      "req_reads": [
+        "ldr@+8",
+        "ldrb@+17",
+        "ldrb@+16",
+        "ldr@+4",
+        "ldr@+12"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x00007046: bc68       ldr       r4, [r7, #8]                ",
+        "0x00007048: 797c       ldrb      r1, [r7, #0x11]             ",
+        "0x0000704a: 3a7c       ldrb      r2, [r7, #0x10]             ",
+        "0x0000704c: 0091       str       r1, [sp]                    ",
+        "0x0000704e: f31d       adds      r3, r6, #7                  ",
+        "0x00007050: 0193       str       r3, [sp, #4]                ",
+        "0x00007052: 1b19       adds      r3, r3, r4                  ",
+        "0x00007054: 0293       str       r3, [sp, #8]                ",
+        "0x00007056: 2146       mov       r1, r4                      ",
+        "0x00007058: 7868       ldr       r0, [r7, #4]                ",
+        "0x0000705a: fb68       ldr       r3, [r7, #0xc]              ",
+        "0x0000705c: 10f06eff   bl        #0x17f3c                    ",
+        "0x00007060: 6400       lsls      r4, r4, #1                  ",
+        "0x00007062: f6e1       b         #0x7452                     "
+      ]
+    },
+    {
+      "opcode": "0x38",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00007064",
+      "size": 34,
+      "callees": [
+        "0x000180B8"
+      ],
+      "req_reads": [
+        "ldrb@+17",
+        "ldr@+8",
+        "ldrb@+16",
+        "ldrb@+18",
+        "ldr@+4",
+        "ldr@+12"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x00007064: 7b7c       ldrb      r3, [r7, #0x11]             ",
+        "0x00007066: bc68       ldr       r4, [r7, #8]                ",
+        "0x00007068: 3a7c       ldrb      r2, [r7, #0x10]             ",
+        "0x0000706a: 0093       str       r3, [sp]                    ",
+        "0x0000706c: bb7c       ldrb      r3, [r7, #0x12]             ",
+        "0x0000706e: 0193       str       r3, [sp, #4]                ",
+        "0x00007070: 07f11403   add.w     r3, r7, #0x14               ",
+        "0x00007074: 0293       str       r3, [sp, #8]                ",
+        "0x00007076: f31d       adds      r3, r6, #7                  ",
+        "0x00007078: 0393       str       r3, [sp, #0xc]              ",
+        "0x0000707a: 7868       ldr       r0, [r7, #4]                ",
+        "0x0000707c: fb68       ldr       r3, [r7, #0xc]              ",
+        "0x0000707e: 2146       mov       r1, r4                      ",
+        "0x00007080: 11f01af8   bl        #0x180b8                    ",
+        "0x00007084: e5e1       b         #0x7452                     "
+      ]
+    },
+    {
+      "opcode": "0x39",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00007086",
+      "size": 14,
+      "callees": [
+        "0x0000E648"
+      ],
+      "req_reads": [
+        "ldrb@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00007086: 3879       ldrb      r0, [r7, #4]                ",
+        "0x00007088: 0038       subs      r0, #0                      ",
+        "0x0000708a: 18bf       it        ne                          ",
+        "0x0000708c: 0120       movne     r0, #1                      ",
+        "0x0000708e: 07f0dbfa   bl        #0xe648                     ",
+        "0x00007092: 06e2       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x3A",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00007094",
+      "size": 20,
+      "callees": [
+        "0x00016F5C"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [],
+      "disasm": [
+        "0x00007094: 32aa       add       r2, sp, #0xc8               ",
+        "0x00007096: 0023       movs      r3, #0                      ",
+        "0x00007098: 42f8083d   str       r3, [r2, #-0x8]!            ",
+        "0x0000709c: 381d       adds      r0, r7, #4                  ",
+        "0x0000709e: f11d       adds      r1, r6, #7                  ",
+        "0x000070a0: 0ff05cff   bl        #0x16f5c                    ",
+        "0x000070a4: 309c       ldr       r4, [sp, #0xc0]             ",
+        "0x000070a6: 99e0       b         #0x71dc                     "
+      ]
+    },
+    {
+      "opcode": "0x3B",
+      "supported": true,
+      "hint": "",
+      "addr": "0x000070A8",
+      "size": 20,
+      "callees": [
+        "0x00017020"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x000070a8: 32aa       add       r2, sp, #0xc8               ",
+        "0x000070aa: 0023       movs      r3, #0                      ",
+        "0x000070ac: 42f8083d   str       r3, [r2, #-0x8]!            ",
+        "0x000070b0: 381d       adds      r0, r7, #4                  ",
+        "0x000070b2: f11d       adds      r1, r6, #7                  ",
+        "0x000070b4: 0ff0b4ff   bl        #0x17020                    ",
+        "0x000070b8: 309c       ldr       r4, [sp, #0xc0]             ",
+        "0x000070ba: cae1       b         #0x7452                     "
+      ]
+    },
+    {
+      "opcode": "0x3C",
+      "supported": true,
+      "hint": "",
+      "addr": "0x000070BC",
+      "size": 12,
+      "callees": [
+        "0x00017114"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x000070bc: 381d       adds      r0, r7, #4                  ",
+        "0x000070be: 07f10801   add.w     r1, r7, #8                  ",
+        "0x000070c2: 10f027f8   bl        #0x17114                    ",
+        "0x000070c6: ece1       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x3D",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00006CC2",
+      "size": 86,
+      "callees": [],
+      "req_reads": [
+        "ldrb@+4",
+        "ldrb@+5",
+        "ldrb@+6"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007380"
+      ],
+      "disasm": [
+        "0x00006cc2: 4b4c       ldr       r4, [pc, #0x12c]              ; =0x20026D70",
+        "0x00006cc4: 3879       ldrb      r0, [r7, #4]                ",
+        "0x00006cc6: 94f80d12   ldrb.w    r1, [r4, #0x20d]            ",
+        "0x00006cca: 7a79       ldrb      r2, [r7, #5]                ",
+        "0x00006ccc: bb79       ldrb      r3, [r7, #6]                ",
+        "0x00006cce: d7f80750   ldr.w     r5, [r7, #7]                ",
+        "0x00006cd2: d7f80bc0   ldr.w     ip, [r7, #0xb]              ",
+        "0x00006cd6: b7f80f80   ldrh.w    r8, [r7, #0xf]              ",
+        "0x00006cda: 0529       cmp       r1, #5                      ",
+        "0x00006cdc: 40f05383   bne.w     #0x7386                     ",
+        "0x00006ce0: 03f1220e   add.w     lr, r3, #0x22               ",
+        "0x00006ce4: 04eb8e04   add.w     r4, r4, lr, lsl #2          ",
+        "0x00006ce8: e146       mov       sb, ip                      ",
+        "0x00006cea: d4f804e0   ldr.w     lr, [r4, #4]                ",
+        "0x00006cee: bef1ff3f   cmp.w     lr, #-1                     ",
+        "0x00006cf2: 04bf       itt       eq                          ",
+        "0x00006cf4: d7f81170   ldreq.w   r7, [r7, #0x11]             ",
+        "0x00006cf8: 6760       streq     r7, [r4, #4]                ",
+        "0x00006cfa: 4446       mov       r4, r8                      ",
+        "0x00006cfc: 4ff00008   mov.w     r8, #0                      ",
+        "0x00006d00: 48ea0508   orr.w     r8, r8, r5                  ",
+        "0x00006d04: f51d       adds      r5, r6, #7                  ",
+        "0x00006d06: 02f00101   and       r1, r2, #1                  ",
+        "0x00006d0a: cde90089   strd      r8, sb, [sp]                ",
+        "0x00006d0e: c2f34002   ubfx      r2, r2, #1, #1              ",
+        "0x00006d12: 0294       str       r4, [sp, #8]                ",
+        "0x00006d14: 0395       str       r5, [sp, #0xc]              ",
+        "0x00006d16: 33e3       b         #0x7380                     "
+      ]
+    },
+    {
+      "opcode": "0x3E",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00006D18",
+      "size": 82,
+      "callees": [],
+      "req_reads": [
+        "ldrb@+4",
+        "ldrb@+5",
+        "ldrb@+6"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007402"
+      ],
+      "disasm": [
+        "0x00006d18: 354c       ldr       r4, [pc, #0xd4]               ; =0x20026D70",
+        "0x00006d1a: 3879       ldrb      r0, [r7, #4]                ",
+        "0x00006d1c: 94f80d12   ldrb.w    r1, [r4, #0x20d]            ",
+        "0x00006d20: 7a79       ldrb      r2, [r7, #5]                ",
+        "0x00006d22: bb79       ldrb      r3, [r7, #6]                ",
+        "0x00006d24: d7f80780   ldr.w     r8, [r7, #7]                ",
+        "0x00006d28: d7f80b90   ldr.w     sb, [r7, #0xb]              ",
+        "0x00006d2c: b7f80fc0   ldrh.w    ip, [r7, #0xf]              ",
+        "0x00006d30: 0529       cmp       r1, #5                      ",
+        "0x00006d32: 40f0ad83   bne.w     #0x7490                     ",
+        "0x00006d36: 03f12205   add.w     r5, r3, #0x22               ",
+        "0x00006d3a: 04eb8504   add.w     r4, r4, r5, lsl #2          ",
+        "0x00006d3e: 02f00101   and       r1, r2, #1                  ",
+        "0x00006d42: 6568       ldr       r5, [r4, #4]                ",
+        "0x00006d44: b5f1ff3f   cmp.w     r5, #-1                     ",
+        "0x00006d48: 04bf       itt       eq                          ",
+        "0x00006d4a: d7f81150   ldreq.w   r5, [r7, #0x11]             ",
+        "0x00006d4e: 6560       streq     r5, [r4, #4]                ",
+        "0x00006d50: 0024       movs      r4, #0                      ",
+        "0x00006d52: 44ea0804   orr.w     r4, r4, r8                  ",
+        "0x00006d56: 4d46       mov       r5, sb                      ",
+        "0x00006d58: 1537       adds      r7, #0x15                   ",
+        "0x00006d5a: c2f34002   ubfx      r2, r2, #1, #1              ",
+        "0x00006d5e: cde90045   strd      r4, r5, [sp]                ",
+        "0x00006d62: cdf808c0   str.w     ip, [sp, #8]                ",
+        "0x00006d66: 0397       str       r7, [sp, #0xc]              ",
+        "0x00006d68: 4be3       b         #0x7402                     "
+      ]
+    },
+    {
+      "opcode": "0x3F",
+      "supported": true,
+      "hint": "",
+      "addr": "0x000070D0",
+      "size": 36,
+      "callees": [
+        "0x0002112A"
+      ],
+      "req_reads": [
+        "ldrh@+4",
+        "ldrh@+6"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x000070d0: bb88       ldrh      r3, [r7, #4]                ",
+        "0x000070d2: 164d       ldr       r5, [pc, #0x58]               ; =0x0003CC9C",
+        "0x000070d4: fc88       ldrh      r4, [r7, #6]                ",
+        "0x000070d6: 0493       str       r3, [sp, #0x10]             ",
+        "0x000070d8: f31d       adds      r3, r6, #7                  ",
+        "0x000070da: 0693       str       r3, [sp, #0x18]             ",
+        "0x000070dc: 05f11003   add.w     r3, r5, #0x10               ",
+        "0x000070e0: 0fcb       ldm       r3, {r0, r1, r2, r3}        ",
+        "0x000070e2: 6f46       mov       r7, sp                      ",
+        "0x000070e4: 0594       str       r4, [sp, #0x14]             ",
+        "0x000070e6: 87e80f00   stm.w     r7, {r0, r1, r2, r3}        ",
+        "0x000070ea: 95e80f00   ldm.w     r5, {r0, r1, r2, r3}        ",
+        "0x000070ee: 1af01cf8   bl        #0x2112a                    ",
+        "0x000070f2: aee1       b         #0x7452                     "
+      ]
+    },
+    {
+      "opcode": "0x40",
+      "supported": true,
+      "hint": "",
+      "addr": "0x000070F4",
+      "size": 60,
+      "callees": [
+        "0x0002135C"
+      ],
+      "req_reads": [
+        "ldrh@+4",
+        "ldrh@+6"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x000070f4: bb88       ldrh      r3, [r7, #4]                ",
+        "0x000070f6: 0d4c       ldr       r4, [pc, #0x34]               ; =0x0003CC9C",
+        "0x000070f8: 0493       str       r3, [sp, #0x10]             ",
+        "0x000070fa: fb88       ldrh      r3, [r7, #6]                ",
+        "0x000070fc: 0593       str       r3, [sp, #0x14]             ",
+        "0x000070fe: 04f11003   add.w     r3, r4, #0x10               ",
+        "0x00007102: 0fcb       ldm       r3, {r0, r1, r2, r3}        ",
+        "0x00007104: 0837       adds      r7, #8                      ",
+        "0x00007106: e846       mov       r8, sp                      ",
+        "0x00007108: 0697       str       r7, [sp, #0x18]             ",
+        "0x0000710a: 88e80f00   stm.w     r8, {r0, r1, r2, r3}        ",
+        "0x0000710e: 94e80f00   ldm.w     r4, {r0, r1, r2, r3}        ",
+        "0x00007112: 1af023f9   bl        #0x2135c                    ",
+        "0x00007116: c4e1       b         #0x74a2                     ",
+        "0x00007118: 1004       lsls      r0, r2, #0x10               ",
+        "0x0000711a: 0020       movs      r0, #0                      ",
+        "0x0000711c: 0070       strb      r0, [r0]                    ",
+        "0x0000711e: 0040       ands      r0, r0                      ",
+        "0x00007120: 1404       lsls      r4, r2, #0x10               ",
+        "0x00007122: 0020       movs      r0, #0                      ",
+        "0x00007124: 984b       ldr       r3, [pc, #0x260]              ; =0xF8DFE062",
+        "0x00007126: 0020       movs      r0, #0                      ",
+        "0x00007128: 506d       ldr       r0, [r2, #0x54]             ",
+        "0x0000712a: 0220       movs      r0, #2                      ",
+        "0x0000712c: 9ccc       ldm       r4, {r2, r3, r4, r7}        ",
+        "0x0000712e: 0300       movs      r3, r0                      "
+      ]
+    },
+    {
+      "opcode": "0x41",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00006E94",
+      "size": 20,
+      "callees": [
+        "0x0001C580"
+      ],
+      "req_reads": [
+        "ldrb@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006e94: 3b79       ldrb      r3, [r7, #4]                ",
+        "0x00006e96: 8df8b830   strb.w    r3, [sp, #0xb8]             ",
+        "0x00006e9a: d7f80530   ldr.w     r3, [r7, #5]                ",
+        "0x00006e9e: 2ea8       add       r0, sp, #0xb8               ",
+        "0x00006ea0: 2f93       str       r3, [sp, #0xbc]             ",
+        "0x00006ea2: 15f06dfb   bl        #0x1c580                    ",
+        "0x00006ea6: fce2       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x42",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00006EA8",
+      "size": 6,
+      "callees": [
+        "0x0001C4C4"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006ea8: 15f00cfb   bl        #0x1c4c4                    ",
+        "0x00006eac: f9e2       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x43",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00006EAE",
+      "size": 6,
+      "callees": [
+        "0x0001C4F4"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006eae: 15f021fb   bl        #0x1c4f4                    ",
+        "0x00006eb2: f6e2       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x44",
+      "supported": true,
+      "hint": "ET_SETUP_DIG_PARAMS",
+      "addr": "0x00006E30",
+      "size": 10,
+      "callees": [
+        "0x0001C870"
+      ],
+      "req_reads": [
+        "ldrb@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00006e30: 3879       ldrb      r0, [r7, #4]                ",
+        "0x00006e32: 791d       adds      r1, r7, #5                  ",
+        "0x00006e34: 15f01cfd   bl        #0x1c870                    ",
+        "0x00006e38: 33e3       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x45",
+      "supported": true,
+      "hint": "",
+      "addr": "0x000070C8",
+      "size": 8,
+      "callees": [
+        "0x0000F108"
+      ],
+      "req_reads": [
+        "ldr@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x000070c8: 7868       ldr       r0, [r7, #4]                ",
+        "0x000070ca: 08f01df8   bl        #0xf108                     ",
+        "0x000070ce: e8e1       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x46",
+      "supported": true,
+      "hint": "ET_HARDWARE_INFO",
+      "addr": "0x00006E82",
+      "size": 18,
+      "callees": [
+        "0x0001C904"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074B8"
+      ],
+      "disasm": [
+        "0x00006e82: f01d       adds      r0, r6, #7                  ",
+        "0x00006e84: 06f10b01   add.w     r1, r6, #0xb                ",
+        "0x00006e88: 15f03cfd   bl        #0x1c904                    ",
+        "0x00006e8c: 0524       movs      r4, #5                      ",
+        "0x00006e8e: c6f80300   str.w     r0, [r6, #3]                ",
+        "0x00006e92: 11e3       b         #0x74b8                     "
+      ]
+    },
+    {
+      "opcode": "0x47",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00007130",
+      "size": 22,
+      "callees": [
+        "0x000174E0"
+      ],
+      "req_reads": [
+        "ldr@+16",
+        "ldrh@+4",
+        "ldrh@+6",
+        "ldr@+8",
+        "ldr@+12"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x00007130: 3c69       ldr       r4, [r7, #0x10]             ",
+        "0x00007132: b888       ldrh      r0, [r7, #4]                ",
+        "0x00007134: f988       ldrh      r1, [r7, #6]                ",
+        "0x00007136: 0094       str       r4, [sp]                    ",
+        "0x00007138: f31d       adds      r3, r6, #7                  ",
+        "0x0000713a: 0193       str       r3, [sp, #4]                ",
+        "0x0000713c: ba68       ldr       r2, [r7, #8]                ",
+        "0x0000713e: fb68       ldr       r3, [r7, #0xc]              ",
+        "0x00007140: 10f0cef9   bl        #0x174e0                    ",
+        "0x00007144: 85e1       b         #0x7452                     "
+      ]
+    },
+    {
+      "opcode": "0x48",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00007146",
+      "size": 24,
+      "callees": [
+        "0x00017630"
+      ],
+      "req_reads": [
+        "ldr@+16",
+        "ldrh@+4",
+        "ldrh@+6",
+        "ldr@+8",
+        "ldr@+12"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00007146: 3b69       ldr       r3, [r7, #0x10]             ",
+        "0x00007148: b888       ldrh      r0, [r7, #4]                ",
+        "0x0000714a: f988       ldrh      r1, [r7, #6]                ",
+        "0x0000714c: 0093       str       r3, [sp]                    ",
+        "0x0000714e: 07f11403   add.w     r3, r7, #0x14               ",
+        "0x00007152: 0193       str       r3, [sp, #4]                ",
+        "0x00007154: ba68       ldr       r2, [r7, #8]                ",
+        "0x00007156: fb68       ldr       r3, [r7, #0xc]              ",
+        "0x00007158: 10f06afa   bl        #0x17630                    ",
+        "0x0000715c: a1e1       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x49",
+      "supported": true,
+      "hint": "",
+      "addr": "0x0000715E",
+      "size": 98,
+      "callees": [
+        "0x00019130",
+        "0x00006324",
+        "0x00006348"
+      ],
+      "req_reads": [
+        "ldrb@+4",
+        "ldr@+8",
+        "ldr@+8",
+        "ldr@+8",
+        "ldr@+8",
+        "ldr@+8",
+        "ldr@+8"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074B6"
+      ],
+      "disasm": [
+        "0x0000715e: 3b79       ldrb      r3, [r7, #4]                ",
+        "0x00007160: 052b       cmp       r3, #5                      ",
+        "0x00007162: 28d8       bhi       #0x71b6                     ",
+        "0x00007164: dfe803f0   tbb       [pc, r3]                    ",
+        "0x00007168: 0309       lsrs      r3, r0, #4                  ",
+        "0x0000716a: 0f17       asrs      r7, r1, #0x1c               ",
+        "0x0000716c: 1b1f       subs      r3, r3, #4                  ",
+        "0x0000716e: ba68       ldr       r2, [r7, #8]                ",
+        "0x00007170: a54b       ldr       r3, [pc, #0x294]              ; =0x20026D51",
+        "0x00007172: 003a       subs      r2, #0                      ",
+        "0x00007174: 18bf       it        ne                          ",
+        "0x00007176: 0122       movne     r2, #1                      ",
+        "0x00007178: 1ae0       b         #0x71b0                     ",
+        "0x0000717a: ba68       ldr       r2, [r7, #8]                ",
+        "0x0000717c: a34b       ldr       r3, [pc, #0x28c]              ; =0x20026D53",
+        "0x0000717e: 003a       subs      r2, #0                      ",
+        "0x00007180: 18bf       it        ne                          ",
+        "0x00007182: 0122       movne     r2, #1                      ",
+        "0x00007184: 14e0       b         #0x71b0                     ",
+        "0x00007186: b968       ldr       r1, [r7, #8]                ",
+        "0x00007188: a148       ldr       r0, [pc, #0x284]              ; =0x20026D70",
+        "0x0000718a: 0039       subs      r1, #0                      ",
+        "0x0000718c: 18bf       it        ne                          ",
+        "0x0000718e: 0121       movne     r1, #1                      ",
+        "0x00007190: 11f0ceff   bl        #0x19130                    ",
+        "0x00007194: 0de0       b         #0x71b2                     ",
+        "0x00007196: b868       ldr       r0, [r7, #8]                ",
+        "0x00007198: fff7c4f8   bl        #0x6324                     "
+      ]
+    },
+    {
+      "opcode": "0x4A",
+      "supported": true,
+      "hint": "XDS_PING / KEEP_ALIVE",
+      "addr": "0x000071E0",
+      "size": 16,
+      "callees": [
+        "0x00019148"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074B8"
+      ],
+      "disasm": [
+        "0x000071e0: 3046       mov       r0, r6                      ",
+        "0x000071e2: 11f0b1ff   bl        #0x19148                    ",
+        "0x000071e6: 41f2e904   movw      r4, #0x10e9                 ",
+        "0x000071ea: c6f80300   str.w     r0, [r6, #3]                ",
+        "0x000071ee: 63e1       b         #0x74b8                     "
+      ]
+    },
+    {
+      "opcode": "0x4B",
+      "supported": false,
+      "target": "0x000074A8"
+    },
+    {
+      "opcode": "0x4C",
+      "supported": false,
+      "target": "0x000074A8"
+    },
+    {
+      "opcode": "0x4D",
+      "supported": false,
+      "target": "0x000074A8"
+    },
+    {
+      "opcode": "0x4E",
+      "supported": false,
+      "target": "0x000074A8"
+    },
+    {
+      "opcode": "0x4F",
+      "supported": false,
+      "target": "0x000074A8"
+    },
+    {
+      "opcode": "0x50",
+      "supported": true,
+      "hint": "",
+      "addr": "0x000071C0",
+      "size": 14,
+      "callees": [
+        "0x00018C1C"
+      ],
+      "req_reads": [
+        "ldrb@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x000071c0: 3879       ldrb      r0, [r7, #4]                ",
+        "0x000071c2: b7f80510   ldrh.w    r1, [r7, #5]                ",
+        "0x000071c6: fa1d       adds      r2, r7, #7                  ",
+        "0x000071c8: 11f028fd   bl        #0x18c1c                    ",
+        "0x000071cc: 69e1       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x51",
+      "supported": true,
+      "hint": "",
+      "addr": "0x000071CE",
+      "size": 18,
+      "callees": [
+        "0x00018C38"
+      ],
+      "req_reads": [
+        "ldrb@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x000071ce: b7f80540   ldrh.w    r4, [r7, #5]                ",
+        "0x000071d2: 3879       ldrb      r0, [r7, #4]                ",
+        "0x000071d4: 2146       mov       r1, r4                      ",
+        "0x000071d6: f21d       adds      r2, r6, #7                  ",
+        "0x000071d8: 11f02efd   bl        #0x18c38                    ",
+        "0x000071dc: a400       lsls      r4, r4, #2                  ",
+        "0x000071de: 38e1       b         #0x7452                     "
+      ]
+    },
+    {
+      "opcode": "0x52",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00006FAC",
+      "size": 52,
+      "callees": [
+        "0x00017B76"
+      ],
+      "req_reads": [
+        "ldrb@+3",
+        "ldrh@+10",
+        "ldrh@+4",
+        "ldrh@+12"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x00006fac: fd78       ldrb      r5, [r7, #3]                ",
+        "0x00006fae: 7a89       ldrh      r2, [r7, #0xa]              ",
+        "0x00006fb0: b888       ldrh      r0, [r7, #4]                ",
+        "0x00006fb2: d7f80610   ldr.w     r1, [r7, #6]                ",
+        "0x00006fb6: bb89       ldrh      r3, [r7, #0xc]              ",
+        "0x00006fb8: d7f80ec0   ldr.w     ip, [r7, #0xe]              ",
+        "0x00006fbc: 542d       cmp       r5, #0x54                   ",
+        "0x00006fbe: 06f1070e   add.w     lr, r6, #7                  ",
+        "0x00006fc2: 1446       mov       r4, r2                      ",
+        "0x00006fc4: 03d1       bne       #0x6fce                     ",
+        "0x00006fc6: d51d       adds      r5, r2, #7                  ",
+        "0x00006fc8: 7519       adds      r5, r6, r5                  ",
+        "0x00006fca: 5400       lsls      r4, r2, #1                  ",
+        "0x00006fcc: 00e0       b         #0x6fd0                     ",
+        "0x00006fce: 0025       movs      r5, #0                      ",
+        "0x00006fd0: cdf800c0   str.w     ip, [sp]                    ",
+        "0x00006fd4: cdf804e0   str.w     lr, [sp, #4]                ",
+        "0x00006fd8: 0295       str       r5, [sp, #8]                ",
+        "0x00006fda: 10f0ccfd   bl        #0x17b76                    ",
+        "0x00006fde: 38e2       b         #0x7452                     "
+      ]
+    },
+    {
+      "opcode": "0x53",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00006FE0",
+      "size": 50,
+      "callees": [
+        "0x00017BA0"
+      ],
+      "req_reads": [
+        "ldrb@+3",
+        "ldrh@+4",
+        "ldrh@+10",
+        "ldrh@+12"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x00006fe0: fc78       ldrb      r4, [r7, #3]                ",
+        "0x00006fe2: b888       ldrh      r0, [r7, #4]                ",
+        "0x00006fe4: d7f80610   ldr.w     r1, [r7, #6]                ",
+        "0x00006fe8: 7a89       ldrh      r2, [r7, #0xa]              ",
+        "0x00006fea: bb89       ldrh      r3, [r7, #0xc]              ",
+        "0x00006fec: d7f80ec0   ldr.w     ip, [r7, #0xe]              ",
+        "0x00006ff0: 552c       cmp       r4, #0x55                   ",
+        "0x00006ff2: 07f1120e   add.w     lr, r7, #0x12               ",
+        "0x00006ff6: 02d1       bne       #0x6ffe                     ",
+        "0x00006ff8: f51d       adds      r5, r6, #7                  ",
+        "0x00006ffa: 1446       mov       r4, r2                      ",
+        "0x00006ffc: 01e0       b         #0x7002                     ",
+        "0x00006ffe: 0024       movs      r4, #0                      ",
+        "0x00007000: 2546       mov       r5, r4                      ",
+        "0x00007002: cdf800c0   str.w     ip, [sp]                    ",
+        "0x00007006: cdf804e0   str.w     lr, [sp, #4]                ",
+        "0x0000700a: 0295       str       r5, [sp, #8]                ",
+        "0x0000700c: 10f0c8fd   bl        #0x17ba0                    ",
+        "0x00007010: 1fe2       b         #0x7452                     "
+      ]
+    },
+    {
+      "opcode": "0x54",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00006FAC",
+      "size": 52,
+      "callees": [
+        "0x00017B76"
+      ],
+      "req_reads": [
+        "ldrb@+3",
+        "ldrh@+10",
+        "ldrh@+4",
+        "ldrh@+12"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x00006fac: fd78       ldrb      r5, [r7, #3]                ",
+        "0x00006fae: 7a89       ldrh      r2, [r7, #0xa]              ",
+        "0x00006fb0: b888       ldrh      r0, [r7, #4]                ",
+        "0x00006fb2: d7f80610   ldr.w     r1, [r7, #6]                ",
+        "0x00006fb6: bb89       ldrh      r3, [r7, #0xc]              ",
+        "0x00006fb8: d7f80ec0   ldr.w     ip, [r7, #0xe]              ",
+        "0x00006fbc: 542d       cmp       r5, #0x54                   ",
+        "0x00006fbe: 06f1070e   add.w     lr, r6, #7                  ",
+        "0x00006fc2: 1446       mov       r4, r2                      ",
+        "0x00006fc4: 03d1       bne       #0x6fce                     ",
+        "0x00006fc6: d51d       adds      r5, r2, #7                  ",
+        "0x00006fc8: 7519       adds      r5, r6, r5                  ",
+        "0x00006fca: 5400       lsls      r4, r2, #1                  ",
+        "0x00006fcc: 00e0       b         #0x6fd0                     ",
+        "0x00006fce: 0025       movs      r5, #0                      ",
+        "0x00006fd0: cdf800c0   str.w     ip, [sp]                    ",
+        "0x00006fd4: cdf804e0   str.w     lr, [sp, #4]                ",
+        "0x00006fd8: 0295       str       r5, [sp, #8]                ",
+        "0x00006fda: 10f0ccfd   bl        #0x17b76                    ",
+        "0x00006fde: 38e2       b         #0x7452                     "
+      ]
+    },
+    {
+      "opcode": "0x55",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00006FE0",
+      "size": 50,
+      "callees": [
+        "0x00017BA0"
+      ],
+      "req_reads": [
+        "ldrb@+3",
+        "ldrh@+4",
+        "ldrh@+10",
+        "ldrh@+12"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x00006fe0: fc78       ldrb      r4, [r7, #3]                ",
+        "0x00006fe2: b888       ldrh      r0, [r7, #4]                ",
+        "0x00006fe4: d7f80610   ldr.w     r1, [r7, #6]                ",
+        "0x00006fe8: 7a89       ldrh      r2, [r7, #0xa]              ",
+        "0x00006fea: bb89       ldrh      r3, [r7, #0xc]              ",
+        "0x00006fec: d7f80ec0   ldr.w     ip, [r7, #0xe]              ",
+        "0x00006ff0: 552c       cmp       r4, #0x55                   ",
+        "0x00006ff2: 07f1120e   add.w     lr, r7, #0x12               ",
+        "0x00006ff6: 02d1       bne       #0x6ffe                     ",
+        "0x00006ff8: f51d       adds      r5, r6, #7                  ",
+        "0x00006ffa: 1446       mov       r4, r2                      ",
+        "0x00006ffc: 01e0       b         #0x7002                     ",
+        "0x00006ffe: 0024       movs      r4, #0                      ",
+        "0x00007000: 2546       mov       r5, r4                      ",
+        "0x00007002: cdf800c0   str.w     ip, [sp]                    ",
+        "0x00007006: cdf804e0   str.w     lr, [sp, #4]                ",
+        "0x0000700a: 0295       str       r5, [sp, #8]                ",
+        "0x0000700c: 10f0c8fd   bl        #0x17ba0                    ",
+        "0x00007010: 1fe2       b         #0x7452                     "
+      ]
+    },
+    {
+      "opcode": "0x56",
+      "supported": true,
+      "hint": "",
+      "addr": "0x000071F0",
+      "size": 10,
+      "callees": [
+        "0x0001858C"
+      ],
+      "req_reads": [
+        "ldrb@+4",
+        "ldrb@+5"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007212"
+      ],
+      "disasm": [
+        "0x000071f0: 3879       ldrb      r0, [r7, #4]                ",
+        "0x000071f2: 7979       ldrb      r1, [r7, #5]                ",
+        "0x000071f4: 11f0caf9   bl        #0x1858c                    ",
+        "0x000071f8: 0be0       b         #0x7212                     "
+      ]
+    },
+    {
+      "opcode": "0x57",
+      "supported": true,
+      "hint": "",
+      "addr": "0x000071FA",
+      "size": 6,
+      "callees": [
+        "0x000186DC"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007212"
+      ],
+      "disasm": [
+        "0x000071fa: 11f06ffa   bl        #0x186dc                    ",
+        "0x000071fe: 08e0       b         #0x7212                     "
+      ]
+    },
+    {
+      "opcode": "0x58",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00007200",
+      "size": 30,
+      "callees": [
+        "0x00018B04"
+      ],
+      "req_reads": [
+        "ldrb@+4",
+        "ldrb@+5"
+      ],
+      "resp_writes": [
+        "strb@+3",
+        "strb@+4",
+        "strb@+5",
+        "strb@+6"
+      ],
+      "epilogue": [
+        "0x000074B8"
+      ],
+      "disasm": [
+        "0x00007200: b7f80120   ldrh.w    r2, [r7, #1]                ",
+        "0x00007204: 3879       ldrb      r0, [r7, #4]                ",
+        "0x00007206: 7979       ldrb      r1, [r7, #5]                ",
+        "0x00007208: 033a       subs      r2, #3                      ",
+        "0x0000720a: 92b2       uxth      r2, r2                      ",
+        "0x0000720c: bb1d       adds      r3, r7, #6                  ",
+        "0x0000720e: 11f079fc   bl        #0x18b04                    ",
+        "0x00007212: 0024       movs      r4, #0                      ",
+        "0x00007214: f470       strb      r4, [r6, #3]                ",
+        "0x00007216: 3471       strb      r4, [r6, #4]                ",
+        "0x00007218: 7471       strb      r4, [r6, #5]                ",
+        "0x0000721a: b471       strb      r4, [r6, #6]                ",
+        "0x0000721c: 4ce1       b         #0x74b8                     "
+      ]
+    },
+    {
+      "opcode": "0x59",
+      "supported": true,
+      "hint": "",
+      "addr": "0x0000721E",
+      "size": 24,
+      "callees": [
+        "0x00018730"
+      ],
+      "req_reads": [
+        "ldrh@+4"
+      ],
+      "resp_writes": [
+        "strb@+3",
+        "strb@+4",
+        "strb@+5",
+        "strb@+6"
+      ],
+      "epilogue": [
+        "0x000074B8"
+      ],
+      "disasm": [
+        "0x0000721e: bc88       ldrh      r4, [r7, #4]                ",
+        "0x00007220: f01d       adds      r0, r6, #7                  ",
+        "0x00007222: 2146       mov       r1, r4                      ",
+        "0x00007224: 11f084fa   bl        #0x18730                    ",
+        "0x00007228: 0334       adds      r4, #3                      ",
+        "0x0000722a: 0023       movs      r3, #0                      ",
+        "0x0000722c: f370       strb      r3, [r6, #3]                ",
+        "0x0000722e: 3371       strb      r3, [r6, #4]                ",
+        "0x00007230: 7371       strb      r3, [r6, #5]                ",
+        "0x00007232: b371       strb      r3, [r6, #6]                ",
+        "0x00007234: 40e1       b         #0x74b8                     "
+      ]
+    },
+    {
+      "opcode": "0x5A",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00007236",
+      "size": 16,
+      "callees": [
+        "0x00015654"
+      ],
+      "req_reads": [
+        "ldr@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074B8"
+      ],
+      "disasm": [
+        "0x00007236: 7868       ldr       r0, [r7, #4]                ",
+        "0x00007238: f11d       adds      r1, r6, #7                  ",
+        "0x0000723a: 0ef00bfa   bl        #0x15654                    ",
+        "0x0000723e: c6f80300   str.w     r0, [r6, #3]                ",
+        "0x00007242: 0424       movs      r4, #4                      ",
+        "0x00007244: 38e1       b         #0x74b8                     "
+      ]
+    },
+    {
+      "opcode": "0x5B",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00007246",
+      "size": 102,
+      "callees": [
+        "0x000155D8",
+        "0x00015834"
+      ],
+      "req_reads": [
+        "ldreq@+20"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452"
+      ],
+      "disasm": [
+        "0x00007246: d7f80600   ldr.w     r0, [r7, #6]                ",
+        "0x0000724a: d7f80a50   ldr.w     r5, [r7, #0xa]              ",
+        "0x0000724e: 97f804b0   ldrb.w    fp, [r7, #4]                ",
+        "0x00007252: 97f80580   ldrb.w    r8, [r7, #5]                ",
+        "0x00007256: d7f80e90   ldr.w     sb, [r7, #0xe]              ",
+        "0x0000725a: b7f812a0   ldrh.w    sl, [r7, #0x12]             ",
+        "0x0000725e: 0024       movs      r4, #0                      ",
+        "0x00007260: 44ea0002   orr.w     r2, r4, r0                  ",
+        "0x00007264: 1046       mov       r0, r2                      ",
+        "0x00007266: 2946       mov       r1, r5                      ",
+        "0x00007268: 0ef0b6f9   bl        #0x155d8                    ",
+        "0x0000726c: 0346       mov       r3, r0                      ",
+        "0x0000726e: 6848       ldr       r0, [pc, #0x1a0]              ; =0x20026D70",
+        "0x00007270: 90f80d22   ldrb.w    r2, [r0, #0x20d]            ",
+        "0x00007274: 062a       cmp       r2, #6                      ",
+        "0x00007276: 40f0eb80   bne.w     #0x7450                     ",
+        "0x0000727a: 03f12204   add.w     r4, r3, #0x22               ",
+        "0x0000727e: 00eb8400   add.w     r0, r0, r4, lsl #2          ",
+        "0x00007282: 08f00101   and       r1, r8, #1                  ",
+        "0x00007286: 4468       ldr       r4, [r0, #4]                ",
+        "0x00007288: b4f1ff3f   cmp.w     r4, #-1                     ",
+        "0x0000728c: 04bf       itt       eq                          ",
+        "0x0000728e: 7c69       ldreq     r4, [r7, #0x14]             ",
+        "0x00007290: 4460       streq     r4, [r0, #4]                ",
+        "0x00007292: f01d       adds      r0, r6, #7                  ",
+        "0x00007294: 0290       str       r0, [sp, #8]                ",
+        "0x00007296: c8f34002   ubfx      r2, r8, #1, #1              ",
+        "0x0000729a: 5446       mov       r4, sl                      "
+      ]
+    },
+    {
+      "opcode": "0x5C",
+      "supported": true,
+      "hint": "",
+      "addr": "0x000072AC",
+      "size": 98,
+      "callees": [
+        "0x000155D8"
+      ],
+      "req_reads": [
+        "ldrh@+18",
+        "ldrb@+4",
+        "ldreq@+20"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074DA"
+      ],
+      "disasm": [
+        "0x000072ac: 7c8a       ldrh      r4, [r7, #0x12]             ",
+        "0x000072ae: d7f80e30   ldr.w     r3, [r7, #0xe]              ",
+        "0x000072b2: 3d79       ldrb      r5, [r7, #4]                ",
+        "0x000072b4: 97f805b0   ldrb.w    fp, [r7, #5]                ",
+        "0x000072b8: d7f80600   ldr.w     r0, [r7, #6]                ",
+        "0x000072bc: d7f80a10   ldr.w     r1, [r7, #0xa]              ",
+        "0x000072c0: 0b94       str       r4, [sp, #0x2c]             ",
+        "0x000072c2: 534c       ldr       r4, [pc, #0x14c]              ; =0x20026D70",
+        "0x000072c4: 0a93       str       r3, [sp, #0x28]             ",
+        "0x000072c6: 94f80d32   ldrb.w    r3, [r4, #0x20d]            ",
+        "0x000072ca: 062b       cmp       r3, #6                      ",
+        "0x000072cc: 40f0e080   bne.w     #0x7490                     ",
+        "0x000072d0: 0022       movs      r2, #0                      ",
+        "0x000072d2: 42ea0008   orr.w     r8, r2, r0                  ",
+        "0x000072d6: 4046       mov       r0, r8                      ",
+        "0x000072d8: 0ef07ef9   bl        #0x155d8                    ",
+        "0x000072dc: 00f12202   add.w     r2, r0, #0x22               ",
+        "0x000072e0: 04eb8204   add.w     r4, r4, r2, lsl #2          ",
+        "0x000072e4: 0bf0010a   and       sl, fp, #1                  ",
+        "0x000072e8: 6268       ldr       r2, [r4, #4]                ",
+        "0x000072ea: b2f1ff3f   cmp.w     r2, #-1                     ",
+        "0x000072ee: 04bf       itt       eq                          ",
+        "0x000072f0: 7a69       ldreq     r2, [r7, #0x14]             ",
+        "0x000072f2: 6260       streq     r2, [r4, #4]                ",
+        "0x000072f4: 0a9a       ldr       r2, [sp, #0x28]             ",
+        "0x000072f6: 0b9c       ldr       r4, [sp, #0x2c]             ",
+        "0x000072f8: 0092       str       r2, [sp]                    ",
+        "0x000072fa: cbf3400b   ubfx      fp, fp, #1, #1              "
+      ]
+    },
+    {
+      "opcode": "0x5D",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00007418",
+      "size": 64,
+      "callees": [
+        "0x000155D8",
+        "0x00016570"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452",
+        "0x000074B8"
+      ],
+      "disasm": [
+        "0x00007418: d7f80500   ldr.w     r0, [r7, #5]                ",
+        "0x0000741c: d7f80950   ldr.w     r5, [r7, #9]                ",
+        "0x00007420: 97f80490   ldrb.w    sb, [r7, #4]                ",
+        "0x00007424: 97f80d80   ldrb.w    r8, [r7, #0xd]              ",
+        "0x00007428: 0024       movs      r4, #0                      ",
+        "0x0000742a: 44ea0002   orr.w     r2, r4, r0                  ",
+        "0x0000742e: 2946       mov       r1, r5                      ",
+        "0x00007430: 1046       mov       r0, r2                      ",
+        "0x00007432: 0ef0d1f8   bl        #0x155d8                    ",
+        "0x00007436: 2a4b       ldr       r3, [pc, #0xa8]               ; =0x20026D70",
+        "0x00007438: 93f80d32   ldrb.w    r3, [r3, #0x20d]            ",
+        "0x0000743c: 062b       cmp       r3, #6                      ",
+        "0x0000743e: 0146       mov       r1, r0                      ",
+        "0x00007440: 06d1       bne       #0x7450                     ",
+        "0x00007442: 4846       mov       r0, sb                      ",
+        "0x00007444: 4246       mov       r2, r8                      ",
+        "0x00007446: f31d       adds      r3, r6, #7                  ",
+        "0x00007448: 0ff092f8   bl        #0x16570                    ",
+        "0x0000744c: 0434       adds      r4, #4                      ",
+        "0x0000744e: 00e0       b         #0x7452                     ",
+        "0x00007450: 2448       ldr       r0, [pc, #0x90]               ; =0xFFFFFC16",
+        "0x00007452: c6f80300   str.w     r0, [r6, #3]                ",
+        "0x00007456: 2fe0       b         #0x74b8                     "
+      ]
+    },
+    {
+      "opcode": "0x5E",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00007458",
+      "size": 60,
+      "callees": [
+        "0x000155D8",
+        "0x000165AC"
+      ],
+      "req_reads": [],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2",
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00007458: d7f80500   ldr.w     r0, [r7, #5]                ",
+        "0x0000745c: d7f80950   ldr.w     r5, [r7, #9]                ",
+        "0x00007460: 97f80490   ldrb.w    sb, [r7, #4]                ",
+        "0x00007464: 97f80d80   ldrb.w    r8, [r7, #0xd]              ",
+        "0x00007468: 0024       movs      r4, #0                      ",
+        "0x0000746a: 44ea0002   orr.w     r2, r4, r0                  ",
+        "0x0000746e: 2946       mov       r1, r5                      ",
+        "0x00007470: 1046       mov       r0, r2                      ",
+        "0x00007472: 0ef0b1f8   bl        #0x155d8                    ",
+        "0x00007476: 1a4b       ldr       r3, [pc, #0x68]               ; =0x20026D70",
+        "0x00007478: 93f80d32   ldrb.w    r3, [r3, #0x20d]            ",
+        "0x0000747c: 062b       cmp       r3, #6                      ",
+        "0x0000747e: 0146       mov       r1, r0                      ",
+        "0x00007480: 06d1       bne       #0x7490                     ",
+        "0x00007482: 4846       mov       r0, sb                      ",
+        "0x00007484: 4246       mov       r2, r8                      ",
+        "0x00007486: 07f10e03   add.w     r3, r7, #0xe                ",
+        "0x0000748a: 0ff08ff8   bl        #0x165ac                    ",
+        "0x0000748e: 08e0       b         #0x74a2                     ",
+        "0x00007490: 1448       ldr       r0, [pc, #0x50]               ; =0xFFFFFC16",
+        "0x00007492: 06e0       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x5F",
+      "supported": true,
+      "hint": "",
+      "addr": "0x0000730E",
+      "size": 124,
+      "callees": [
+        "0x000155D8",
+        "0x00015D98"
+      ],
+      "req_reads": [
+        "ldrh@+22",
+        "ldreq@+24"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x00007452",
+        "0x00007450"
+      ],
+      "disasm": [
+        "0x0000730e: d7f80e50   ldr.w     r5, [r7, #0xe]              ",
+        "0x00007312: 97f804a0   ldrb.w    sl, [r7, #4]                ",
+        "0x00007316: 97f805c0   ldrb.w    ip, [r7, #5]                ",
+        "0x0000731a: d7f80600   ldr.w     r0, [r7, #6]                ",
+        "0x0000731e: d7f80a10   ldr.w     r1, [r7, #0xa]              ",
+        "0x00007322: 0a95       str       r5, [sp, #0x28]             ",
+        "0x00007324: 3a4d       ldr       r5, [pc, #0xe8]               ; =0x20026D70",
+        "0x00007326: d7f81220   ldr.w     r2, [r7, #0x12]             ",
+        "0x0000732a: 95f80d32   ldrb.w    r3, [r5, #0x20d]            ",
+        "0x0000732e: 0b92       str       r2, [sp, #0x2c]             ",
+        "0x00007330: 062b       cmp       r3, #6                      ",
+        "0x00007332: fc8a       ldrh      r4, [r7, #0x16]             ",
+        "0x00007334: 27d1       bne       #0x7386                     ",
+        "0x00007336: 0022       movs      r2, #0                      ",
+        "0x00007338: 42ea0008   orr.w     r8, r2, r0                  ",
+        "0x0000733c: 0cf0010b   and       fp, ip, #1                  ",
+        "0x00007340: 4046       mov       r0, r8                      ",
+        "0x00007342: ccf3400c   ubfx      ip, ip, #1, #1              ",
+        "0x00007346: cdf824c0   str.w     ip, [sp, #0x24]             ",
+        "0x0000734a: 0ef045f9   bl        #0x155d8                    ",
+        "0x0000734e: 00f12202   add.w     r2, r0, #0x22               ",
+        "0x00007352: 05eb8205   add.w     r5, r5, r2, lsl #2          ",
+        "0x00007356: ddf824c0   ldr.w     ip, [sp, #0x24]             ",
+        "0x0000735a: 6a68       ldr       r2, [r5, #4]                ",
+        "0x0000735c: 0b99       ldr       r1, [sp, #0x2c]             ",
+        "0x0000735e: b2f1ff3f   cmp.w     r2, #-1                     ",
+        "0x00007362: 04bf       itt       eq                          ",
+        "0x00007364: ba69       ldreq     r2, [r7, #0x18]             "
+      ]
+    },
+    {
+      "opcode": "0x60",
+      "supported": true,
+      "hint": "",
+      "addr": "0x0000738A",
+      "size": 142,
+      "callees": [
+        "0x000155D8",
+        "0x000161C0"
+      ],
+      "req_reads": [
+        "ldrh@+22",
+        "ldrb@+5"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x0000738a: dff884a0   ldr.w     sl, [pc, #0x84]               ; =0x20026D70",
+        "0x0000738e: fc8a       ldrh      r4, [r7, #0x16]             ",
+        "0x00007390: 9af80d22   ldrb.w    r2, [sl, #0x20d]            ",
+        "0x00007394: 97f804b0   ldrb.w    fp, [r7, #4]                ",
+        "0x00007398: 7b79       ldrb      r3, [r7, #5]                ",
+        "0x0000739a: d7f80600   ldr.w     r0, [r7, #6]                ",
+        "0x0000739e: d7f80a10   ldr.w     r1, [r7, #0xa]              ",
+        "0x000073a2: d7f80e80   ldr.w     r8, [r7, #0xe]              ",
+        "0x000073a6: d7f81290   ldr.w     sb, [r7, #0x12]             ",
+        "0x000073aa: 0b94       str       r4, [sp, #0x2c]             ",
+        "0x000073ac: 062a       cmp       r2, #6                      ",
+        "0x000073ae: 6fd1       bne       #0x7490                     ",
+        "0x000073b0: 0022       movs      r2, #0                      ",
+        "0x000073b2: 42ea0004   orr.w     r4, r2, r0                  ",
+        "0x000073b6: 03f0010c   and       ip, r3, #1                  ",
+        "0x000073ba: 2046       mov       r0, r4                      ",
+        "0x000073bc: c3f34003   ubfx      r3, r3, #1, #1              ",
+        "0x000073c0: 0a93       str       r3, [sp, #0x28]             ",
+        "0x000073c2: cdf824c0   str.w     ip, [sp, #0x24]             ",
+        "0x000073c6: 0ef007f9   bl        #0x155d8                    ",
+        "0x000073ca: 00f12203   add.w     r3, r0, #0x22               ",
+        "0x000073ce: 0aeb8303   add.w     r3, sl, r3, lsl #2          ",
+        "0x000073d2: ddf824c0   ldr.w     ip, [sp, #0x24]             ",
+        "0x000073d6: 5a68       ldr       r2, [r3, #4]                ",
+        "0x000073d8: 0b9d       ldr       r5, [sp, #0x2c]             ",
+        "0x000073da: b2f1ff3f   cmp.w     r2, #-1                     ",
+        "0x000073de: 04bf       itt       eq                          ",
+        "0x000073e0: d7f81120   ldreq.w   r2, [r7, #0x11]             "
+      ]
+    },
+    {
+      "opcode": "0x61",
+      "supported": true,
+      "hint": "",
+      "addr": "0x00007494",
+      "size": 8,
+      "callees": [
+        "0x00016EE8"
+      ],
+      "req_reads": [
+        "ldrb@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074A2"
+      ],
+      "disasm": [
+        "0x00007494: 3879       ldrb      r0, [r7, #4]                ",
+        "0x00007496: 0ff027fd   bl        #0x16ee8                    ",
+        "0x0000749a: 02e0       b         #0x74a2                     "
+      ]
+    },
+    {
+      "opcode": "0x62",
+      "supported": true,
+      "hint": "",
+      "addr": "0x0000749C",
+      "size": 12,
+      "callees": [
+        "0x00016E7C"
+      ],
+      "req_reads": [
+        "ldrb@+4"
+      ],
+      "resp_writes": [],
+      "epilogue": [
+        "0x000074B6"
+      ],
+      "disasm": [
+        "0x0000749c: 3879       ldrb      r0, [r7, #4]                ",
+        "0x0000749e: 0ff0edfc   bl        #0x16e7c                    ",
+        "0x000074a2: c6f80300   str.w     r0, [r6, #3]                ",
+        "0x000074a6: 06e0       b         #0x74b6                     "
+      ]
+    }
+  ],
+  "int_register_addr": "0x000295E6",
+  "dynamic_isrs": [
+    {
+      "call_site": "0x000288A4",
+      "vector_idx": 2,
+      "irq_name": "NonMaskableInt",
+      "isr_addr": "dynamic"
+    },
+    {
+      "call_site": "0x000288CC",
+      "vector_idx": null,
+      "irq_name": "?",
+      "isr_addr": "dynamic"
+    }
+  ],
+  "epilogue_disasm": [
+    "0x00007440: 06d1       bne       #0x7450                     ",
+    "0x00007442: 4846       mov       r0, sb                      ",
+    "0x00007444: 4246       mov       r2, r8                      ",
+    "0x00007446: f31d       adds      r3, r6, #7                  ",
+    "0x00007448: 0ff092f8   bl        #0x16570                    ",
+    "0x0000744c: 0434       adds      r4, #4                      ",
+    "0x0000744e: 00e0       b         #0x7452                     ",
+    "0x00007450: 2448       ldr       r0, [pc, #0x90]               ; =0xFFFFFC16",
+    "0x00007452: c6f80300   str.w     r0, [r6, #3]                ",
+    "0x00007456: 2fe0       b         #0x74b8                     ",
+    "0x00007458: d7f80500   ldr.w     r0, [r7, #5]                ",
+    "0x0000745c: d7f80950   ldr.w     r5, [r7, #9]                ",
+    "0x00007460: 97f80490   ldrb.w    sb, [r7, #4]                ",
+    "0x00007464: 97f80d80   ldrb.w    r8, [r7, #0xd]              ",
+    "0x00007468: 0024       movs      r4, #0                      ",
+    "0x0000746a: 44ea0002   orr.w     r2, r4, r0                  ",
+    "0x0000746e: 2946       mov       r1, r5                      ",
+    "0x00007470: 1046       mov       r0, r2                      ",
+    "0x00007472: 0ef0b1f8   bl        #0x155d8                    ",
+    "0x00007476: 1a4b       ldr       r3, [pc, #0x68]               ; =0x20026D70",
+    "0x00007478: 93f80d32   ldrb.w    r3, [r3, #0x20d]            ",
+    "0x0000747c: 062b       cmp       r3, #6                      ",
+    "0x0000747e: 0146       mov       r1, r0                      ",
+    "0x00007480: 06d1       bne       #0x7490                     ",
+    "0x00007482: 4846       mov       r0, sb                      ",
+    "0x00007484: 4246       mov       r2, r8                      ",
+    "0x00007486: 07f10e03   add.w     r3, r7, #0xe                ",
+    "0x0000748a: 0ff08ff8   bl        #0x165ac                    ",
+    "0x0000748e: 08e0       b         #0x74a2                     ",
+    "0x00007490: 1448       ldr       r0, [pc, #0x50]               ; =0xFFFFFC16",
+    "0x00007492: 06e0       b         #0x74a2                     ",
+    "0x00007494: 3879       ldrb      r0, [r7, #4]                ",
+    "0x00007496: 0ff027fd   bl        #0x16ee8                    ",
+    "0x0000749a: 02e0       b         #0x74a2                     ",
+    "0x0000749c: 3879       ldrb      r0, [r7, #4]                ",
+    "0x0000749e: 0ff0edfc   bl        #0x16e7c                    ",
+    "0x000074a2: c6f80300   str.w     r0, [r6, #3]                ",
+    "0x000074a6: 06e0       b         #0x74b6                     ",
+    "0x000074a8: 6ff07703   mvn       r3, #0x77                   ",
+    "0x000074ac: f370       strb      r3, [r6, #3]                ",
+    "0x000074ae: 7733       adds      r3, #0x77                   ",
+    "0x000074b0: 3371       strb      r3, [r6, #4]                ",
+    "0x000074b2: 7371       strb      r3, [r6, #5]                ",
+    "0x000074b4: b371       strb      r3, [r6, #6]                ",
+    "0x000074b6: 0024       movs      r4, #0                      ",
+    "0x000074b8: 2a23       movs      r3, #0x2a                   ",
+    "0x000074ba: 3370       strb      r3, [r6]                    ",
+    "0x000074bc: 231d       adds      r3, r4, #4                  ",
+    "0x000074be: a6f80130   strh.w    r3, [r6, #1]                ",
+    "0x000074c2: e01d       adds      r0, r4, #7                  ",
+    "0x000074c4: 33b0       add       sp, #0xcc                   ",
+    "0x000074c6: bde8f08f   pop.w     {r4, r5, r6, r7, r8, sb, sl, fp, pc}",
+    "0x000074ca: 0191       str       r1, [sp, #4]                ",
+    "0x000074cc: cdf800c0   str.w     ip, [sp]                    ",
+    "0x000074d0: 02f00101   and       r1, r2, #1                  ",
+    "0x000074d4: 0297       str       r7, [sp, #8]                ",
+    "0x000074d6: c2f34002   ubfx      r2, r2, #1, #1              ",
+    "0x000074da: 0ef02bfb   bl        #0x15b34                    ",
+    "0x000074de: e0e7       b         #0x74a2                     "
+  ]
+}

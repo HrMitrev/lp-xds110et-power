@@ -1,0 +1,469 @@
+{
+  "devices": [
+    {
+      "kind": "Composite",
+      "sram_addr": "0x2000175C",
+      "default_vid": "0x0451",
+      "default_pid": "0x0000",
+      "max_power_mA": 500,
+      "pwr_attr": "0x80",
+      "event_callback": "0x00000000",
+      "default_num_devices": 0,
+      "psDevices": "0x00000005",
+      "strings": [
+        {
+          "index": 0,
+          "addr": "0x00036040",
+          "value": "LANGID=0x0409"
+        },
+        {
+          "index": 1,
+          "addr": "0x00035FB2",
+          "value": "Texas Instruments"
+        },
+        {
+          "index": 2,
+          "addr": "0x200015CC",
+          "value": "XDS110 (00.00.00.00) Embed with CMSIS-DAP"
+        },
+        {
+          "index": 3,
+          "addr": "0x20001749",
+          "value": "00000000"
+        },
+        {
+          "index": 4,
+          "addr": "0x00035F80",
+          "value": "XDS110 Control Interface"
+        },
+        {
+          "index": 5,
+          "addr": "0x00035EB0",
+          "value": "XDS110 Configuration"
+        },
+        {
+          "index": 6,
+          "addr": "0x00035FD6",
+          "value": "XDS110 CMSIS-DAP"
+        }
+      ]
+    },
+    {
+      "kind": "CDC",
+      "sram_addr": "0x2000164C",
+      "default_vid": "0x0451",
+      "default_pid": "0x0000",
+      "max_power_mA": 500,
+      "pwr_attr": "0x80",
+      "ctrl_callback": "0x00005089",
+      "ctrl_cb_data": "0x2000164C",
+      "rx_callback": "0x00024AF1",
+      "rx_cb_data": "0x00035E50",
+      "tx_callback": "0x00024AF1",
+      "tx_cb_data": "0x00035FF8",
+      "strings": [
+        {
+          "index": 0,
+          "addr": "0x00036040",
+          "value": "LANGID=0x0409"
+        },
+        {
+          "index": 1,
+          "addr": "0x00035FB2",
+          "value": "Texas Instruments"
+        },
+        {
+          "index": 2,
+          "addr": "0x200015CC",
+          "value": "XDS110 (00.00.00.00) Embed with CMSIS-DAP"
+        },
+        {
+          "index": 3,
+          "addr": "0x20001749",
+          "value": "00000000"
+        },
+        {
+          "index": 4,
+          "addr": "0x00035F80",
+          "value": "XDS110 Control Interface"
+        },
+        {
+          "index": 5,
+          "addr": "0x00035EB0",
+          "value": "XDS110 Configuration"
+        },
+        {
+          "index": 6,
+          "addr": "0x00035FD6",
+          "value": "XDS110 CMSIS-DAP"
+        }
+      ]
+    },
+    {
+      "kind": "CDC",
+      "sram_addr": "0x200016B8",
+      "default_vid": "0x0451",
+      "default_pid": "0x0000",
+      "max_power_mA": 500,
+      "pwr_attr": "0x80",
+      "ctrl_callback": "0x00005089",
+      "ctrl_cb_data": "0x200016B8",
+      "rx_callback": "0x00024AF1",
+      "rx_cb_data": "0x00035E74",
+      "tx_callback": "0x00024AF1",
+      "tx_cb_data": "0x0003601C",
+      "strings": [
+        {
+          "index": 0,
+          "addr": "0x00036040",
+          "value": "LANGID=0x0409"
+        },
+        {
+          "index": 1,
+          "addr": "0x00035FB2",
+          "value": "Texas Instruments"
+        },
+        {
+          "index": 2,
+          "addr": "0x200015CC",
+          "value": "XDS110 (00.00.00.00) Embed with CMSIS-DAP"
+        },
+        {
+          "index": 3,
+          "addr": "0x20001749",
+          "value": "00000000"
+        },
+        {
+          "index": 4,
+          "addr": "0x00035F80",
+          "value": "XDS110 Control Interface"
+        },
+        {
+          "index": 5,
+          "addr": "0x00035EB0",
+          "value": "XDS110 Configuration"
+        },
+        {
+          "index": 6,
+          "addr": "0x00035FD6",
+          "value": "XDS110 CMSIS-DAP"
+        }
+      ]
+    },
+    {
+      "kind": "Bulk",
+      "sram_addr": "0x2000152C",
+      "default_vid": "0x0451",
+      "default_pid": "0x0000",
+      "max_power_mA": 500,
+      "pwr_attr": "0x80",
+      "rx_callback": "0x00024AF1",
+      "rx_cb_data": "0x00035E08",
+      "tx_callback": "0x00024AF1",
+      "tx_cb_data": "0x00035F08",
+      "strings": [
+        {
+          "index": 0,
+          "addr": "0x00036040",
+          "value": "LANGID=0x0409"
+        },
+        {
+          "index": 1,
+          "addr": "0x00035FB2",
+          "value": "Texas Instruments"
+        },
+        {
+          "index": 2,
+          "addr": "0x200015CC",
+          "value": "XDS110 (00.00.00.00) Embed with CMSIS-DAP"
+        },
+        {
+          "index": 3,
+          "addr": "0x20001749",
+          "value": "00000000"
+        },
+        {
+          "index": 4,
+          "addr": "0x00035F80",
+          "value": "XDS110 Control Interface"
+        },
+        {
+          "index": 5,
+          "addr": "0x00035EB0",
+          "value": "XDS110 Configuration"
+        },
+        {
+          "index": 6,
+          "addr": "0x00035FD6",
+          "value": "XDS110 CMSIS-DAP"
+        }
+      ]
+    },
+    {
+      "kind": "Bulk",
+      "sram_addr": "0x2000157C",
+      "default_vid": "0x0451",
+      "default_pid": "0x0000",
+      "max_power_mA": 500,
+      "pwr_attr": "0x80",
+      "rx_callback": "0x00024AF1",
+      "rx_cb_data": "0x00035E2C",
+      "tx_callback": "0x00024AF1",
+      "tx_cb_data": "0x00035F2C",
+      "strings": [
+        {
+          "index": 0,
+          "addr": "0x00036040",
+          "value": "LANGID=0x0409"
+        },
+        {
+          "index": 1,
+          "addr": "0x00035FB2",
+          "value": "Texas Instruments"
+        },
+        {
+          "index": 2,
+          "addr": "0x200015CC",
+          "value": "XDS110 (00.00.00.00) Embed with CMSIS-DAP"
+        },
+        {
+          "index": 3,
+          "addr": "0x20001749",
+          "value": "00000000"
+        },
+        {
+          "index": 4,
+          "addr": "0x00035F80",
+          "value": "XDS110 Control Interface"
+        },
+        {
+          "index": 5,
+          "addr": "0x00035EB0",
+          "value": "XDS110 Configuration"
+        },
+        {
+          "index": 6,
+          "addr": "0x00035FD6",
+          "value": "XDS110 CMSIS-DAP"
+        }
+      ]
+    },
+    {
+      "kind": "HID_or_MSC",
+      "sram_addr": "0x20000428",
+      "default_vid": "0x0451",
+      "default_pid": "0x0000",
+      "max_power_mA": 500,
+      "pwr_attr": "0x80",
+      "raw_words": [
+        "0x00000451",
+        "0x008001F4",
+        "0x00000100",
+        "0x20001644",
+        "0x0001C2F1",
+        "0x2002424C",
+        "0x0001C2DD",
+        "0x2002424C",
+        "0x00000001",
+        "0x00035EA0",
+        "0x00035EDC",
+        "0x00035F60"
+      ]
+    },
+    {
+      "kind": "HID_or_MSC",
+      "sram_addr": "0x2000049C",
+      "default_vid": "0x0451",
+      "default_pid": "0x0000",
+      "max_power_mA": 18772,
+      "pwr_attr": "0x20",
+      "raw_words": [
+        "0x00000451",
+        "0x20204954",
+        "0x20202020",
+        "0x7373614D",
+        "0x6F745320",
+        "0x65676172",
+        "0x20202020",
+        "0x30302E31",
+        "0x008001F4",
+        "0x00035F60",
+        "0x00000007",
+        "0x00000000"
+      ]
+    }
+  ],
+  "usb_buffers": [
+    {
+      "flash_addr": "0x00035FF8",
+      "direction": "TX (Dev->Host)",
+      "callback": "0x00004615",
+      "cb_data": "0x2000164C",
+      "pfnTransfer": "0x000257B9",
+      "pfnAvailable": "0x000258D5",
+      "pvHandle": "0x2000164C",
+      "sram_buf": "0x200242E4",
+      "buf_size": 1024
+    },
+    {
+      "flash_addr": "0x00035E50",
+      "direction": "RX (Host->Dev)",
+      "callback": "0x00004619",
+      "cb_data": "0x2000164C",
+      "pfnTransfer": "0x0002582D",
+      "pfnAvailable": "0x000258E9",
+      "pvHandle": "0x2000164C",
+      "sram_buf": "0x20023A4C",
+      "buf_size": 1024
+    },
+    {
+      "flash_addr": "0x0003601C",
+      "direction": "TX (Dev->Host)",
+      "callback": "0x00004615",
+      "cb_data": "0x200016B8",
+      "pfnTransfer": "0x000257B9",
+      "pfnAvailable": "0x000258D5",
+      "pvHandle": "0x200016B8",
+      "sram_buf": "0x200246E4",
+      "buf_size": 1024
+    },
+    {
+      "flash_addr": "0x00035E74",
+      "direction": "RX (Host->Dev)",
+      "callback": "0x00004619",
+      "cb_data": "0x200016B8",
+      "pfnTransfer": "0x0002582D",
+      "pfnAvailable": "0x000258E9",
+      "pvHandle": "0x200016B8",
+      "sram_buf": "0x20023E4C",
+      "buf_size": 1024
+    },
+    {
+      "flash_addr": "0x00035F08",
+      "direction": "TX (Dev->Host)",
+      "callback": "0x0000449D",
+      "cb_data": "0x2000152C",
+      "pfnTransfer": "0x00024FA9",
+      "pfnAvailable": "0x000250A1",
+      "pvHandle": "0x2000152C",
+      "sram_buf": "0x20024B50",
+      "buf_size": 8704
+    },
+    {
+      "flash_addr": "0x00035E08",
+      "direction": "RX (Host->Dev)",
+      "callback": "0x000044B9",
+      "cb_data": "0x2000152C",
+      "pfnTransfer": "0x0002501D",
+      "pfnAvailable": "0x000250B5",
+      "pvHandle": "0x2000152C",
+      "sram_buf": "0x2001F64C",
+      "buf_size": 8704
+    },
+    {
+      "flash_addr": "0x00035F2C",
+      "direction": "TX (Dev->Host)",
+      "callback": "0x0000449D",
+      "cb_data": "0x2000157C",
+      "pfnTransfer": "0x00024FA9",
+      "pfnAvailable": "0x000250A1",
+      "pvHandle": "0x2000157C",
+      "sram_buf": "0x2000764C",
+      "buf_size": 98304
+    },
+    {
+      "flash_addr": "0x00035E2C",
+      "direction": "RX (Host->Dev)",
+      "callback": "0x00004D09",
+      "cb_data": "0x2000157C",
+      "pfnTransfer": "0x0002501D",
+      "pfnAvailable": "0x000250B5",
+      "pvHandle": "0x2000157C",
+      "sram_buf": "0x2002184C",
+      "buf_size": 8704
+    }
+  ],
+  "raw_desc_blocks": {
+    "0x000522CA": [
+      {
+        "type": "0x02",
+        "len": 9,
+        "raw": "0902220001010580fa",
+        "kind": "Configuration",
+        "fields": {
+          "wTotalLength": 34,
+          "bNumInterfaces": 1,
+          "bConfigurationValue": 1,
+          "bmAttributes": "0x80",
+          "bMaxPower_mA": 500
+        }
+      },
+      {
+        "type": "0x03",
+        "len": 18,
+        "raw": "120330003000300030003000300030003000"
+      }
+    ],
+    "0x00052536": [
+      {
+        "type": "0x02",
+        "len": 9,
+        "raw": "09022000010105c0fa",
+        "kind": "Configuration",
+        "fields": {
+          "wTotalLength": 32,
+          "bNumInterfaces": 1,
+          "bConfigurationValue": 1,
+          "bmAttributes": "0xC0",
+          "bMaxPower_mA": 500
+        }
+      }
+    ],
+    "0x000525A2": [
+      {
+        "type": "0x02",
+        "len": 9,
+        "raw": "09020900020105c0fa",
+        "kind": "Configuration",
+        "fields": {
+          "wTotalLength": 9,
+          "bNumInterfaces": 2,
+          "bConfigurationValue": 1,
+          "bmAttributes": "0xC0",
+          "bMaxPower_mA": 500
+        }
+      },
+      {
+        "type": "0x01",
+        "len": 18,
+        "raw": "12011001ef02014000000000000101020301"
+      }
+    ],
+    "0x000525FC": [
+      {
+        "type": "0x02",
+        "len": 9,
+        "raw": "09022000010100c0fa",
+        "kind": "Configuration",
+        "fields": {
+          "wTotalLength": 32,
+          "bNumInterfaces": 1,
+          "bConfigurationValue": 1,
+          "bmAttributes": "0xC0",
+          "bMaxPower_mA": 500
+        }
+      },
+      {
+        "type": "0x20",
+        "len": 3,
+        "raw": "03200d"
+      },
+      {
+        "type": "0x20",
+        "len": 10,
+        "raw": "0a206175746f20726573"
+      }
+    ]
+  },
+  "msos_hits": []
+}

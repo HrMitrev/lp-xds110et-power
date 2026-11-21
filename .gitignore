@@ -15,6 +15,7 @@ venv/
 # Capture logs
 logs/
 *.csv
+tags
 
 # OS and IDE files
 .DS_Store

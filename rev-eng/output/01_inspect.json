@@ -1,0 +1,3701 @@
+{
+  "file": "proprietary_fw/firmware_3.0.0.45.bin",
+  "size": 323834,
+  "base_addr": 16384,
+  "end_addr": 340218,
+  "sha256": "1fe5c87dcdf9b3683f3fed005e737cd071b45bd767648ebac2e1ae1ac6102b97",
+  "default_handler": 25945,
+  "active_vectors": [
+    {
+      "index": 0,
+      "irq": null,
+      "name": "Initial_SP",
+      "addr": 537133056
+    },
+    {
+      "index": 1,
+      "irq": null,
+      "name": "Reset_Handler",
+      "addr": 25957
+    },
+    {
+      "index": 2,
+      "irq": null,
+      "name": "NMI_Handler",
+      "addr": 25921
+    },
+    {
+      "index": 3,
+      "irq": null,
+      "name": "HardFault_Handler",
+      "addr": 25933
+    },
+    {
+      "index": 15,
+      "irq": null,
+      "name": "SysTick_Handler",
+      "addr": 17521
+    },
+    {
+      "index": 16,
+      "irq": 0,
+      "name": "GPIO_Port_A",
+      "addr": 25685
+    },
+    {
+      "index": 58,
+      "irq": 42,
+      "name": "USB0",
+      "addr": 159049
+    }
+  ],
+  "utf16_strings": [
+    {
+      "addr": 18141,
+      "text": "K ( "
+    },
+    {
+      "addr": 22033,
+      "text": "K ( P"
+    },
+    {
+      "addr": 26766,
+      "text": "clsw"
+    },
+    {
+      "addr": 38451,
+      "text": "FFFF"
+    },
+    {
+      "addr": 61357,
+      "text": ": p@"
+    },
+    {
+      "addr": 61641,
+      "text": ": p@"
+    },
+    {
+      "addr": 62705,
+      "text": "FFFF"
+    },
+    {
+      "addr": 62811,
+      "text": "FFFF"
+    },
+    {
+      "addr": 62973,
+      "text": "FFFF"
+    },
+    {
+      "addr": 63017,
+      "text": "FFFFF"
+    },
+    {
+      "addr": 63077,
+      "text": "FFFF"
+    },
+    {
+      "addr": 63135,
+      "text": "FFFFF"
+    },
+    {
+      "addr": 63995,
+      "text": "FFFF"
+    },
+    {
+      "addr": 64101,
+      "text": "FFFF"
+    },
+    {
+      "addr": 64311,
+      "text": "FFFFF"
+    },
+    {
+      "addr": 64371,
+      "text": "FFFF"
+    },
+    {
+      "addr": 64429,
+      "text": "FFFFF"
+    },
+    {
+      "addr": 65379,
+      "text": "FFFF"
+    },
+    {
+      "addr": 65497,
+      "text": "FFFF"
+    },
+    {
+      "addr": 65751,
+      "text": "FFFFF"
+    },
+    {
+      "addr": 65881,
+      "text": "FFFFF"
+    },
+    {
+      "addr": 66509,
+      "text": "aFFF"
+    },
+    {
+      "addr": 66665,
+      "text": "cFFF"
+    },
+    {
+      "addr": 66675,
+      "text": "cFFF"
+    },
+    {
+      "addr": 66705,
+      "text": "aFFFF"
+    },
+    {
+      "addr": 66871,
+      "text": "cFFFF"
+    },
+    {
+      "addr": 66883,
+      "text": "cFFFF"
+    },
+    {
+      "addr": 66917,
+      "text": "aFFFFF"
+    },
+    {
+      "addr": 66931,
+      "text": "aFFF"
+    },
+    {
+      "addr": 66977,
+      "text": "cFFF"
+    },
+    {
+      "addr": 74203,
+      "text": "cFFF"
+    },
+    {
+      "addr": 75359,
+      "text": "cFFF"
+    },
+    {
+      "addr": 75389,
+      "text": "cFFF"
+    },
+    {
+      "addr": 75419,
+      "text": "cFFF"
+    },
+    {
+      "addr": 75449,
+      "text": "cFFF"
+    },
+    {
+      "addr": 75479,
+      "text": "cFFF"
+    },
+    {
+      "addr": 75509,
+      "text": "cFFF"
+    },
+    {
+      "addr": 75539,
+      "text": "cFFF"
+    },
+    {
+      "addr": 75569,
+      "text": "cFFF"
+    },
+    {
+      "addr": 75587,
+      "text": "FFFF"
+    },
+    {
+      "addr": 75639,
+      "text": "cFFFF"
+    },
+    {
+      "addr": 80517,
+      "text": "cFFF"
+    },
+    {
+      "addr": 81809,
+      "text": "cFFF"
+    },
+    {
+      "addr": 81839,
+      "text": "cFFF"
+    },
+    {
+      "addr": 81869,
+      "text": "cFFF"
+    },
+    {
+      "addr": 81899,
+      "text": "cFFF"
+    },
+    {
+      "addr": 81929,
+      "text": "cFFF"
+    },
+    {
+      "addr": 81959,
+      "text": "cFFF"
+    },
+    {
+      "addr": 81989,
+      "text": "cFFF"
+    },
+    {
+      "addr": 82019,
+      "text": "cFFF"
+    },
+    {
+      "addr": 82037,
+      "text": "FFFF"
+    },
+    {
+      "addr": 82089,
+      "text": "cFFFF"
+    },
+    {
+      "addr": 220850,
+      "text": "XDS110 Configuration"
+    },
+    {
+      "addr": 221058,
+      "text": "XDS110 Control Interface"
+    },
+    {
+      "addr": 221108,
+      "text": "Texas Instruments"
+    },
+    {
+      "addr": 221144,
+      "text": "XDS110 CMSIS-DAP"
+    },
+    {
+      "addr": 249565,
+      "text": "Statu"
+    },
+    {
+      "addr": 249578,
+      "text": "s-Done"
+    },
+    {
+      "addr": 249629,
+      "text": "ReadM"
+    },
+    {
+      "addr": 249642,
+      "text": "e.txt"
+    },
+    {
+      "addr": 249757,
+      "text": "Statu"
+    },
+    {
+      "addr": 249770,
+      "text": "s-Idle"
+    },
+    {
+      "addr": 249853,
+      "text": "Statu"
+    },
+    {
+      "addr": 249866,
+      "text": "s-Fail"
+    },
+    {
+      "addr": 262579,
+      "text": "iH@D"
+    },
+    {
+      "addr": 285950,
+      "text": "   @"
+    },
+    {
+      "addr": 329509,
+      "text": "ACM Control Interface"
+    },
+    {
+      "addr": 329626,
+      "text": "00000000"
+    },
+    {
+      "addr": 329644,
+      "text": "Texas Instruments"
+    },
+    {
+      "addr": 329684,
+      "text": "Self Powered Configuration"
+    },
+    {
+      "addr": 329762,
+      "text": "Virtual COM Port"
+    },
+    {
+      "addr": 336216,
+      "text": "XDS110 (00.00.00.00) Embed with CMSIS-DAP"
+    },
+    {
+      "addr": 336597,
+      "text": "00000000"
+    }
+  ],
+  "ascii_strings": [
+    {
+      "addr": 17157,
+      "text": "!HHHLIN%"
+    },
+    {
+      "addr": 17264,
+      "text": "0Kbl$ "
+    },
+    {
+      "addr": 17616,
+      "text": "ENFL3h+"
+    },
+    {
+      "addr": 17831,
+      "text": "3+`+h?+"
+    },
+    {
+      "addr": 18029,
+      "text": "Keg#gL#"
+    },
+    {
+      "addr": 18521,
+      "text": " EI\"F "
+    },
+    {
+      "addr": 18551,
+      "text": " ;I\"F#"
+    },
+    {
+      "addr": 18591,
+      "text": "!p`+H%"
+    },
+    {
+      "addr": 18601,
+      "text": "i-I$62F"
+    },
+    {
+      "addr": 18615,
+      "text": "ip`04\"F"
+    },
+    {
+      "addr": 18882,
+      "text": "'Kbl$ "
+    },
+    {
+      "addr": 19331,
+      "text": "d#d jam$"
+    },
+    {
+      "addr": 19467,
+      "text": "\"\"sbh%"
+    },
+    {
+      "addr": 19545,
+      "text": "k!F\"F#F%"
+    },
+    {
+      "addr": 19564,
+      "text": "!F\"F#F%"
+    },
+    {
+      "addr": 20777,
+      "text": "jyJX!KC"
+    },
+    {
+      "addr": 21102,
+      "text": "` X#'OsC"
+    },
+    {
+      "addr": 21465,
+      "text": "`1FX\" F"
+    },
+    {
+      "addr": 21537,
+      "text": "cbe1FX\""
+    },
+    {
+      "addr": 21939,
+      "text": "h4H5I5J"
+    },
+    {
+      "addr": 22429,
+      "text": "evKvI#gsK"
+    },
+    {
+      "addr": 22442,
+      "text": "`\"\"fcgA"
+    },
+    {
+      "addr": 22673,
+      "text": "e`##f8K"
+    },
+    {
+      "addr": 22777,
+      "text": "g*J*K\"g"
+    },
+    {
+      "addr": 22795,
+      "text": "0(KbgL\""
+    },
+    {
+      "addr": 22964,
+      "text": "}K~H+`"
+    },
+    {
+      "addr": 22982,
+      "text": "{IcgL#"
+    },
+    {
+      "addr": 23045,
+      "text": "0pJpK\"g"
+    },
+    {
+      "addr": 23066,
+      "text": "gKlJdH"
+    },
+    {
+      "addr": 23107,
+      "text": "g`\"]K\"f_J"
+    },
+    {
+      "addr": 23127,
+      "text": "0TJZKbgO"
+    },
+    {
+      "addr": 23244,
+      "text": "EK@IEH"
+    },
+    {
+      "addr": 23281,
+      "text": "aI\"\"b@J@I"
+    },
+    {
+      "addr": 23299,
+      "text": "\"\"c?J?Ibc"
+    },
+    {
+      "addr": 23576,
+      "text": "MKNH+`X\""
+    },
+    {
+      "addr": 23608,
+      "text": "GJcg\"gH#"
+    },
+    {
+      "addr": 23947,
+      "text": "`bHcOcLdMdN#"
+    },
+    {
+      "addr": 23970,
+      "text": "+h!hbH"
+    },
+    {
+      "addr": 23984,
+      "text": "+h!h^H"
+    },
+    {
+      "addr": 24002,
+      "text": "+h!hZH2x"
+    },
+    {
+      "addr": 24052,
+      "text": "RKNH)x"
+    },
+    {
+      "addr": 24064,
+      "text": "KH!x2x#"
+    },
+    {
+      "addr": 24088,
+      "text": "8hJMd#"
+    },
+    {
+      "addr": 24208,
+      "text": "4 .J.N"
+    },
+    {
+      "addr": 24534,
+      "text": "9K9J:H"
+    },
+    {
+      "addr": 24824,
+      "text": "vHtI*F"
+    },
+    {
+      "addr": 24858,
+      "text": "pLpK\"h"
+    },
+    {
+      "addr": 24957,
+      "text": "3#`#h@+"
+    },
+    {
+      "addr": 25002,
+      "text": "MLNI#h\"hHH"
+    },
+    {
+      "addr": 25029,
+      "text": "3#`#h@+CK"
+    },
+    {
+      "addr": 25784,
+      "text": " H@!f\""
+    },
+    {
+      "addr": 26110,
+      "text": " F2F)F"
+    },
+    {
+      "addr": 26126,
+      "text": " F)FJF"
+    },
+    {
+      "addr": 26145,
+      "text": "0%+OD@"
+    },
+    {
+      "addr": 27183,
+      "text": "h(FAFJFSF"
+    },
+    {
+      "addr": 27285,
+      "text": "h8FAFJFSF"
+    },
+    {
+      "addr": 27460,
+      "text": "HFAFZF"
+    },
+    {
+      "addr": 27519,
+      "text": "0(F;FAFJF"
+    },
+    {
+      "addr": 27895,
+      "text": "pg`DFO"
+    },
+    {
+      "addr": 28101,
+      "text": "08yyy2"
+    },
+    {
+      "addr": 29446,
+      "text": "(FQFZF"
+    },
+    {
+      "addr": 29562,
+      "text": "PFYFbF"
+    },
+    {
+      "addr": 29692,
+      "text": "XFaF#F"
+    },
+    {
+      "addr": 29869,
+      "text": "pw33qsq"
+    },
+    {
+      "addr": 29879,
+      "text": "$*#3p#"
+    },
+    {
+      "addr": 56574,
+      "text": "\"h>L:`"
+    },
+    {
+      "addr": 57067,
+      "text": "K `a`O"
+    },
+    {
+      "addr": 57622,
+      "text": "WMWN+h"
+    },
+    {
+      "addr": 59697,
+      "text": "#0p+p8"
+    },
+    {
+      "addr": 59726,
+      "text": "grZClKO"
+    },
+    {
+      "addr": 59968,
+      "text": "\"F5H5L"
+    },
+    {
+      "addr": 60574,
+      "text": "5K5M6L."
+    },
+    {
+      "addr": 60588,
+      "text": "4M%`4L"
+    },
+    {
+      "addr": 60612,
+      "text": "3M%`3L"
+    },
+    {
+      "addr": 60636,
+      "text": "2M%`2L"
+    },
+    {
+      "addr": 60656,
+      "text": "2M%`2L"
+    },
+    {
+      "addr": 60682,
+      "text": "1M%`1L"
+    },
+    {
+      "addr": 60706,
+      "text": "0M%`0L"
+    },
+    {
+      "addr": 60730,
+      "text": "/M%`/L"
+    },
+    {
+      "addr": 60750,
+      "text": "/M%`/L"
+    },
+    {
+      "addr": 62009,
+      "text": "b'L\"h\""
+    },
+    {
+      "addr": 62307,
+      "text": "\";M<N6h<O?x"
+    },
+    {
+      "addr": 62589,
+      "text": "\"AMAN6hAO?x"
+    },
+    {
+      "addr": 62893,
+      "text": "\"GMGN6hGO?x"
+    },
+    {
+      "addr": 63221,
+      "text": "\"SMSN6hSO?x"
+    },
+    {
+      "addr": 63595,
+      "text": "\";M<N6h<O?x"
+    },
+    {
+      "addr": 63877,
+      "text": "\"BMBN6hBO?x"
+    },
+    {
+      "addr": 64185,
+      "text": "\"HMHN6hHO?x"
+    },
+    {
+      "addr": 64517,
+      "text": "\"TMTN6hTO?x"
+    },
+    {
+      "addr": 64902,
+      "text": "IMIN6hIO?x"
+    },
+    {
+      "addr": 65242,
+      "text": "OMON6hOO?x"
+    },
+    {
+      "addr": 65606,
+      "text": "UMUN6hUO?x"
+    },
+    {
+      "addr": 65994,
+      "text": "aMaN6haO?x"
+    },
+    {
+      "addr": 66434,
+      "text": "!N6h!OW"
+    },
+    {
+      "addr": 66450,
+      "text": " N6h O?x"
+    },
+    {
+      "addr": 66622,
+      "text": "%N6h%OW"
+    },
+    {
+      "addr": 66638,
+      "text": "$N6h$O?x"
+    },
+    {
+      "addr": 66826,
+      "text": ")N6h)OW"
+    },
+    {
+      "addr": 66842,
+      "text": "(N6h(O?x"
+    },
+    {
+      "addr": 67046,
+      "text": "1N6h1OW"
+    },
+    {
+      "addr": 67062,
+      "text": "0N6h0O?x"
+    },
+    {
+      "addr": 67336,
+      "text": "5M3N6h3OW"
+    },
+    {
+      "addr": 67354,
+      "text": "2N6h2O?x"
+    },
+    {
+      "addr": 67636,
+      "text": "9M7N6h7OW"
+    },
+    {
+      "addr": 67654,
+      "text": "6N6h6O?x"
+    },
+    {
+      "addr": 67952,
+      "text": "=M;N6h;OW"
+    },
+    {
+      "addr": 67970,
+      "text": ":N6h:O?x"
+    },
+    {
+      "addr": 68286,
+      "text": "FMCN6hCOW"
+    },
+    {
+      "addr": 68304,
+      "text": "BN6hBO?x"
+    },
+    {
+      "addr": 68664,
+      "text": "\" uKuN"
+    },
+    {
+      "addr": 68737,
+      "text": "\"+F7h F"
+    },
+    {
+      "addr": 68861,
+      "text": "`@!#F F"
+    },
+    {
+      "addr": 68869,
+      "text": "GEN!F3h"
+    },
+    {
+      "addr": 68879,
+      "text": "G3h!FHF"
+    },
+    {
+      "addr": 68895,
+      "text": "G3h!FHF"
+    },
+    {
+      "addr": 68929,
+      "text": "p!F#F F"
+    },
+    {
+      "addr": 68963,
+      "text": "pIF#F F"
+    },
+    {
+      "addr": 69440,
+      "text": " F!F4`"
+    },
+    {
+      "addr": 69506,
+      "text": " F!F5`"
+    },
+    {
+      "addr": 69673,
+      "text": "G@N!F3h"
+    },
+    {
+      "addr": 69683,
+      "text": "G3h!FHF"
+    },
+    {
+      "addr": 69699,
+      "text": "G3h!FHF"
+    },
+    {
+      "addr": 73278,
+      "text": "C 3j1c"
+    },
+    {
+      "addr": 73366,
+      "text": "C03j1c"
+    },
+    {
+      "addr": 73454,
+      "text": "C@3j1c"
+    },
+    {
+      "addr": 73542,
+      "text": "CP3j1c"
+    },
+    {
+      "addr": 73630,
+      "text": "C`3j1c"
+    },
+    {
+      "addr": 73718,
+      "text": "Cp3j1c"
+    },
+    {
+      "addr": 74586,
+      "text": "C 3j1c"
+    },
+    {
+      "addr": 74690,
+      "text": "C03j1c"
+    },
+    {
+      "addr": 74794,
+      "text": "C@3j1c"
+    },
+    {
+      "addr": 74898,
+      "text": "CP3j1c"
+    },
+    {
+      "addr": 75002,
+      "text": "C`3j1c"
+    },
+    {
+      "addr": 75106,
+      "text": "Cp3j1c"
+    },
+    {
+      "addr": 76084,
+      "text": "C 3j1c"
+    },
+    {
+      "addr": 76204,
+      "text": "C03j1c"
+    },
+    {
+      "addr": 76324,
+      "text": "C@3j1c"
+    },
+    {
+      "addr": 76444,
+      "text": "CP3j1c"
+    },
+    {
+      "addr": 76564,
+      "text": "C`3j1c"
+    },
+    {
+      "addr": 76684,
+      "text": "Cp3j1c"
+    },
+    {
+      "addr": 77870,
+      "text": "C 3j1c"
+    },
+    {
+      "addr": 78022,
+      "text": "C03j1c"
+    },
+    {
+      "addr": 78174,
+      "text": "C@3j1c"
+    },
+    {
+      "addr": 78326,
+      "text": "CP3j1c"
+    },
+    {
+      "addr": 78478,
+      "text": "C`3j1c"
+    },
+    {
+      "addr": 78630,
+      "text": "Cp3j1c"
+    },
+    {
+      "addr": 87652,
+      "text": "SNTL3x"
+    },
+    {
+      "addr": 89930,
+      "text": ",31N F"
+    },
+    {
+      "addr": 90160,
+      "text": ",3aO F"
+    },
+    {
+      "addr": 90449,
+      "text": "#r@{@R"
+    },
+    {
+      "addr": 91193,
+      "text": "2\"@+@R"
+    },
+    {
+      "addr": 91212,
+      "text": "03DL0F"
+    },
+    {
+      "addr": 91307,
+      "text": "2+@\"@R"
+    },
+    {
+      "addr": 91387,
+      "text": "#b@k@R"
+    },
+    {
+      "addr": 92040,
+      "text": "D3pGim"
+    },
+    {
+      "addr": 92944,
+      "text": "Bs+`0F"
+    },
+    {
+      "addr": 93313,
+      "text": "h)FCFJF"
+    },
+    {
+      "addr": 93577,
+      "text": "h)FCF2F"
+    },
+    {
+      "addr": 94706,
+      "text": "'b1O<h<"
+    },
+    {
+      "addr": 95466,
+      "text": "0`GOHH"
+    },
+    {
+      "addr": 96468,
+      "text": "SFYFBF"
+    },
+    {
+      "addr": 96634,
+      "text": "XF!FRF"
+    },
+    {
+      "addr": 96698,
+      "text": "XF!FRF"
+    },
+    {
+      "addr": 96806,
+      "text": "@FaFRF[F"
+    },
+    {
+      "addr": 97235,
+      "text": "\\  pG(g"
+    },
+    {
+      "addr": 97503,
+      "text": "$2%8F1F"
+    },
+    {
+      "addr": 97803,
+      "text": "F7FXF!F"
+    },
+    {
+      "addr": 97947,
+      "text": "FfF8FV"
+    },
+    {
+      "addr": 98058,
+      "text": "!F2F(F"
+    },
+    {
+      "addr": 98542,
+      "text": "!FZF0F"
+    },
+    {
+      "addr": 99016,
+      "text": "ZN[K2h"
+    },
+    {
+      "addr": 99090,
+      "text": "GH !f\""
+    },
+    {
+      "addr": 99166,
+      "text": "0h!Ff\""
+    },
+    {
+      "addr": 99264,
+      "text": "\"H9x2x"
+    },
+    {
+      "addr": 102394,
+      "text": " S)L%`"
+    },
+    {
+      "addr": 102402,
+      "text": "$S(L%`"
+    },
+    {
+      "addr": 102410,
+      "text": "(S'L%`"
+    },
+    {
+      "addr": 102418,
+      "text": ",S&L%`"
+    },
+    {
+      "addr": 102426,
+      "text": "0S%L%`"
+    },
+    {
+      "addr": 102434,
+      "text": "4S$L%`"
+    },
+    {
+      "addr": 102442,
+      "text": "8S#L%`"
+    },
+    {
+      "addr": 102450,
+      "text": "@S\"L%`"
+    },
+    {
+      "addr": 102458,
+      "text": "DS!L%`!L#`!L#`!L#`!L#`!L#`!L#`!L#`!K"
+    },
+    {
+      "addr": 102938,
+      "text": "@! F*F"
+    },
+    {
+      "addr": 102956,
+      "text": " F2FSF"
+    },
+    {
+      "addr": 103588,
+      "text": "@! FRF"
+    },
+    {
+      "addr": 103606,
+      "text": "IF F*F"
+    },
+    {
+      "addr": 103625,
+      "text": "! F2F[F"
+    },
+    {
+      "addr": 103752,
+      "text": " F)F2F"
+    },
+    {
+      "addr": 103902,
+      "text": " FIF+F"
+    },
+    {
+      "addr": 103930,
+      "text": "IF F+F"
+    },
+    {
+      "addr": 103958,
+      "text": "9F F*F"
+    },
+    {
+      "addr": 103994,
+      "text": "QF F*FC"
+    },
+    {
+      "addr": 104200,
+      "text": ")F F2F"
+    },
+    {
+      "addr": 104330,
+      "text": " FQF3F"
+    },
+    {
+      "addr": 104358,
+      "text": "QF F3F"
+    },
+    {
+      "addr": 104390,
+      "text": ")F F2F"
+    },
+    {
+      "addr": 104432,
+      "text": "IF F2F"
+    },
+    {
+      "addr": 104720,
+      "text": "HFQF2F"
+    },
+    {
+      "addr": 104756,
+      "text": "HFQF2F"
+    },
+    {
+      "addr": 104802,
+      "text": "HFQF2F"
+    },
+    {
+      "addr": 105322,
+      "text": "@#sp@;Sp"
+    },
+    {
+      "addr": 105488,
+      "text": "aH1F2F"
+    },
+    {
+      "addr": 105643,
+      "text": "#,!f\":H"
+    },
+    {
+      "addr": 105891,
+      "text": "xkxFx?"
+    },
+    {
+      "addr": 106291,
+      "text": "#kpk`,"
+    },
+    {
+      "addr": 106543,
+      "text": "<XF)F2F"
+    },
+    {
+      "addr": 106716,
+      "text": ")FJFPF"
+    },
+    {
+      "addr": 107980,
+      "text": "#FfFLF"
+    },
+    {
+      "addr": 109297,
+      "text": "F3F^FT"
+    },
+    {
+      "addr": 109357,
+      "text": "'3F^F1"
+    },
+    {
+      "addr": 109685,
+      "text": "F3F^FY"
+    },
+    {
+      "addr": 115483,
+      "text": "`0x)IP"
+    },
+    {
+      "addr": 115513,
+      "text": "h&M$H!L"
+    },
+    {
+      "addr": 115557,
+      "text": "3#`#h@+"
+    },
+    {
+      "addr": 115791,
+      "text": "3#`#h@+"
+    },
+    {
+      "addr": 115849,
+      "text": "22`2h@*"
+    },
+    {
+      "addr": 116366,
+      "text": "SpChS`"
+    },
+    {
+      "addr": 116437,
+      "text": "`CIY`CI"
+    },
+    {
+      "addr": 116509,
+      "text": "`?IY`?I"
+    },
+    {
+      "addr": 116557,
+      "text": "b8IYa\""
+    },
+    {
+      "addr": 116569,
+      "text": "`7IY`7I"
+    },
+    {
+      "addr": 116870,
+      "text": "(F1F\"F"
+    },
+    {
+      "addr": 116941,
+      "text": "0d\")`i`"
+    },
+    {
+      "addr": 117233,
+      "text": "#+p F8"
+    },
+    {
+      "addr": 117898,
+      "text": "!F3H4L"
+    },
+    {
+      "addr": 118294,
+      "text": "<H@!JF"
+    },
+    {
+      "addr": 119020,
+      "text": "\"xWI\\&"
+    },
+    {
+      "addr": 119029,
+      "text": "2\"pUJVI"
+    },
+    {
+      "addr": 119174,
+      "text": "%x0Je&VU"
+    },
+    {
+      "addr": 119214,
+      "text": "%x&Ji&VU"
+    },
+    {
+      "addr": 119265,
+      "text": "I%xi&NU"
+    },
+    {
+      "addr": 120344,
+      "text": "$03`(F"
+    },
+    {
+      "addr": 125830,
+      "text": "_L_H`NO"
+    },
+    {
+      "addr": 125891,
+      "text": "#7`@F#`"
+    },
+    {
+      "addr": 127368,
+      "text": "!&(-N49;@BGN"
+    },
+    {
+      "addr": 129703,
+      "text": " !F\"F#F"
+    },
+    {
+      "addr": 129716,
+      "text": "8 !F\"F#F"
+    },
+    {
+      "addr": 129762,
+      "text": "!F\"F#F"
+    },
+    {
+      "addr": 130032,
+      "text": "#x=I=HKp"
+    },
+    {
+      "addr": 130090,
+      "text": "0H2I*h"
+    },
+    {
+      "addr": 130101,
+      "text": "#+`#x0Jsp"
+    },
+    {
+      "addr": 130318,
+      "text": "ZMZH[O"
+    },
+    {
+      "addr": 130407,
+      "text": "p\\pkxh!"
+    },
+    {
+      "addr": 131628,
+      "text": "uH@!*F"
+    },
+    {
+      "addr": 132234,
+      "text": "1F F:h"
+    },
+    {
+      "addr": 132298,
+      "text": " F)F2h"
+    },
+    {
+      "addr": 132380,
+      "text": " F)F2h"
+    },
+    {
+      "addr": 133776,
+      "text": "&JYp($"
+    },
+    {
+      "addr": 133841,
+      "text": "5%`p<$h$"
+    },
+    {
+      "addr": 134095,
+      "text": "C!N\"K4h\"M\"J"
+    },
+    {
+      "addr": 134262,
+      "text": "%N%I2h"
+    },
+    {
+      "addr": 136269,
+      "text": "!/H/L0M0N"
+    },
+    {
+      "addr": 136316,
+      "text": "/`7`)K"
+    },
+    {
+      "addr": 136332,
+      "text": "\"x(I\"HJp"
+    },
+    {
+      "addr": 136615,
+      "text": "pZp*K\\2"
+    },
+    {
+      "addr": 136667,
+      "text": "pq9YpZ"
+    },
+    {
+      "addr": 137028,
+      "text": "C):hNK"
+    },
+    {
+      "addr": 137107,
+      "text": "h#`Shc`_"
+    },
+    {
+      "addr": 137194,
+      "text": ".I.I`\""
+    },
+    {
+      "addr": 137669,
+      "text": "`\"x`K:*@"
+    },
+    {
+      "addr": 139780,
+      "text": "/M0O+h"
+    },
+    {
+      "addr": 140302,
+      "text": "\" TKUN"
+    },
+    {
+      "addr": 140362,
+      "text": "+F7h@F"
+    },
+    {
+      "addr": 140394,
+      "text": "7h+F@F"
+    },
+    {
+      "addr": 140456,
+      "text": "+F@F !"
+    },
+    {
+      "addr": 140490,
+      "text": "7h@F !"
+    },
+    {
+      "addr": 140522,
+      "text": "7h+F@F"
+    },
+    {
+      "addr": 140554,
+      "text": "+F(FQF"
+    },
+    {
+      "addr": 140575,
+      "text": "P!FRF#F"
+    },
+    {
+      "addr": 140797,
+      "text": "\"QF+F@F"
+    },
+    {
+      "addr": 140865,
+      "text": "\"7hKF@F"
+    },
+    {
+      "addr": 140894,
+      "text": "6h+F@F"
+    },
+    {
+      "addr": 141301,
+      "text": "31Jc`#"
+    },
+    {
+      "addr": 142406,
+      "text": ".H:I;J3F%"
+    },
+    {
+      "addr": 142507,
+      "text": "H&I\"J#F"
+    },
+    {
+      "addr": 142992,
+      "text": "  )FJF"
+    },
+    {
+      "addr": 143421,
+      "text": "`PJZ`PK3`"
+    },
+    {
+      "addr": 143452,
+      "text": "Z`KK3`"
+    },
+    {
+      "addr": 143468,
+      "text": "4HHIHJ#F"
+    },
+    {
+      "addr": 143522,
+      "text": "=I;J&HCF"
+    },
+    {
+      "addr": 143986,
+      "text": "1I1J2H#F"
+    },
+    {
+      "addr": 144486,
+      "text": "{I{JxH"
+    },
+    {
+      "addr": 144718,
+      "text": "?HJIAJR"
+    },
+    {
+      "addr": 144734,
+      "text": ";HGI=J#F"
+    },
+    {
+      "addr": 144806,
+      "text": ")H7I+J"
+    },
+    {
+      "addr": 145357,
+      "text": "`bM`HcI"
+    },
+    {
+      "addr": 145374,
+      "text": "bHbI^J_M"
+    },
+    {
+      "addr": 145391,
+      "text": "`+`_H_I_"
+    },
+    {
+      "addr": 145541,
+      "text": " (`.M2J"
+    },
+    {
+      "addr": 145813,
+      "text": " (`3M)`3M4I"
+    },
+    {
+      "addr": 145831,
+      "text": "p+`3I3M4K"
+    },
+    {
+      "addr": 145841,
+      "text": "`(`3I4H"
+    },
+    {
+      "addr": 146294,
+      "text": "CHJIKJ"
+    },
+    {
+      "addr": 146475,
+      "text": "BDFMF0`"
+    },
+    {
+      "addr": 150337,
+      "text": "FAF0F*F"
+    },
+    {
+      "addr": 150862,
+      "text": "^N^H3h"
+    },
+    {
+      "addr": 151222,
+      "text": "D0%i`i"
+    },
+    {
+      "addr": 151536,
+      "text": "A03hhj"
+    },
+    {
+      "addr": 151656,
+      "text": "+h`j[j"
+    },
+    {
+      "addr": 152168,
+      "text": "H&HH94A"
+    },
+    {
+      "addr": 153168,
+      "text": "M0+h k"
+    },
+    {
+      "addr": 153458,
+      "text": "#j#dcjcd"
+    },
+    {
+      "addr": 153600,
+      "text": "M03h(k"
+    },
+    {
+      "addr": 153750,
+      "text": "+h k[j"
+    },
+    {
+      "addr": 154266,
+      "text": "Ph)FBF"
+    },
+    {
+      "addr": 154406,
+      "text": "PhAF:F"
+    },
+    {
+      "addr": 155403,
+      "text": "h#c#icc#}"
+    },
+    {
+      "addr": 155432,
+      "text": "(F9F\"F"
+    },
+    {
+      "addr": 155978,
+      "text": "3 sh6HS"
+    },
+    {
+      "addr": 156308,
+      "text": "POQH;h[i"
+    },
+    {
+      "addr": 158002,
+      "text": "+wwcwwwwwwwwu"
+    },
+    {
+      "addr": 158451,
+      "text": "Cc`*Kah"
+    },
+    {
+      "addr": 160016,
+      "text": "5 YhADY`*"
+    },
+    {
+      "addr": 160048,
+      "text": "Zx'i`iI"
+    },
+    {
+      "addr": 160154,
+      "text": "/O/H;h"
+    },
+    {
+      "addr": 160689,
+      "text": "G&i`ij"
+    },
+    {
+      "addr": 162466,
+      "text": " h)F2F"
+    },
+    {
+      "addr": 162541,
+      "text": "  h)FC"
+    },
+    {
+      "addr": 162958,
+      "text": ":L:K\"h"
+    },
+    {
+      "addr": 162968,
+      "text": "#`<#c`8K"
+    },
+    {
+      "addr": 163332,
+      "text": "\\\\\\\\MMU"
+    },
+    {
+      "addr": 163343,
+      "text": "TSx#r8"
+    },
+    {
+      "addr": 163854,
+      "text": "\"K#e\"Kce\"K"
+    },
+    {
+      "addr": 164178,
+      "text": "# 3hdJ"
+    },
+    {
+      "addr": 164425,
+      "text": "#3s0rpr"
+    },
+    {
+      "addr": 164543,
+      "text": "G.s.rnr"
+    },
+    {
+      "addr": 164557,
+      "text": "\"*s+rkr"
+    },
+    {
+      "addr": 164803,
+      "text": "Gco2hC"
+    },
+    {
+      "addr": 165547,
+      "text": "sco)y#"
+    },
+    {
+      "addr": 165580,
+      "text": "0A:F;F"
+    },
+    {
+      "addr": 165844,
+      "text": "0A2F3F"
+    },
+    {
+      "addr": 166244,
+      "text": "c`bh#h"
+    },
+    {
+      "addr": 166678,
+      "text": "%0:FXh"
+    },
+    {
+      "addr": 166728,
+      "text": "'02FXh"
+    },
+    {
+      "addr": 168145,
+      "text": "`pG@kpGAcpG"
+    },
+    {
+      "addr": 169392,
+      "text": "pGA`pGCh"
+    },
+    {
+      "addr": 170012,
+      "text": "C`pGCh#"
+    },
+    {
+      "addr": 170077,
+      "text": "CCapGCi#"
+    },
+    {
+      "addr": 170155,
+      "text": "CCbpGCj#"
+    },
+    {
+      "addr": 171739,
+      "text": "ipGAbpG"
+    },
+    {
+      "addr": 171747,
+      "text": "CBcpG0"
+    },
+    {
+      "addr": 172039,
+      "text": "kpGAdpG"
+    },
+    {
+      "addr": 172864,
+      "text": "0F!Fd\""
+    },
+    {
+      "addr": 172886,
+      "text": "0F!Ff\""
+    },
+    {
+      "addr": 173084,
+      "text": "CTpG 0"
+    },
+    {
+      "addr": 174578,
+      "text": "1i0FID"
+    },
+    {
+      "addr": 176230,
+      "text": "9h'Hzh"
+    },
+    {
+      "addr": 176470,
+      "text": ")h0` h"
+    },
+    {
+      "addr": 176615,
+      "text": "\"Zp F8"
+    },
+    {
+      "addr": 176791,
+      "text": "`#acb F8"
+    },
+    {
+      "addr": 176901,
+      "text": "`#acb F8"
+    },
+    {
+      "addr": 177013,
+      "text": "`#acb F8"
+    },
+    {
+      "addr": 177101,
+      "text": "r\\KC`\\K"
+    },
+    {
+      "addr": 177182,
+      "text": "NINM\"i"
+    },
+    {
+      "addr": 178767,
+      "text": "r:KC`:K"
+    },
+    {
+      "addr": 179125,
+      "text": "r4KC`4K"
+    },
+    {
+      "addr": 179204,
+      "text": "&I'M\"i"
+    },
+    {
+      "addr": 179459,
+      "text": "r9KC`9K"
+    },
+    {
+      "addr": 179819,
+      "text": "r9KC`9K"
+    },
+    {
+      "addr": 180179,
+      "text": "r9KC`9K"
+    },
+    {
+      "addr": 180539,
+      "text": "r3KC`3K"
+    },
+    {
+      "addr": 180857,
+      "text": "r;KC`;K"
+    },
+    {
+      "addr": 180930,
+      "text": "(F.I/M"
+    },
+    {
+      "addr": 181231,
+      "text": "r:KC`:K"
+    },
+    {
+      "addr": 181589,
+      "text": "r5KC`5K"
+    },
+    {
+      "addr": 181670,
+      "text": "(I(M\"i"
+    },
+    {
+      "addr": 181921,
+      "text": "rAKC`AK"
+    },
+    {
+      "addr": 182000,
+      "text": "3I4M\"i"
+    },
+    {
+      "addr": 182616,
+      "text": "6I7M\"i"
+    },
+    {
+      "addr": 182780,
+      "text": "#h(3cb F"
+    },
+    {
+      "addr": 182945,
+      "text": "r;KC`;K"
+    },
+    {
+      "addr": 183018,
+      "text": "(F.I/M"
+    },
+    {
+      "addr": 183737,
+      "text": "ipG@ipG"
+    },
+    {
+      "addr": 183881,
+      "text": "h\\0pG@jpG8"
+    },
+    {
+      "addr": 185173,
+      "text": "H!F\"F#F"
+    },
+    {
+      "addr": 185209,
+      "text": "H!F\"F#F"
+    },
+    {
+      "addr": 185281,
+      "text": "H!F\"F#F"
+    },
+    {
+      "addr": 185325,
+      "text": "H!F\"F#F"
+    },
+    {
+      "addr": 185438,
+      "text": "0FiF*F"
+    },
+    {
+      "addr": 185618,
+      "text": "0F)F\"F"
+    },
+    {
+      "addr": 185720,
+      "text": "0FiF*F"
+    },
+    {
+      "addr": 185900,
+      "text": "0F)F\"F"
+    },
+    {
+      "addr": 190893,
+      "text": "F1F jj"
+    },
+    {
+      "addr": 191232,
+      "text": " jfhei"
+    },
+    {
+      "addr": 192059,
+      "text": "#cv#vV"
+    },
+    {
+      "addr": 192375,
+      "text": "##s#a#`c`#vcv F8"
+    },
+    {
+      "addr": 195470,
+      "text": "Sx\"F@+"
+    },
+    {
+      "addr": 196686,
+      "text": "VFIK\"\""
+    },
+    {
+      "addr": 197142,
+      "text": "2F;F@F"
+    },
+    {
+      "addr": 197252,
+      "text": "+FSF[E"
+    },
+    {
+      "addr": 197368,
+      "text": "IF@FZF"
+    },
+    {
+      "addr": 198387,
+      "text": " 4F=FVF@F"
+    },
+    {
+      "addr": 203136,
+      "text": "SD#` F"
+    },
+    {
+      "addr": 204100,
+      "text": "UFTF1h"
+    },
+    {
+      "addr": 204572,
+      "text": "#F4F>F"
+    },
+    {
+      "addr": 204590,
+      "text": "#F4F>F"
+    },
+    {
+      "addr": 204956,
+      "text": "PFYF-h"
+    },
+    {
+      "addr": 205161,
+      "text": "h1F*F#F"
+    },
+    {
+      "addr": 205382,
+      "text": "7F:F hYF"
+    },
+    {
+      "addr": 205516,
+      "text": "-##schG+"
+    },
+    {
+      "addr": 205672,
+      "text": "@F;F1F"
+    },
+    {
+      "addr": 205824,
+      "text": "g#c`ah"
+    },
+    {
+      "addr": 206604,
+      "text": "(FRF[F"
+    },
+    {
+      "addr": 208487,
+      "text": "FJF9F(F"
+    },
+    {
+      "addr": 208528,
+      "text": "(FIFBF"
+    },
+    {
+      "addr": 208710,
+      "text": "IF(FZF"
+    },
+    {
+      "addr": 208896,
+      "text": "9F(F2F"
+    },
+    {
+      "addr": 209241,
+      "text": "FdFXFAF"
+    },
+    {
+      "addr": 212129,
+      "text": "6_a&a F"
+    },
+    {
+      "addr": 212321,
+      "text": "0pG  pG"
+    },
+    {
+      "addr": 212421,
+      "text": " pG  pG"
+    },
+    {
+      "addr": 212836,
+      "text": "9F2F F"
+    },
+    {
+      "addr": 212872,
+      "text": " F1F2F"
+    },
+    {
+      "addr": 213035,
+      "text": ">(F>a!F"
+    },
+    {
+      "addr": 214302,
+      "text": "vhN`AhQ`"
+    },
+    {
+      "addr": 214466,
+      "text": "qhA`RhZ`Y"
+    },
+    {
+      "addr": 214586,
+      "text": "bhB`Jh"
+    },
+    {
+      "addr": 214609,
+      "text": "KIhY`ChS`"
+    },
+    {
+      "addr": 214682,
+      "text": "J`ZhHFB"
+    },
+    {
+      "addr": 215783,
+      "text": "{2F[FO"
+    },
+    {
+      "addr": 216114,
+      "text": "ch#d#h"
+    },
+    {
+      "addr": 216252,
+      "text": "@F)h:F"
+    },
+    {
+      "addr": 216300,
+      "text": "2F@F)h"
+    },
+    {
+      "addr": 217140,
+      "text": "SD#` F"
+    },
+    {
+      "addr": 218178,
+      "text": "@F)F2F"
+    },
+    {
+      "addr": 220400,
+      "text": "NOserial"
+    },
+    {
+      "addr": 221252,
+      "text": "0123456789abcdef"
+    },
+    {
+      "addr": 223045,
+      "text": "   0   A   B   C   "
+    },
+    {
+      "addr": 223073,
+      "text": "XDS110 with CMSIS-DAP"
+    },
+    {
+      "addr": 223095,
+      "text": "Texas Instruments"
+    },
+    {
+      "addr": 224099,
+      "text": " $B0A<"
+    },
+    {
+      "addr": 225223,
+      "text": " $B0A<"
+    },
+    {
+      "addr": 225680,
+      "text": "$,8@DT\\`hd"
+    },
+    {
+      "addr": 249023,
+      "text": "MSDOS5.0"
+    },
+    {
+      "addr": 249063,
+      "text": "NO NAME    FAT16   3"
+    },
+    {
+      "addr": 249099,
+      "text": "|8N$}$"
+    },
+    {
+      "addr": 249197,
+      "text": "r9&8-t"
+    },
+    {
+      "addr": 249437,
+      "text": "BOOTMGR    "
+    },
+    {
+      "addr": 249450,
+      "text": "Remove disks or other media."
+    },
+    {
+      "addr": 249481,
+      "text": "Disk error"
+    },
+    {
+      "addr": 249494,
+      "text": "Press any key to restart"
+    },
+    {
+      "addr": 249596,
+      "text": "STATUS~1TXT"
+    },
+    {
+      "addr": 249660,
+      "text": "README  TXT"
+    },
+    {
+      "addr": 249692,
+      "text": "XDS110     "
+    },
+    {
+      "addr": 249788,
+      "text": "STATUS~1TXT"
+    },
+    {
+      "addr": 249884,
+      "text": "STATUS~1TXT"
+    },
+    {
+      "addr": 249924,
+      "text": "Error occurred while establishing debug connection to target."
+    },
+    {
+      "addr": 249987,
+      "text": "Error code: %d."
+    },
+    {
+      "addr": 250005,
+      "text": "The Drag-n-Drop feature is active and waiting for a file to flash to target device."
+    },
+    {
+      "addr": 250091,
+      "text": "Drag-n-Drop feature."
+    },
+    {
+      "addr": 250115,
+      "text": "The Drag-n-Drop feature allows you to flash a program to your target device"
+    },
+    {
+      "addr": 250192,
+      "text": "simply by dragging the program file to this virtual disk drive."
+    },
+    {
+      "addr": 250259,
+      "text": "Supported formats:"
+    },
+    {
+      "addr": 250279,
+      "text": "  raw binary (.bin)"
+    },
+    {
+      "addr": 250300,
+      "text": "  Extended Tektronics hex file (.hex or .tek)"
+    },
+    {
+      "addr": 250347,
+      "text": "  Intel hex file (.hex)"
+    },
+    {
+      "addr": 250374,
+      "text": "Notes:"
+    },
+    {
+      "addr": 250382,
+      "text": "This feature should not be used while a debug connection to the target device"
+    },
+    {
+      "addr": 250461,
+      "text": "is active."
+    },
+    {
+      "addr": 250473,
+      "text": "The entire flash will be erased before downloading the file data."
+    },
+    {
+      "addr": 250540,
+      "text": "Binary files will be flashed starting at the beginning of flash."
+    },
+    {
+      "addr": 250606,
+      "text": "After the flashing is complete, the target will be reset, and the program"
+    },
+    {
+      "addr": 250681,
+      "text": "should start running."
+    },
+    {
+      "addr": 250705,
+      "text": "The file was flashed to the target device. %d bytes were written to flash."
+    },
+    {
+      "addr": 250782,
+      "text": "%sThe flashing algorithm on the target does not appear to be running."
+    },
+    {
+      "addr": 250854,
+      "text": "Failed to flash program into target device."
+    },
+    {
+      "addr": 250900,
+      "text": "%sThe flashing algorithm on the target appears to have hung."
+    },
+    {
+      "addr": 250963,
+      "text": "%s%sError: Flash timeout error."
+    },
+    {
+      "addr": 250997,
+      "text": "The flashing algorithm on the target reports an error."
+    },
+    {
+      "addr": 251054,
+      "text": "%s%sError: Flash verify error."
+    },
+    {
+      "addr": 251087,
+      "text": "%s%sError: Flash bad command."
+    },
+    {
+      "addr": 251119,
+      "text": "%s%sError: Flash power error."
+    },
+    {
+      "addr": 251151,
+      "text": "%s%sError: Undefined return code (0x%08x)."
+    },
+    {
+      "addr": 251196,
+      "text": "%sError occurred while halting execution on target."
+    },
+    {
+      "addr": 251249,
+      "text": "Error code: %d."
+    },
+    {
+      "addr": 251267,
+      "text": "%sError occurred determining target device type."
+    },
+    {
+      "addr": 251317,
+      "text": "Error code: %d."
+    },
+    {
+      "addr": 251335,
+      "text": "%sError occurred while downloading flashing algorithm into target."
+    },
+    {
+      "addr": 251403,
+      "text": "Address: 0x%08x. Error code: %d."
+    },
+    {
+      "addr": 251438,
+      "text": "%sError occurred while setting target register."
+    },
+    {
+      "addr": 251487,
+      "text": "Index: 0x%02x. Error code: %d."
+    },
+    {
+      "addr": 251520,
+      "text": "%sError occurred while starting flashing algorithm on target."
+    },
+    {
+      "addr": 251583,
+      "text": "Error code: %d."
+    },
+    {
+      "addr": 251601,
+      "text": "%sMemory error occurred writing file data to target memory."
+    },
+    {
+      "addr": 251662,
+      "text": "Address: 0x%08x. Error code: %d."
+    },
+    {
+      "addr": 253765,
+      "text": "OKj`.`"
+    },
+    {
+      "addr": 254104,
+      "text": "6RMSOSN#"
+    },
+    {
+      "addr": 257010,
+      "text": " N J3h M!O!LO"
+    },
+    {
+      "addr": 257043,
+      "text": "G;hh`[h"
+    },
+    {
+      "addr": 257059,
+      "text": "Gch:hhs"
+    },
+    {
+      "addr": 257633,
+      "text": "3c`&`Sm0F"
+    },
+    {
+      "addr": 257643,
+      "text": "G;hih[m"
+    },
+    {
+      "addr": 257766,
+      "text": "'F#h +"
+    },
+    {
+      "addr": 258029,
+      "text": "G{i*h#"
+    },
+    {
+      "addr": 258192,
+      "text": " Kc`+hO"
+    },
+    {
+      "addr": 261616,
+      "text": "{O|M3x"
+    },
+    {
+      "addr": 263008,
+      "text": "-IKi,J"
+    },
+    {
+      "addr": 263061,
+      "text": "F L!Nci"
+    },
+    {
+      "addr": 263069,
+      "text": "M1h*h#"
+    },
+    {
+      "addr": 263476,
+      "text": "9FZFPF"
+    },
+    {
+      "addr": 263507,
+      "text": "G8@OF_"
+    },
+    {
+      "addr": 263561,
+      "text": "O)h:hF"
+    },
+    {
+      "addr": 263585,
+      "text": "3c`&`Sm0F"
+    },
+    {
+      "addr": 263595,
+      "text": "G;hih[m"
+    },
+    {
+      "addr": 263706,
+      "text": "'F#h +"
+    },
+    {
+      "addr": 266062,
+      "text": "8F1F*F"
+    },
+    {
+      "addr": 266098,
+      "text": "1H1I2J2L"
+    },
+    {
+      "addr": 266111,
+      "text": "##`\"h,O"
+    },
+    {
+      "addr": 266140,
+      "text": "+M,N*h2`B"
+    },
+    {
+      "addr": 267072,
+      "text": "3ClNcb2hcj"
+    },
+    {
+      "addr": 267091,
+      "text": "CcbhL\"h"
+    },
+    {
+      "addr": 267170,
+      "text": "\\03hUJ"
+    },
+    {
+      "addr": 267199,
+      "text": "SS`ShNNC"
+    },
+    {
+      "addr": 267791,
+      "text": "&&`+N7h"
+    },
+    {
+      "addr": 267871,
+      "text": "##`3h#"
+    },
+    {
+      "addr": 268227,
+      "text": "h&`^hf`"
+    },
+    {
+      "addr": 268474,
+      "text": "DF_FVFMF"
+    },
+    {
+      "addr": 268633,
+      "text": "\"IF_FR"
+    },
+    {
+      "addr": 268718,
+      "text": "VF_FMFDF"
+    },
+    {
+      "addr": 284668,
+      "text": "%sError occurred while executing flash algorithm."
+    },
+    {
+      "addr": 284719,
+      "text": "Error code: %d."
+    },
+    {
+      "addr": 284737,
+      "text": "%sThe flashing algorithm on the target appears to be hung."
+    },
+    {
+      "addr": 284798,
+      "text": "%sError occurred while examining device type."
+    },
+    {
+      "addr": 284845,
+      "text": "Error code: %d."
+    },
+    {
+      "addr": 285713,
+      "text": "8F1F*F"
+    },
+    {
+      "addr": 285749,
+      "text": "1H1I2J2L"
+    },
+    {
+      "addr": 285762,
+      "text": "##`\"h,O"
+    },
+    {
+      "addr": 285791,
+      "text": "+M,N*h2`B"
+    },
+    {
+      "addr": 286719,
+      "text": "3CmNcb2hcj"
+    },
+    {
+      "addr": 286738,
+      "text": "CcbiL\"h"
+    },
+    {
+      "addr": 286817,
+      "text": "\\03hVJ"
+    },
+    {
+      "addr": 286850,
+      "text": "SS`ShNNC"
+    },
+    {
+      "addr": 287040,
+      "text": "02h!N3h"
+    },
+    {
+      "addr": 287354,
+      "text": "c;I<LJ"
+    },
+    {
+      "addr": 287442,
+      "text": "&&`+N7h"
+    },
+    {
+      "addr": 287522,
+      "text": "##`3h#"
+    },
+    {
+      "addr": 287878,
+      "text": "h&`^hf`"
+    },
+    {
+      "addr": 288125,
+      "text": "DF_FVFMF"
+    },
+    {
+      "addr": 288284,
+      "text": "\"IF_FR"
+    },
+    {
+      "addr": 288369,
+      "text": "VF_FMFDF"
+    },
+    {
+      "addr": 317631,
+      "text": "%sError occurred while erasing flash."
+    },
+    {
+      "addr": 317670,
+      "text": "Error code: %d."
+    },
+    {
+      "addr": 317688,
+      "text": "%sTimed out waiting for flash to erase."
+    },
+    {
+      "addr": 317730,
+      "text": "%sError occurred while executing flashing algorithm on target."
+    },
+    {
+      "addr": 317794,
+      "text": "Error code: %d."
+    },
+    {
+      "addr": 317812,
+      "text": "%sFlashing algorithm failed to flash the data."
+    },
+    {
+      "addr": 317860,
+      "text": "Result = %d."
+    },
+    {
+      "addr": 318014,
+      "text": "@%sUnexpected end of line."
+    },
+    {
+      "addr": 318043,
+      "text": "Failed to decode the hex file format."
+    },
+    {
+      "addr": 318083,
+      "text": "%sUnsupported line record type."
+    },
+    {
+      "addr": 318117,
+      "text": "%sInternal decoder error."
+    },
+    {
+      "addr": 318145,
+      "text": "%sInvalid checksum."
+    },
+    {
+      "addr": 318167,
+      "text": "%sInvalid line length."
+    },
+    {
+      "addr": 318192,
+      "text": "%sInvalid address width."
+    },
+    {
+      "addr": 320292,
+      "text": "allocating %s failed:%d"
+    },
+    {
+      "addr": 320318,
+      "text": "configuring %s failed:%d"
+    },
+    {
+      "addr": 320345,
+      "text": "autoadjust_table_init() error: table == NULL!"
+    },
+    {
+      "addr": 320393,
+      "text": "Command "
+    },
+    {
+      "addr": 320402,
+      "text": " not valid ..."
+    },
+    {
+      "addr": 320419,
+      "text": "| %s | %s | %s | %s | %s | %s |"
+    },
+    {
+      "addr": 320452,
+      "text": "Average Data Start"
+    },
+    {
+      "addr": 320472,
+      "text": "AVG(Samples=%d, Interval=%d ms)"
+    },
+    {
+      "addr": 320510,
+      "text": "Rail Name"
+    },
+    {
+      "addr": 320520,
+      "text": "Shunt voltage(uV)"
+    },
+    {
+      "addr": 320538,
+      "text": "Rail voltage(V)"
+    },
+    {
+      "addr": 320554,
+      "text": "Current(mA)"
+    },
+    {
+      "addr": 320566,
+      "text": "Power(mW)"
+    },
+    {
+      "addr": 320576,
+      "text": "%3.10f"
+    },
+    {
+      "addr": 320603,
+      "text": "sampling %s failed:%d"
+    },
+    {
+      "addr": 320633,
+      "text": "set dut "
+    },
+    {
+      "addr": 320642,
+      "text": "Setting DUT"
+    },
+    {
+      "addr": 320656,
+      "text": "Error setting dut [%s]"
+    },
+    {
+      "addr": 320681,
+      "text": "dut list"
+    },
+    {
+      "addr": 320690,
+      "text": "auto set dut <DUT type> must be called first"
+    },
+    {
+      "addr": 320736,
+      "text": "Use command 'auto dut list' to see supported dut types"
+    },
+    {
+      "addr": 320798,
+      "text": "ina %s register %x read %i"
+    },
+    {
+      "addr": 320827,
+      "text": "[%s] register %x value is 0x%04x"
+    },
+    {
+      "addr": 320862,
+      "text": "[%s] register %x value is 0x%08x"
+    },
+    {
+      "addr": 320897,
+      "text": "[%s] register %x value is 0x%016llx"
+    },
+    {
+      "addr": 320935,
+      "text": "ina %s register %x write %x"
+    },
+    {
+      "addr": 320963,
+      "text": "[%s] wrote register %x value 0x%04x"
+    },
+    {
+      "addr": 321001,
+      "text": "[%s] error writing register %x value 0x%04x status_code: %i"
+    },
+    {
+      "addr": 321063,
+      "text": "ina %s set sample period %i"
+    },
+    {
+      "addr": 321091,
+      "text": "ina %s set samples %i"
+    },
+    {
+      "addr": 321113,
+      "text": "ina %s set mode %s"
+    },
+    {
+      "addr": 321132,
+      "text": "ina %s set shunt %s"
+    },
+    {
+      "addr": 321152,
+      "text": "No rail found with name [%s]"
+    },
+    {
+      "addr": 321183,
+      "text": "ina help"
+    },
+    {
+      "addr": 321192,
+      "text": "ina list"
+    },
+    {
+      "addr": 321201,
+      "text": "INA rails:"
+    },
+    {
+      "addr": 321215,
+      "text": "name: %s shunt: %f"
+    },
+    {
+      "addr": 321236,
+      "text": "ina %s info"
+    },
+    {
+      "addr": 321248,
+      "text": "Error INA command not recognized"
+    },
+    {
+      "addr": 321283,
+      "text": "rtc_wakeup %s"
+    },
+    {
+      "addr": 321297,
+      "text": "ERROR: No pin configured for RTC wake up"
+    },
+    {
+      "addr": 321340,
+      "text": "Writing wakeup pin HIGH"
+    },
+    {
+      "addr": 321370,
+      "text": "Writing wakeup pin LOW"
+    },
+    {
+      "addr": 321395,
+      "text": "Error rtc_wakeup command not recognized -- input did not match 'on' or 'off'"
+    },
+    {
+      "addr": 321480,
+      "text": "Resetting DUT"
+    },
+    {
+      "addr": 321496,
+      "text": "hold_por"
+    },
+    {
+      "addr": 321505,
+      "text": "Holding Power-On-Reset on DUT"
+    },
+    {
+      "addr": 321537,
+      "text": "release_por"
+    },
+    {
+      "addr": 321549,
+      "text": "Releasing Power-On-Reset on DUT"
+    },
+    {
+      "addr": 321583,
+      "text": "Powering Off DUT"
+    },
+    {
+      "addr": 321602,
+      "text": "Powering On DUT"
+    },
+    {
+      "addr": 321620,
+      "text": "sysboot "
+    },
+    {
+      "addr": 321629,
+      "text": "Sysboot set on DUT"
+    },
+    {
+      "addr": 321650,
+      "text": "scan i2c"
+    },
+    {
+      "addr": 321659,
+      "text": "probe i2c "
+    },
+    {
+      "addr": 321670,
+      "text": "boot list"
+    },
+    {
+      "addr": 321680,
+      "text": "measure power "
+    },
+    {
+      "addr": 321695,
+      "text": "Measuring power"
+    },
+    {
+      "addr": 321719,
+      "text": "Samples must be <=%i"
+    },
+    {
+      "addr": 321742,
+      "text": "Samples: %d, Delay: %dms"
+    },
+    {
+      "addr": 321769,
+      "text": "measure temperature"
+    },
+    {
+      "addr": 321789,
+      "text": "Measuring temperature..."
+    },
+    {
+      "addr": 321818,
+      "text": "Error got NULL value for sensor"
+    },
+    {
+      "addr": 321852,
+      "text": "Error measuring temperature sensor [%s] of type [%s] at address [%d] error code: [%i]"
+    },
+    {
+      "addr": 321940,
+      "text": "%s: %f"
+    },
+    {
+      "addr": 321949,
+      "text": "version"
+    },
+    {
+      "addr": 321959,
+      "text": "Command '%s' not recognized"
+    },
+    {
+      "addr": 323156,
+      "text": "Could not allocate memory dut"
+    },
+    {
+      "addr": 323188,
+      "text": "Could not allocate memory INA devices"
+    },
+    {
+      "addr": 323228,
+      "text": "vdd_core"
+    },
+    {
+      "addr": 323237,
+      "text": "vdd_ram_0v85"
+    },
+    {
+      "addr": 323250,
+      "text": "vda_phy_1v8"
+    },
+    {
+      "addr": 323262,
+      "text": "vdd_ioret_core"
+    },
+    {
+      "addr": 323277,
+      "text": "vdd_sd_dv"
+    },
+    {
+      "addr": 323287,
+      "text": "vdd_io_1v8"
+    },
+    {
+      "addr": 323298,
+      "text": "vsys_3v3"
+    },
+    {
+      "addr": 323307,
+      "text": "vdd_ddr_1v1"
+    },
+    {
+      "addr": 323319,
+      "text": "vdd_io_3v3"
+    },
+    {
+      "addr": 323330,
+      "text": "vda_pll_1v8"
+    },
+    {
+      "addr": 323342,
+      "text": "vdd1_ddr_1v8"
+    },
+    {
+      "addr": 323355,
+      "text": "vdd_mcu_0v85"
+    },
+    {
+      "addr": 323368,
+      "text": "vdd_mcu_ram_0v85"
+    },
+    {
+      "addr": 323385,
+      "text": "vda_mcu_1v8"
+    },
+    {
+      "addr": 323397,
+      "text": "vdd_mcuio_3v3"
+    },
+    {
+      "addr": 323411,
+      "text": "vdd_mcuio_1v8"
+    },
+    {
+      "addr": 323425,
+      "text": "vdd_wk_0v8"
+    },
+    {
+      "addr": 323436,
+      "text": "vdd_mcu_gpioret_3v3"
+    },
+    {
+      "addr": 323456,
+      "text": "vdd_phycore_0v8"
+    },
+    {
+      "addr": 323472,
+      "text": "vdd_phy_1v8"
+    },
+    {
+      "addr": 323484,
+      "text": "vda_usb_3v3"
+    },
+    {
+      "addr": 323496,
+      "text": "vdd_gpioret_3v3"
+    },
+    {
+      "addr": 323512,
+      "text": "vcca_core_3v3"
+    },
+    {
+      "addr": 323526,
+      "text": "vsys_mcuio_1v8"
+    },
+    {
+      "addr": 323541,
+      "text": "vsys_mcuio_3v3"
+    },
+    {
+      "addr": 323556,
+      "text": "vsys_io_1v8"
+    },
+    {
+      "addr": 323568,
+      "text": "vsys_io_3v3"
+    },
+    {
+      "addr": 323580,
+      "text": "vcc_12v0"
+    },
+    {
+      "addr": 323589,
+      "text": "vsys_5v0"
+    },
+    {
+      "addr": 323598,
+      "text": "vcca_ddr_3v3"
+    },
+    {
+      "addr": 323611,
+      "text": "vda_dll_0v8"
+    },
+    {
+      "addr": 323623,
+      "text": "vcca_cpu_avs_3v3"
+    },
+    {
+      "addr": 323640,
+      "text": "vcca_3v3_core"
+    },
+    {
+      "addr": 323654,
+      "text": "vcca_3v3_cpu_avs"
+    },
+    {
+      "addr": 323671,
+      "text": "vcca_3v3_ddr"
+    },
+    {
+      "addr": 323684,
+      "text": "soc_dvdd_1v8"
+    },
+    {
+      "addr": 323697,
+      "text": "soc_dvdd_3v3"
+    },
+    {
+      "addr": 323710,
+      "text": "vdd_ddr"
+    },
+    {
+      "addr": 323718,
+      "text": "vddr_core"
+    },
+    {
+      "addr": 323728,
+      "text": "soc_vdd_ddr4"
+    },
+    {
+      "addr": 323741,
+      "text": "soc_vdda_1v8"
+    },
+    {
+      "addr": 323754,
+      "text": "vdd_lpddr4"
+    },
+    {
+      "addr": 323765,
+      "text": "soc_vdds_ddr"
+    },
+    {
+      "addr": 323778,
+      "text": "vdda_core"
+    },
+    {
+      "addr": 323788,
+      "text": "vdd_canuart"
+    },
+    {
+      "addr": 323800,
+      "text": "vddshv_canuart"
+    },
+    {
+      "addr": 323815,
+      "text": "soc_dvdd1v8"
+    },
+    {
+      "addr": 323827,
+      "text": "soc_dvdd3v3"
+    },
+    {
+      "addr": 323839,
+      "text": "vcc_1v2"
+    },
+    {
+      "addr": 323847,
+      "text": "vdd_lpddr4_pmic2"
+    },
+    {
+      "addr": 323864,
+      "text": "vdd_rtc"
+    },
+    {
+      "addr": 323872,
+      "text": "vdd_rtc_1v8"
+    },
+    {
+      "addr": 323884,
+      "text": "Supported EVMs:"
+    },
+    {
+      "addr": 323910,
+      "text": "DUT has no configured temperature sensors"
+    },
+    {
+      "addr": 323954,
+      "text": "Supported boot modes:"
+    },
+    {
+      "addr": 323979,
+      "text": "%s - %s"
+    },
+    {
+      "addr": 323989,
+      "text": "Run command [auto sysboot <code>] to set the boot mode for the dut"
+    },
+    {
+      "addr": 324058,
+      "text": "DUT has no configured INAs!"
+    },
+    {
+      "addr": 324088,
+      "text": "No INA device with name [%s] found"
+    },
+    {
+      "addr": 324123,
+      "text": "Resetting RECOV_CNT_CLR bit in PMIC."
+    },
+    {
+      "addr": 324161,
+      "text": "This workaround is needed to prevent board from getting into fault state"
+    },
+    {
+      "addr": 324236,
+      "text": "Error resetting RECOV_CNT_CLR bit. Status: %d"
+    },
+    {
+      "addr": 324288,
+      "text": "tmp100"
+    },
+    {
+      "addr": 324330,
+      "text": "usbmsc"
+    },
+    {
+      "addr": 324342,
+      "text": "spldfu"
+    },
+    {
+      "addr": 324378,
+      "text": "emmc_user"
+    },
+    {
+      "addr": 324398,
+      "text": "hflash"
+    },
+    {
+      "addr": 324415,
+      "text": "ethernet"
+    },
+    {
+      "addr": 324424,
+      "text": "ospi-1s"
+    },
+    {
+      "addr": 324457,
+      "text": "devboot"
+    },
+    {
+      "addr": 324483,
+      "text": "usbdfu"
+    },
+    {
+      "addr": 324490,
+      "text": "xspi_1s"
+    },
+    {
+      "addr": 324503,
+      "text": "xspi_sfdp"
+    },
+    {
+      "addr": 324513,
+      "text": "xspi_fast"
+    },
+    {
+      "addr": 324543,
+      "text": "ospi_4s"
+    },
+    {
+      "addr": 324551,
+      "text": "ospi_1s"
+    },
+    {
+      "addr": 324559,
+      "text": "ospi_8s"
+    },
+    {
+      "addr": 324567,
+      "text": "ospi_nand_1s"
+    },
+    {
+      "addr": 324585,
+      "text": "ospi_nand_4s"
+    },
+    {
+      "addr": 324598,
+      "text": "thb_test"
+    },
+    {
+      "addr": 324622,
+      "text": "dev_boot"
+    },
+    {
+      "addr": 324636,
+      "text": "ospi_nand_8s"
+    },
+    {
+      "addr": 324654,
+      "text": "usb_dfu"
+    },
+    {
+      "addr": 324662,
+      "text": "am62b-p1-sk"
+    },
+    {
+      "addr": 324674,
+      "text": "am62lxx-evm"
+    },
+    {
+      "addr": 324686,
+      "text": "am62xx-evm"
+    },
+    {
+      "addr": 324697,
+      "text": "am62axx-sk"
+    },
+    {
+      "addr": 324708,
+      "text": "am62xx-evm-reve1"
+    },
+    {
+      "addr": 324725,
+      "text": "am62xx-evm-reve2"
+    },
+    {
+      "addr": 324742,
+      "text": "am62xx-lp-sk"
+    },
+    {
+      "addr": 324755,
+      "text": "am62xx-p1-sk"
+    },
+    {
+      "addr": 324768,
+      "text": "am62xxsip-sk"
+    },
+    {
+      "addr": 324781,
+      "text": "am64b-sk"
+    },
+    {
+      "addr": 324790,
+      "text": "am62pxx-sk"
+    },
+    {
+      "addr": 324801,
+      "text": "j784s4-sk"
+    },
+    {
+      "addr": 324811,
+      "text": "j784s4-evm"
+    },
+    {
+      "addr": 324822,
+      "text": "am263p-cc"
+    },
+    {
+      "addr": 324832,
+      "text": "am263p-lp"
+    },
+    {
+      "addr": 324842,
+      "text": "am261-lp"
+    },
+    {
+      "addr": 324857,
+      "text": "j722s-evm"
+    },
+    {
+      "addr": 324867,
+      "text": "am62xx-sk"
+    },
+    {
+      "addr": 324877,
+      "text": "am64xx-sk"
+    },
+    {
+      "addr": 324887,
+      "text": "am62dxx-evm"
+    },
+    {
+      "addr": 324899,
+      "text": "am69xx-sk"
+    },
+    {
+      "addr": 324909,
+      "text": "am69_sk-fs"
+    },
+    {
+      "addr": 325881,
+      "text": "Error setting up INA rail: ERROR[%i] %s"
+    },
+    {
+      "addr": 325924,
+      "text": "Error setting up TMP sensor: sensor is NULL"
+    },
+    {
+      "addr": 325971,
+      "text": "Error setting up TMP sensor [%s]: ERROR[%i]"
+    },
+    {
+      "addr": 326017,
+      "text": "[ERROR] Connecting to TCA device"
+    },
+    {
+      "addr": 326052,
+      "text": "[ERROR] Initializing TCA device"
+    },
+    {
+      "addr": 326086,
+      "text": "Running I2C probe on BOOT rail..."
+    },
+    {
+      "addr": 326123,
+      "text": "Device found: %d (dec), 0x%X (hex), %o (oct)"
+    },
+    {
+      "addr": 326171,
+      "text": "No device found"
+    },
+    {
+      "addr": 326189,
+      "text": "Running I2C probe on INA rail..."
+    },
+    {
+      "addr": 326224,
+      "text": "Starting I2C scan of boot rail..."
+    },
+    {
+      "addr": 326260,
+      "text": "Starting I2C scan of INA rail..."
+    },
+    {
+      "addr": 326368,
+      "text": "Error communicating to INA reg"
+    },
+    {
+      "addr": 326456,
+      "text": "[%s] only one mode supported in INA226"
+    },
+    {
+      "addr": 326497,
+      "text": "type:  ina226"
+    },
+    {
+      "addr": 326513,
+      "text": "name:  %s"
+    },
+    {
+      "addr": 326525,
+      "text": "registers:"
+    },
+    {
+      "addr": 326539,
+      "text": "config:          0x%04x"
+    },
+    {
+      "addr": 326566,
+      "text": "shunt:           0x%04x"
+    },
+    {
+      "addr": 326593,
+      "text": "bus:             0x%04x"
+    },
+    {
+      "addr": 326620,
+      "text": "power:           0x%04x"
+    },
+    {
+      "addr": 326647,
+      "text": "current:         0x%04x"
+    },
+    {
+      "addr": 326674,
+      "text": "cal:             0x%04x"
+    },
+    {
+      "addr": 326701,
+      "text": "irq_enable:      0x%04x"
+    },
+    {
+      "addr": 326728,
+      "text": "die_id:          0x%04x"
+    },
+    {
+      "addr": 326755,
+      "text": "manufacturer_id: 0x%04x"
+    },
+    {
+      "addr": 326781,
+      "text": "Error ina device cannot be NULL"
+    },
+    {
+      "addr": 326815,
+      "text": "Error invalid INA226 num samples"
+    },
+    {
+      "addr": 326850,
+      "text": "Valid options are:"
+    },
+    {
+      "addr": 326914,
+      "text": "[%s] num samples set to %i"
+    },
+    {
+      "addr": 326943,
+      "text": "Error invalid INA226 sample period"
+    },
+    {
+      "addr": 326980,
+      "text": "Valid options are:"
+    },
+    {
+      "addr": 327053,
+      "text": "[%s] sample period set to %i"
+    },
+    {
+      "addr": 327084,
+      "text": "Error could not allocate memory for INA226 device"
+    },
+    {
+      "addr": 327136,
+      "text": "Error could not allocate memory for INA226 device name"
+    },
+    {
+      "addr": 327193,
+      "text": "Error copying name to INA226 struct"
+    },
+    {
+      "addr": 327231,
+      "text": "Error could not allocate memory for INA226 register"
+    },
+    {
+      "addr": 327340,
+      "text": "Error updating ina228 registers - device cannot be NULL"
+    },
+    {
+      "addr": 327398,
+      "text": "Error updating ina228 registers - register cannot be NULL"
+    },
+    {
+      "addr": 327458,
+      "text": "Error invalid INA228 sample period"
+    },
+    {
+      "addr": 327495,
+      "text": "Valid options are:"
+    },
+    {
+      "addr": 327565,
+      "text": "type:  ina228"
+    },
+    {
+      "addr": 327581,
+      "text": "modes: default, zoom"
+    },
+    {
+      "addr": 327605,
+      "text": "config:         0x%04x"
+    },
+    {
+      "addr": 327631,
+      "text": "adc_config:     0x%04x"
+    },
+    {
+      "addr": 327657,
+      "text": "measure_vbus:   0x%08x"
+    },
+    {
+      "addr": 327683,
+      "text": "measure_vshunt: 0x%08x"
+    },
+    {
+      "addr": 327709,
+      "text": "measure_temp:   0x%04x"
+    },
+    {
+      "addr": 327735,
+      "text": "result_power:   0x%08x"
+    },
+    {
+      "addr": 327761,
+      "text": "result_current: 0x%08x"
+    },
+    {
+      "addr": 327787,
+      "text": "result_energy:  0x%010x"
+    },
+    {
+      "addr": 327814,
+      "text": "result_charge:  0x%010x"
+    },
+    {
+      "addr": 327841,
+      "text": "threshold_suvl: 0x%04x"
+    },
+    {
+      "addr": 327867,
+      "text": "threshold_sovl: 0x%04x"
+    },
+    {
+      "addr": 327893,
+      "text": "threshold_buvl: 0x%04x"
+    },
+    {
+      "addr": 327919,
+      "text": "threshold_bovl: 0x%04x"
+    },
+    {
+      "addr": 327945,
+      "text": "diag_alrt:      0x%04x"
+    },
+    {
+      "addr": 327971,
+      "text": "device_id:      0x%04x"
+    },
+    {
+      "addr": 327997,
+      "text": "manufacture_id: 0x%04x"
+    },
+    {
+      "addr": 328022,
+      "text": "Error invalid INA228 num samples"
+    },
+    {
+      "addr": 328057,
+      "text": "Error mode cannot be NULL"
+    },
+    {
+      "addr": 328090,
+      "text": "default"
+    },
+    {
+      "addr": 328098,
+      "text": "Error INA mode %s is not supported"
+    },
+    {
+      "addr": 328135,
+      "text": "Error setting mode %s on rail %s i2c_err_code %i"
+    },
+    {
+      "addr": 328186,
+      "text": "[%s] mode set to %s"
+    },
+    {
+      "addr": 328208,
+      "text": "[ERROR] Error resetting config register for INA [%s] status code [%i]"
+    },
+    {
+      "addr": 328278,
+      "text": "[ERROR] Error reading config register for INA [%s] status code [%i]"
+    },
+    {
+      "addr": 328346,
+      "text": "Error could not allocate memory for INA228 device"
+    },
+    {
+      "addr": 328398,
+      "text": "Error could not allocate memory for INA228 device name"
+    },
+    {
+      "addr": 328455,
+      "text": "Error copying name to INA228 struct"
+    },
+    {
+      "addr": 328493,
+      "text": "Error could not allocate memory for INA228 register"
+    },
+    {
+      "addr": 328600,
+      "text": "Error ina device is null - cannot set shunt resistance"
+    },
+    {
+      "addr": 328657,
+      "text": "Error shunt resistor value cannot be negative"
+    },
+    {
+      "addr": 328705,
+      "text": "[%s] set shunt to [%f]"
+    },
+    {
+      "addr": 328732,
+      "text": "INA Help menu"
+    },
+    {
+      "addr": 328748,
+      "text": " auto ina list                                  :List INA all device rails"
+    },
+    {
+      "addr": 328825,
+      "text": " auto ina <ina> info                            :List INA rail info"
+    },
+    {
+      "addr": 328895,
+      "text": " auto ina <ina> set shunt <r_shunt>             :Set shunt value for INA"
+    },
+    {
+      "addr": 328970,
+      "text": " auto ina <ina> set sample period <period_us>   :Set sample period for INA (in microsecond)"
+    },
+    {
+      "addr": 329064,
+      "text": " auto ina <ina> set samples <num_samples>       :Set number of samples to average"
+    },
+    {
+      "addr": 329148,
+      "text": " auto ina <ina> set mode <mode>                 :Set INA mode"
+    },
+    {
+      "addr": 329212,
+      "text": " auto ina <ina> register <reg> read <bytes>     :Read bytes of INA register"
+    },
+    {
+      "addr": 329290,
+      "text": " auto ina <ina> register <reg> write <bytes>    :Write bytes to INA register"
+    },
+    {
+      "addr": 329380,
+      "text": "Error communicating to TMP sensor"
+    },
+    {
+      "addr": 329416,
+      "text": "Error setting pointer register on TMP sensor [%s]"
+    },
+    {
+      "addr": 329795,
+      "text": "         (((((                  "
+    },
+    {
+      "addr": 329860,
+      "text": "AAAAAA"
+    },
+    {
+      "addr": 329892,
+      "text": "BBBBBB"
+    },
+    {
+      "addr": 330096,
+      "text": "                00000000000000000123456789ABCDEF"
+    },
+    {
+      "addr": 330207,
+      "text": "Infinity"
+    },
+    {
+      "addr": 330220,
+      "text": "0123456789"
+    },
+    {
+      "addr": 331818,
+      "text": "TI      Mass Storage    1.00"
+    },
+    {
+      "addr": 337417,
+      "text": " auto reset                                     :Warm reset DUT"
+    },
+    {
+      "addr": 337482,
+      "text": " auto por                                       :Power on reset DUT"
+    },
+    {
+      "addr": 337551,
+      "text": " auto hold_por                                  :Hold Power on reset DUT"
+    },
+    {
+      "addr": 337625,
+      "text": " auto release_por                               :Release Power on reset DUT"
+    },
+    {
+      "addr": 337702,
+      "text": " auto power <on|off>                            :Power on|off DUT"
+    },
+    {
+      "addr": 337769,
+      "text": " auto sysboot <setting>                         :e.g. 110000"
+    },
+    {
+      "addr": 337831,
+      "text": " auto boot list                                 :List supported boot modes for device"
+    },
+    {
+      "addr": 337918,
+      "text": " auto dut list                                  :List supported devices"
+    },
+    {
+      "addr": 337991,
+      "text": " auto set dut <DUT type>                        :Initialize i2c for DUT"
+    },
+    {
+      "addr": 338064,
+      "text": " auto scan i2c                                  :Scan i2c bus for devices"
+    },
+    {
+      "addr": 338139,
+      "text": " auto probe i2c                                 :Probe i2c bus for addr"
+    },
+    {
+      "addr": 338212,
+      "text": " auto ina help                                  :Print help menu for INA interface"
+    },
+    {
+      "addr": 338296,
+      "text": " auto measure temperature                       :Read temperature sensors"
+    },
+    {
+      "addr": 338371,
+      "text": " auto measure power <samples(<=150)> <delay(ms)>:Measure DUT power"
+    },
+    {
+      "addr": 338439,
+      "text": " dfu                                            :Put the Test Automation Interface device into DFU mode"
+    },
+    {
+      "addr": 338544,
+      "text": " version                                        :Show SW version"
+    },
+    {
+      "addr": 338610,
+      "text": " help                                           :Print this menu"
+    },
+    {
+      "addr": 338677,
+      "text": "Test Automation Interface - 2e1f88db92"
+    }
+  ],
+  "tail_hex": "242500202c2500202c250020ffffffff0000020035000000cefbffffcb030000010000000000000034000000cefbffffcb030000010000000000000001000000"
+}

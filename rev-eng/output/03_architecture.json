@@ -1,0 +1,1944 @@
+{
+  "memory_map": {
+    "base": "0x00004000",
+    "data_load": "0x00050B8A",
+    "end": "0x000530FA",
+    "data_start": "0x20000000",
+    "data_end": "0x20002570",
+    "bss_start": "0x20002800",
+    "bss_end": "0x20033588",
+    "initial_sp": "0x20040000",
+    "main_addr": "0x00005D7C"
+  },
+  "sysctl_periphs": {
+    "SYSCTL_PERIPH_UART7": {
+      "value": "0xF0001807",
+      "count": 6,
+      "sites": [
+        "0x00004494",
+        "0x0000466C",
+        "0x000046A6",
+        "0x000058FA",
+        "0x00005A06",
+        "0x00005A4A"
+      ]
+    },
+    "SYSCTL_PERIPH_TIMER0": {
+      "value": "0xF0000400",
+      "count": 1,
+      "sites": [
+        "0x00004C7E"
+      ]
+    },
+    "SYSCTL_PERIPH_GPIOA": {
+      "value": "0xF0000800",
+      "count": 2,
+      "sites": [
+        "0x0000531C",
+        "0x0000647A"
+      ]
+    },
+    "SYSCTL_PERIPH_GPIOB": {
+      "value": "0xF0000801",
+      "count": 1,
+      "sites": [
+        "0x00005326"
+      ]
+    },
+    "SYSCTL_PERIPH_GPIOC": {
+      "value": "0xF0000802",
+      "count": 1,
+      "sites": [
+        "0x0000532C"
+      ]
+    },
+    "SYSCTL_PERIPH_GPIOE": {
+      "value": "0xF0000804",
+      "count": 1,
+      "sites": [
+        "0x00005332"
+      ]
+    },
+    "SYSCTL_PERIPH_GPIOF": {
+      "value": "0xF0000805",
+      "count": 1,
+      "sites": [
+        "0x00005338"
+      ]
+    },
+    "SYSCTL_PERIPH_GPIOG": {
+      "value": "0xF0000806",
+      "count": 1,
+      "sites": [
+        "0x0000533E"
+      ]
+    },
+    "SYSCTL_PERIPH_GPIOH": {
+      "value": "0xF0000807",
+      "count": 1,
+      "sites": [
+        "0x00005344"
+      ]
+    },
+    "SYSCTL_PERIPH_GPIOJ": {
+      "value": "0xF0000808",
+      "count": 1,
+      "sites": [
+        "0x0000534A"
+      ]
+    },
+    "SYSCTL_PERIPH_GPIOK": {
+      "value": "0xF0000809",
+      "count": 1,
+      "sites": [
+        "0x00005350"
+      ]
+    },
+    "SYSCTL_PERIPH_GPIOL": {
+      "value": "0xF000080A",
+      "count": 1,
+      "sites": [
+        "0x00005356"
+      ]
+    },
+    "SYSCTL_PERIPH_GPIOM": {
+      "value": "0xF000080B",
+      "count": 5,
+      "sites": [
+        "0x0000535C",
+        "0x0002CF18",
+        "0x0002CF1E",
+        "0x0002CFE8",
+        "0x0002CFEE"
+      ]
+    },
+    "SYSCTL_PERIPH_GPION": {
+      "value": "0xF000080C",
+      "count": 1,
+      "sites": [
+        "0x00005362"
+      ]
+    },
+    "SYSCTL_PERIPH_GPIOP": {
+      "value": "0xF000080D",
+      "count": 1,
+      "sites": [
+        "0x00005368"
+      ]
+    },
+    "SYSCTL_PERIPH_GPIOQ": {
+      "value": "0xF000080E",
+      "count": 1,
+      "sites": [
+        "0x0000536E"
+      ]
+    },
+    "SYSCTL_PERIPH_UART0": {
+      "value": "0xF0001800",
+      "count": 1,
+      "sites": [
+        "0x000053E4"
+      ]
+    },
+    "SYSCTL_PERIPH_UDMA": {
+      "value": "0xF0000C00",
+      "count": 1,
+      "sites": [
+        "0x0000544A"
+      ]
+    },
+    "SYSCTL_PERIPH_UART4": {
+      "value": "0xF0001804",
+      "count": 2,
+      "sites": [
+        "0x00005746",
+        "0x00005AE6"
+      ]
+    },
+    "SYSCTL_PERIPH_UART3": {
+      "value": "0xF0001803",
+      "count": 4,
+      "sites": [
+        "0x0000579E",
+        "0x00005896",
+        "0x00005B3A",
+        "0x00005C38"
+      ]
+    },
+    "SYSCTL_PERIPH_ADC0": {
+      "value": "0xF0003800",
+      "count": 1,
+      "sites": [
+        "0x0000583C"
+      ]
+    },
+    "SYSCTL_PERIPH_ADC1": {
+      "value": "0xF0003801",
+      "count": 1,
+      "sites": [
+        "0x00005848"
+      ]
+    },
+    "SYSCTL_PERIPH_GPIOD": {
+      "value": "0xF0000803",
+      "count": 1,
+      "sites": [
+        "0x00005D9C"
+      ]
+    },
+    "SYSCTL_PERIPH_SSI3": {
+      "value": "0xF0001C03",
+      "count": 2,
+      "sites": [
+        "0x000185A6",
+        "0x000185AC"
+      ]
+    },
+    "SYSCTL_PERIPH_TIMER1": {
+      "value": "0xF0000401",
+      "count": 1,
+      "sites": [
+        "0x0001C526"
+      ]
+    },
+    "SYSCTL_PERIPH_I2C1": {
+      "value": "0xF0002001",
+      "count": 1,
+      "sites": [
+        "0x0001CB00"
+      ]
+    },
+    "SYSCTL_PERIPH_TIMER3": {
+      "value": "0xF0000403",
+      "count": 5,
+      "sites": [
+        "0x0001D29C",
+        "0x0001D382",
+        "0x0001D6B6",
+        "0x0001FD8E",
+        "0x000215EA"
+      ]
+    },
+    "SYSCTL_PERIPH_TIMER4": {
+      "value": "0xF0000404",
+      "count": 2,
+      "sites": [
+        "0x0001D2B6",
+        "0x0001D42A"
+      ]
+    },
+    "SYSCTL_PERIPH_SSI1": {
+      "value": "0xF0001C01",
+      "count": 1,
+      "sites": [
+        "0x00020022"
+      ]
+    },
+    "SYSCTL_PERIPH_USB0": {
+      "value": "0xF0002800",
+      "count": 7,
+      "sites": [
+        "0x00025EEC",
+        "0x00025F78",
+        "0x00025F90",
+        "0x00026296",
+        "0x000262A0",
+        "0x0002644C",
+        "0x00028078"
+      ]
+    }
+  },
+  "periph_mmio": {
+    "UART7": [
+      {
+        "addr": "0x40013000",
+        "offset": "0x0",
+        "count": 6,
+        "sample_sites": [
+          "0x0000464E",
+          "0x000046AA",
+          "0x00005904",
+          "0x000059B4",
+          "0x00005A58",
+          "0x00014EE6"
+        ]
+      },
+      {
+        "addr": "0x40013001",
+        "offset": "0x1",
+        "count": 3,
+        "sample_sites": [
+          "0x0000468A",
+          "0x000058D6",
+          "0x00005A28"
+        ]
+      }
+    ],
+    "GPIO_PORTC_APB": [
+      {
+        "addr": "0x40006000",
+        "offset": "0x0",
+        "count": 27,
+        "sample_sites": [
+          "0x00004676",
+          "0x000046B2",
+          "0x000058CE",
+          "0x000059CE",
+          "0x00005A1A",
+          "0x00018344"
+        ]
+      }
+    ],
+    "GPIO_PORTD_APB": [
+      {
+        "addr": "0x40007000",
+        "offset": "0x0",
+        "count": 34,
+        "sample_sites": [
+          "0x00004C86",
+          "0x00004D6E",
+          "0x00004D76",
+          "0x00004D90",
+          "0x00004D98",
+          "0x00005562"
+        ]
+      },
+      {
+        "addr": "0x40007030",
+        "offset": "0x30",
+        "count": 4,
+        "sample_sites": [
+          "0x000062C4",
+          "0x00006540",
+          "0x0000654C",
+          "0x00006558"
+        ]
+      }
+    ],
+    "TIMER0": [
+      {
+        "addr": "0x40030000",
+        "offset": "0x0",
+        "count": 7,
+        "sample_sites": [
+          "0x00004C8E",
+          "0x00004C96",
+          "0x00004CB0",
+          "0x00004CBC",
+          "0x00004CC4",
+          "0x00014F14"
+        ]
+      }
+    ],
+    "GPIO_PORTB_APB": [
+      {
+        "addr": "0x40005000",
+        "offset": "0x0",
+        "count": 3,
+        "sample_sites": [
+          "0x00004E04",
+          "0x00004E10",
+          "0x000053BE"
+        ]
+      }
+    ],
+    "GPIO_PORTP_AHB": [
+      {
+        "addr": "0x40065000",
+        "offset": "0x0",
+        "count": 9,
+        "sample_sites": [
+          "0x00004E30",
+          "0x00004E3C",
+          "0x00005376",
+          "0x00005380",
+          "0x0000538E",
+          "0x000058A0"
+        ]
+      }
+    ],
+    "GPIO_PORTL_AHB": [
+      {
+        "addr": "0x40062000",
+        "offset": "0x0",
+        "count": 3,
+        "sample_sites": [
+          "0x00004E68",
+          "0x00004E76",
+          "0x000053CE"
+        ]
+      }
+    ],
+    "UART0": [
+      {
+        "addr": "0x4000C000",
+        "offset": "0x0",
+        "count": 1,
+        "sample_sites": [
+          "0x000053EA"
+        ]
+      }
+    ],
+    "GPIO_PORTK_AHB": [
+      {
+        "addr": "0x40061000",
+        "offset": "0x0",
+        "count": 14,
+        "sample_sites": [
+          "0x0000546E",
+          "0x0000547A",
+          "0x00005482",
+          "0x00005754",
+          "0x000058BC",
+          "0x00005AE8"
+        ]
+      }
+    ],
+    "GPIO_PORTA_AHB": [
+      {
+        "addr": "0x40058000",
+        "offset": "0x0",
+        "count": 118,
+        "sample_sites": [
+          "0x00005730",
+          "0x00005ACC",
+          "0x00006376",
+          "0x00006382",
+          "0x0000638A",
+          "0x00006396"
+        ]
+      },
+      {
+        "addr": "0x400580B0",
+        "offset": "0xB0",
+        "count": 18,
+        "sample_sites": [
+          "0x0000F126",
+          "0x00010C1A",
+          "0x0001522E",
+          "0x0001523E",
+          "0x00015254",
+          "0x00015264"
+        ]
+      },
+      {
+        "addr": "0x40058400",
+        "offset": "0x400",
+        "count": 28,
+        "sample_sites": [
+          "0x0000F146",
+          "0x0000F228",
+          "0x0000F276",
+          "0x00010C3A",
+          "0x00010E38",
+          "0x00010FF2"
+        ]
+      },
+      {
+        "addr": "0x40058030",
+        "offset": "0x30",
+        "count": 31,
+        "sample_sites": [
+          "0x0000F18A",
+          "0x0000F1A2",
+          "0x0000F1DC",
+          "0x0000F1F8",
+          "0x0000F208",
+          "0x0000F216"
+        ]
+      },
+      {
+        "addr": "0x40058010",
+        "offset": "0x10",
+        "count": 10,
+        "sample_sites": [
+          "0x0000F24A",
+          "0x0000F25A",
+          "0x0001720A",
+          "0x0001721E",
+          "0x00019978",
+          "0x00019DC4"
+        ]
+      },
+      {
+        "addr": "0x40058020",
+        "offset": "0x20",
+        "count": 7,
+        "sample_sites": [
+          "0x00019988",
+          "0x00019DD6",
+          "0x0001AF7C",
+          "0x0001AF88",
+          "0x0001BB1C",
+          "0x0001BB30"
+        ]
+      },
+      {
+        "addr": "0x40058080",
+        "offset": "0x80",
+        "count": 3,
+        "sample_sites": [
+          "0x000199C8",
+          "0x00019DEA",
+          "0x0001AF98"
+        ]
+      },
+      {
+        "addr": "0x40058040",
+        "offset": "0x40",
+        "count": 2,
+        "sample_sites": [
+          "0x00019EDA",
+          "0x0001AFA8"
+        ]
+      }
+    ],
+    "UART4": [
+      {
+        "addr": "0x40010000",
+        "offset": "0x0",
+        "count": 2,
+        "sample_sites": [
+          "0x0000574C",
+          "0x00005AEC"
+        ]
+      }
+    ],
+    "UART3": [
+      {
+        "addr": "0x4000F000",
+        "offset": "0x0",
+        "count": 8,
+        "sample_sites": [
+          "0x00005776",
+          "0x000057A4",
+          "0x00005856",
+          "0x00005B08",
+          "0x00005B42",
+          "0x00005C18"
+        ]
+      }
+    ],
+    "GPIO_PORTF_AHB": [
+      {
+        "addr": "0x4005D000",
+        "offset": "0x0",
+        "count": 23,
+        "sample_sites": [
+          "0x000057F6",
+          "0x00005866",
+          "0x0000592C",
+          "0x00005A08",
+          "0x00005B6A",
+          "0x0000DD4A"
+        ]
+      }
+    ],
+    "GPIO_PORTM_AHB": [
+      {
+        "addr": "0x40063000",
+        "offset": "0x0",
+        "count": 76,
+        "sample_sites": [
+          "0x00005A82",
+          "0x00005A8E",
+          "0x00005AAC",
+          "0x0000DC9A",
+          "0x0000DCAE",
+          "0x0000DD5C"
+        ]
+      }
+    ],
+    "FLASH_CTRL": [
+      {
+        "addr": "0x400FDFC0",
+        "offset": "0xFC0",
+        "count": 1,
+        "sample_sites": [
+          "0x00005DD2"
+        ]
+      },
+      {
+        "addr": "0x400FD000",
+        "offset": "0x0",
+        "count": 1,
+        "sample_sites": [
+          "0x00023418"
+        ]
+      },
+      {
+        "addr": "0x400FD008",
+        "offset": "0x8",
+        "count": 2,
+        "sample_sites": [
+          "0x00023428",
+          "0x0002343C"
+        ]
+      }
+    ],
+    "SYSCTL": [
+      {
+        "addr": "0x400FE06C",
+        "offset": "0x6C",
+        "count": 2,
+        "sample_sites": [
+          "0x00006480",
+          "0x000294C8"
+        ]
+      },
+      {
+        "addr": "0x400FE604",
+        "offset": "0x604",
+        "count": 3,
+        "sample_sites": [
+          "0x0001EB60",
+          "0x0001EB76",
+          "0x0001EC76"
+        ]
+      },
+      {
+        "addr": "0x400FEA04",
+        "offset": "0xA04",
+        "count": 2,
+        "sample_sites": [
+          "0x0001EB6A",
+          "0x0001EBEA"
+        ]
+      },
+      {
+        "addr": "0x400FE07C",
+        "offset": "0x7C",
+        "count": 3,
+        "sample_sites": [
+          "0x0001EB86",
+          "0x0001ECCA",
+          "0x00029998"
+        ]
+      },
+      {
+        "addr": "0x400FE058",
+        "offset": "0x58",
+        "count": 1,
+        "sample_sites": [
+          "0x0001EB8A"
+        ]
+      },
+      {
+        "addr": "0x400FE050",
+        "offset": "0x50",
+        "count": 1,
+        "sample_sites": [
+          "0x0001EBB6"
+        ]
+      },
+      {
+        "addr": "0x400FE0B0",
+        "offset": "0xB0",
+        "count": 7,
+        "sample_sites": [
+          "0x0001EBCE",
+          "0x0001ECB6",
+          "0x000299F2",
+          "0x00029A32",
+          "0x00029AD2",
+          "0x00029AFA"
+        ]
+      },
+      {
+        "addr": "0x400FE504",
+        "offset": "0x504",
+        "count": 2,
+        "sample_sites": [
+          "0x0001EBDC",
+          "0x0001EC7C"
+        ]
+      },
+      {
+        "addr": "0x400FE000",
+        "offset": "0x0",
+        "count": 8,
+        "sample_sites": [
+          "0x00026232",
+          "0x00027CF2",
+          "0x00028E90",
+          "0x00029104",
+          "0x00029784",
+          "0x00029960"
+        ]
+      },
+      {
+        "addr": "0x400FEA00",
+        "offset": "0xA00",
+        "count": 1,
+        "sample_sites": [
+          "0x000298E0"
+        ]
+      },
+      {
+        "addr": "0x400FE600",
+        "offset": "0x600",
+        "count": 1,
+        "sample_sites": [
+          "0x00029914"
+        ]
+      },
+      {
+        "addr": "0x400FE0C0",
+        "offset": "0xC0",
+        "count": 4,
+        "sample_sites": [
+          "0x000299F0",
+          "0x00029AC0",
+          "0x00029B18",
+          "0x00029B52"
+        ]
+      },
+      {
+        "addr": "0x400FE164",
+        "offset": "0x164",
+        "count": 2,
+        "sample_sites": [
+          "0x00029A04",
+          "0x00029A6A"
+        ]
+      },
+      {
+        "addr": "0x400FE160",
+        "offset": "0x160",
+        "count": 3,
+        "sample_sites": [
+          "0x00029A1E",
+          "0x00029A64",
+          "0x00029C1E"
+        ]
+      },
+      {
+        "addr": "0x400FE168",
+        "offset": "0x168",
+        "count": 1,
+        "sample_sites": [
+          "0x00029AEA"
+        ]
+      },
+      {
+        "addr": "0x400FE060",
+        "offset": "0x60",
+        "count": 1,
+        "sample_sites": [
+          "0x00029BC0"
+        ]
+      },
+      {
+        "addr": "0x400FE010",
+        "offset": "0x10",
+        "count": 1,
+        "sample_sites": [
+          "0x00029C54"
+        ]
+      },
+      {
+        "addr": "0x400FE070",
+        "offset": "0x70",
+        "count": 2,
+        "sample_sites": [
+          "0x00029D1C",
+          "0x00029D2C"
+        ]
+      }
+    ],
+    "GPIO_PORTN_AHB": [
+      {
+        "addr": "0x40064000",
+        "offset": "0x0",
+        "count": 43,
+        "sample_sites": [
+          "0x0000DD0C",
+          "0x0000DD18",
+          "0x0000DE3C",
+          "0x0000DE66",
+          "0x0000DEA8",
+          "0x0000E020"
+        ]
+      },
+      {
+        "addr": "0x40064004",
+        "offset": "0x4",
+        "count": 2,
+        "sample_sites": [
+          "0x000199EC",
+          "0x00019E0C"
+        ]
+      }
+    ],
+    "GPIO_PORTQ_AHB": [
+      {
+        "addr": "0x40066000",
+        "offset": "0x0",
+        "count": 194,
+        "sample_sites": [
+          "0x0000DE2C",
+          "0x0000DE54",
+          "0x0000DE98",
+          "0x0000DFFA",
+          "0x0000E004",
+          "0x0000E07E"
+        ]
+      }
+    ],
+    "GPIO_PORTH_APB": [
+      {
+        "addr": "0x40027000",
+        "offset": "0x0",
+        "count": 19,
+        "sample_sites": [
+          "0x0000DE36",
+          "0x0000DE5E",
+          "0x0000DEA2",
+          "0x0000E010",
+          "0x0000E018",
+          "0x0000E094"
+        ]
+      },
+      {
+        "addr": "0x40027010",
+        "offset": "0x10",
+        "count": 2,
+        "sample_sites": [
+          "0x000199E0",
+          "0x00019E08"
+        ]
+      }
+    ],
+    "GPIO_PORTJ_AHB": [
+      {
+        "addr": "0x40060000",
+        "offset": "0x0",
+        "count": 4,
+        "sample_sites": [
+          "0x000185E4",
+          "0x000185EC",
+          "0x000185F6",
+          "0x000185FE"
+        ]
+      }
+    ],
+    "SSI3": [
+      {
+        "addr": "0x4000B004",
+        "offset": "0x4",
+        "count": 1,
+        "sample_sites": [
+          "0x0001862A"
+        ]
+      },
+      {
+        "addr": "0x4000B010",
+        "offset": "0x10",
+        "count": 1,
+        "sample_sites": [
+          "0x0001865A"
+        ]
+      },
+      {
+        "addr": "0x4000B000",
+        "offset": "0x0",
+        "count": 2,
+        "sample_sites": [
+          "0x0001865C",
+          "0x00018716"
+        ]
+      },
+      {
+        "addr": "0x4000B008",
+        "offset": "0x8",
+        "count": 9,
+        "sample_sites": [
+          "0x00018682",
+          "0x00018924",
+          "0x00018934",
+          "0x00018A2C",
+          "0x00018A3C",
+          "0x00018A70"
+        ]
+      },
+      {
+        "addr": "0x4000B00C",
+        "offset": "0xC",
+        "count": 5,
+        "sample_sites": [
+          "0x00018686",
+          "0x0001892A",
+          "0x00018A32",
+          "0x00018A74",
+          "0x00018A9A"
+        ]
+      }
+    ],
+    "TIMER1": [
+      {
+        "addr": "0x40031000",
+        "offset": "0x0",
+        "count": 17,
+        "sample_sites": [
+          "0x0001C4D6",
+          "0x0001C506",
+          "0x0001C536",
+          "0x0001C53E",
+          "0x0001C552",
+          "0x0001C55C"
+        ]
+      },
+      {
+        "addr": "0x40031FC0",
+        "offset": "0xFC0",
+        "count": 1,
+        "sample_sites": [
+          "0x0001EB74"
+        ]
+      },
+      {
+        "addr": "0x4003100C",
+        "offset": "0xC",
+        "count": 1,
+        "sample_sites": [
+          "0x0001EC54"
+        ]
+      }
+    ],
+    "GPIO_PORTG_APB": [
+      {
+        "addr": "0x40026000",
+        "offset": "0x0",
+        "count": 2,
+        "sample_sites": [
+          "0x0001CB14",
+          "0x0001CB1C"
+        ]
+      }
+    ],
+    "I2C1": [
+      {
+        "addr": "0x40021000",
+        "offset": "0x0",
+        "count": 53,
+        "sample_sites": [
+          "0x0001CB22",
+          "0x0001CB28",
+          "0x0001CB32",
+          "0x0001CB60",
+          "0x0001CB68",
+          "0x0001CB70"
+        ]
+      }
+    ],
+    "TIMER3": [
+      {
+        "addr": "0x40033000",
+        "offset": "0x0",
+        "count": 49,
+        "sample_sites": [
+          "0x0001D088",
+          "0x0001D090",
+          "0x0001D0C2",
+          "0x0001D0CC",
+          "0x0001D390",
+          "0x0001D39A"
+        ]
+      }
+    ],
+    "TIMER4": [
+      {
+        "addr": "0x40034000",
+        "offset": "0x0",
+        "count": 8,
+        "sample_sites": [
+          "0x0001D098",
+          "0x0001D0D4",
+          "0x0001D43E",
+          "0x0001D44A",
+          "0x0001D452",
+          "0x0001D45C"
+        ]
+      }
+    ],
+    "SSI1": [
+      {
+        "addr": "0x40009000",
+        "offset": "0x0",
+        "count": 41,
+        "sample_sites": [
+          "0x0001ED5A",
+          "0x0001ED60",
+          "0x0001ED68",
+          "0x0001ED70",
+          "0x0001ED78",
+          "0x0001ED80"
+        ]
+      },
+      {
+        "addr": "0x40009008",
+        "offset": "0x8",
+        "count": 8,
+        "sample_sites": [
+          "0x0001F9C4",
+          "0x0001F9CE",
+          "0x0001FA3C",
+          "0x0001FA46",
+          "0x0001FB7E",
+          "0x0001FB98"
+        ]
+      }
+    ],
+    "GPIO_PORTB_AHB": [
+      {
+        "addr": "0x40059000",
+        "offset": "0x0",
+        "count": 19,
+        "sample_sites": [
+          "0x0001FA60",
+          "0x0001FADC",
+          "0x0001FAFE",
+          "0x0001FB20",
+          "0x0001FB62",
+          "0x0001FE02"
+        ]
+      }
+    ],
+    "GPIO_PORTE_APB": [
+      {
+        "addr": "0x40024000",
+        "offset": "0x0",
+        "count": 1,
+        "sample_sites": [
+          "0x00020044"
+        ]
+      }
+    ],
+    "ADC1": [
+      {
+        "addr": "0x40039000",
+        "offset": "0x0",
+        "count": 4,
+        "sample_sites": [
+          "0x0002090A",
+          "0x00020914",
+          "0x00020962",
+          "0x0002096C"
+        ]
+      }
+    ],
+    "ADC0": [
+      {
+        "addr": "0x40038000",
+        "offset": "0x0",
+        "count": 3,
+        "sample_sites": [
+          "0x00020A36",
+          "0x00020A44",
+          "0x00028EB0"
+        ]
+      }
+    ],
+    "MMIO_0x42934000": [
+      {
+        "addr": "0x42934A84",
+        "offset": "0xA84",
+        "count": 1,
+        "sample_sites": [
+          "0x00021C60"
+        ]
+      }
+    ],
+    "MMIO_0x410FC000": [
+      {
+        "addr": "0x410FC230",
+        "offset": "0x230",
+        "count": 1,
+        "sample_sites": [
+          "0x0002280E"
+        ]
+      }
+    ],
+    "USB0": [
+      {
+        "addr": "0x40050000",
+        "offset": "0x0",
+        "count": 102,
+        "sample_sites": [
+          "0x00024D50",
+          "0x00024D7E",
+          "0x00024DA4",
+          "0x00024DB2",
+          "0x00024DEA",
+          "0x00024E2C"
+        ]
+      }
+    ],
+    "MMIO_0x43425000": [
+      {
+        "addr": "0x43425355",
+        "offset": "0x355",
+        "count": 1,
+        "sample_sites": [
+          "0x0002881C"
+        ]
+      }
+    ],
+    "UDMA": [
+      {
+        "addr": "0x400FF004",
+        "offset": "0x4",
+        "count": 1,
+        "sample_sites": [
+          "0x0002A028"
+        ]
+      },
+      {
+        "addr": "0x400FF028",
+        "offset": "0x28",
+        "count": 1,
+        "sample_sites": [
+          "0x0002A03E"
+        ]
+      },
+      {
+        "addr": "0x400FF02C",
+        "offset": "0x2C",
+        "count": 1,
+        "sample_sites": [
+          "0x0002A052"
+        ]
+      },
+      {
+        "addr": "0x400FF008",
+        "offset": "0x8",
+        "count": 5,
+        "sample_sites": [
+          "0x0002A05C",
+          "0x0002A154",
+          "0x0002A17C",
+          "0x0002A1FC",
+          "0x0002A220"
+        ]
+      },
+      {
+        "addr": "0x400FF018",
+        "offset": "0x18",
+        "count": 2,
+        "sample_sites": [
+          "0x0002A074",
+          "0x0002A108"
+        ]
+      },
+      {
+        "addr": "0x400FF030",
+        "offset": "0x30",
+        "count": 2,
+        "sample_sites": [
+          "0x0002A082",
+          "0x0002A116"
+        ]
+      },
+      {
+        "addr": "0x400FF038",
+        "offset": "0x38",
+        "count": 2,
+        "sample_sites": [
+          "0x0002A090",
+          "0x0002A122"
+        ]
+      },
+      {
+        "addr": "0x400FF020",
+        "offset": "0x20",
+        "count": 2,
+        "sample_sites": [
+          "0x0002A0A2",
+          "0x0002A12E"
+        ]
+      },
+      {
+        "addr": "0x400FF01C",
+        "offset": "0x1C",
+        "count": 1,
+        "sample_sites": [
+          "0x0002A0C4"
+        ]
+      },
+      {
+        "addr": "0x400FF034",
+        "offset": "0x34",
+        "count": 1,
+        "sample_sites": [
+          "0x0002A0D2"
+        ]
+      },
+      {
+        "addr": "0x400FF03C",
+        "offset": "0x3C",
+        "count": 1,
+        "sample_sites": [
+          "0x0002A0E0"
+        ]
+      },
+      {
+        "addr": "0x400FF024",
+        "offset": "0x24",
+        "count": 1,
+        "sample_sites": [
+          "0x0002A0F2"
+        ]
+      }
+    ],
+    "MMIO_0x40240000": [
+      {
+        "addr": "0x40240000",
+        "offset": "0x0",
+        "count": 6,
+        "sample_sites": [
+          "0x00032A4E",
+          "0x00032B7C",
+          "0x00032B88",
+          "0x00032C6E",
+          "0x00032D8A",
+          "0x00034344"
+        ]
+      }
+    ],
+    "MMIO_0x401C0000": [
+      {
+        "addr": "0x401C0000",
+        "offset": "0x0",
+        "count": 1,
+        "sample_sites": [
+          "0x00032A7C"
+        ]
+      }
+    ],
+    "MMIO_0x40140000": [
+      {
+        "addr": "0x40140000",
+        "offset": "0x0",
+        "count": 2,
+        "sample_sites": [
+          "0x00032A9A",
+          "0x00032CBE"
+        ]
+      }
+    ]
+  },
+  "pinmux_hits": {
+    "GPIO_PC4_U7RX/GPIO_PC4_U7RX": {
+      "value": "0x00021001",
+      "count": 5,
+      "sites": [
+        "0x0000467A",
+        "0x000046B6",
+        "0x000058FC",
+        "0x000059D6",
+        "0x00005A46"
+      ]
+    },
+    "GPIO_PC5_U7TX/GPIO_PC5_U7TX": {
+      "value": "0x00021401",
+      "count": 2,
+      "sites": [
+        "0x00004680",
+        "0x000059E0"
+      ]
+    },
+    "GPIO_PB2_USB0STP/GPIO_PB2_USB0STP": {
+      "value": "0x0001080E",
+      "count": 1,
+      "sites": [
+        "0x00004DF6"
+      ]
+    },
+    "GPIO_PB3_USB0CLK/GPIO_PB3_USB0CLK": {
+      "value": "0x00010C0E",
+      "count": 1,
+      "sites": [
+        "0x00004DFC"
+      ]
+    },
+    "GPIO_PP2_USB0NXT/GPIO_PP2_USB0NXT": {
+      "value": "0x000D080E",
+      "count": 1,
+      "sites": [
+        "0x00004E16"
+      ]
+    },
+    "GPIO_PP3_USB0DIR/GPIO_PP3_USB0DIR": {
+      "value": "0x000D0C0E",
+      "count": 1,
+      "sites": [
+        "0x00004E1C"
+      ]
+    },
+    "GPIO_PP4_USB0D7/GPIO_PP4_USB0D7": {
+      "value": "0x000D100E",
+      "count": 1,
+      "sites": [
+        "0x00004E22"
+      ]
+    },
+    "GPIO_PP5_USB0D6/GPIO_PP5_USB0D6": {
+      "value": "0x000D140E",
+      "count": 1,
+      "sites": [
+        "0x00004E28"
+      ]
+    },
+    "GPIO_PL5_USB0D5/GPIO_PL5_USB0D5": {
+      "value": "0x000A140E",
+      "count": 1,
+      "sites": [
+        "0x00004E42"
+      ]
+    },
+    "GPIO_PL4_USB0D4/GPIO_PL4_USB0D4": {
+      "value": "0x000A100E",
+      "count": 1,
+      "sites": [
+        "0x00004E48"
+      ]
+    },
+    "GPIO_PL3_USB0D3/GPIO_PL3_USB0D3": {
+      "value": "0x000A0C0E",
+      "count": 1,
+      "sites": [
+        "0x00004E4E"
+      ]
+    },
+    "GPIO_PL2_USB0D2/GPIO_PL2_USB0D2": {
+      "value": "0x000A080E",
+      "count": 1,
+      "sites": [
+        "0x00004E54"
+      ]
+    },
+    "GPIO_PL1_USB0D1/GPIO_PL1_USB0D1": {
+      "value": "0x000A040E",
+      "count": 1,
+      "sites": [
+        "0x00004E5A"
+      ]
+    },
+    "GPIO_PL0_USB0D0/GPIO_PL0_USB0D0": {
+      "value": "0x000A000E",
+      "count": 1,
+      "sites": [
+        "0x00004E60"
+      ]
+    },
+    "GPIO_PK0_U4RX/GPIO_PK0_U4RX": {
+      "value": "0x00090001",
+      "count": 2,
+      "sites": [
+        "0x00005758",
+        "0x00005AF6"
+      ]
+    },
+    "GPIO_PK1_U4TX/GPIO_PK1_U4TX": {
+      "value": "0x00090401",
+      "count": 2,
+      "sites": [
+        "0x0000575C",
+        "0x00005AFC"
+      ]
+    },
+    "GPIO_PQ3_SSI3XDAT1/GPIO_PQ3_SSI3XDAT1": {
+      "value": "0x000E0C0E",
+      "count": 2,
+      "sites": [
+        "0x00018444",
+        "0x000185C4"
+      ]
+    },
+    "GPIO_PQ2_SSI3XDAT0/GPIO_PQ2_SSI3XDAT0": {
+      "value": "0x000E080E",
+      "count": 1,
+      "sites": [
+        "0x000185BE"
+      ]
+    },
+    "GPIO_PQ1_SSI3FSS/GPIO_PQ1_SSI3FSS": {
+      "value": "0x000E040E",
+      "count": 1,
+      "sites": [
+        "0x000185CE"
+      ]
+    },
+    "GPIO_PC0_TCK/GPIO_PC0_SWCLK/GPIO_PC0_TCK/GPIO_PC0_SWCLK": {
+      "value": "0x00020001",
+      "count": 1,
+      "sites": [
+        "0x00019BBC"
+      ]
+    },
+    "GPIO_PE0_U1RTS/GPIO_PE0_U1RTS": {
+      "value": "0x00040001",
+      "count": 1,
+      "sites": [
+        "0x00019F98"
+      ]
+    },
+    "GPIO_PG0_I2C1SCL/GPIO_PG0_I2C1SCL": {
+      "value": "0x00060002",
+      "count": 1,
+      "sites": [
+        "0x0001CB06"
+      ]
+    },
+    "GPIO_PG1_I2C1SDA/GPIO_PG1_I2C1SDA": {
+      "value": "0x00060402",
+      "count": 1,
+      "sites": [
+        "0x0001CB0C"
+      ]
+    },
+    "GPIO_PD6_T4CCP0/GPIO_PD6_T4CCP0": {
+      "value": "0x00031803",
+      "count": 1,
+      "sites": [
+        "0x0001D438"
+      ]
+    },
+    "GPIO_PD0_C0O/GPIO_PD0_C0O": {
+      "value": "0x00030005",
+      "count": 11,
+      "sites": [
+        "0x0001FA0A",
+        "0x0001FA14",
+        "0x0001FA1C",
+        "0x0001FA22",
+        "0x0001FA3A",
+        "0x0001FA5A",
+        "0x0001FAD2",
+        "0x0001FAE8"
+      ]
+    },
+    "GPIO_PB5_SSI1CLK/GPIO_PB5_SSI1CLK": {
+      "value": "0x0001140F",
+      "count": 1,
+      "sites": [
+        "0x00020028"
+      ]
+    },
+    "GPIO_PE4_SSI1XDAT0/GPIO_PE4_SSI1XDAT0": {
+      "value": "0x0004100F",
+      "count": 1,
+      "sites": [
+        "0x0002002E"
+      ]
+    },
+    "GPIO_PE5_SSI1XDAT1/GPIO_PE5_SSI1XDAT1": {
+      "value": "0x0004140F",
+      "count": 1,
+      "sites": [
+        "0x00020034"
+      ]
+    }
+  },
+  "rom_refs": {
+    "ROM_GPIOTABLE": {
+      "addr": "0x01000020",
+      "count": 1,
+      "sites": [
+        "0x0000531E"
+      ]
+    },
+    "ROM_USBTABLE": {
+      "addr": "0x01000050",
+      "count": 82,
+      "sites": [
+        "0x00024CFE",
+        "0x00024D4E",
+        "0x00024DBE",
+        "0x00024E28",
+        "0x00024E92",
+        "0x00024FC4",
+        "0x00025020",
+        "0x000250B6"
+      ]
+    },
+    "ROM_SYSCTLTABLE": {
+      "addr": "0x01000044",
+      "count": 4,
+      "sites": [
+        "0x00025F18",
+        "0x00026294",
+        "0x0002644A",
+        "0x00028076"
+      ]
+    },
+    "ROM_INTERRUPTTABLE": {
+      "addr": "0x01000048",
+      "count": 7,
+      "sites": [
+        "0x00025F5A",
+        "0x000263BC",
+        "0x000263F4",
+        "0x00027978",
+        "0x000279E2",
+        "0x00027A14",
+        "0x00027A4C"
+      ]
+    },
+    "ROM_SYSTICKTABLE": {
+      "addr": "0x01000038",
+      "count": 1,
+      "sites": [
+        "0x00025F5C"
+      ]
+    },
+    "ROM_UDMATABLE": {
+      "addr": "0x01000054",
+      "count": 8,
+      "sites": [
+        "0x000274FC",
+        "0x000275A2",
+        "0x00027660",
+        "0x000276D4",
+        "0x000277B8",
+        "0x00027834",
+        "0x000279D6",
+        "0x00027C24"
+      ]
+    }
+  },
+  "scs_hits": {
+    "0xE000ED88": {
+      "count": 1,
+      "sites": [
+        "0x0000658A"
+      ]
+    },
+    "0xE000EDF0": {
+      "count": 12,
+      "sites": [
+        "0x00015ABA",
+        "0x00015D34",
+        "0x00020CB0",
+        "0x00021CD0",
+        "0x00021D86",
+        "0x00021DC8",
+        "0x00021FE6",
+        "0x00022064"
+      ]
+    },
+    "0xE000EDFC": {
+      "count": 4,
+      "sites": [
+        "0x00020D46",
+        "0x00021D3C",
+        "0x000221B2",
+        "0x00022206"
+      ]
+    },
+    "0xE000ED30": {
+      "count": 1,
+      "sites": [
+        "0x0002215A"
+      ]
+    },
+    "0xE000ED0C": {
+      "count": 2,
+      "sites": [
+        "0x000222E4",
+        "0x00029946"
+      ]
+    },
+    "0xE000ED00": {
+      "count": 1,
+      "sites": [
+        "0x000228F0"
+      ]
+    },
+    "0xE000EDF4": {
+      "count": 2,
+      "sites": [
+        "0x00022982",
+        "0x00022A2E"
+      ]
+    },
+    "0xE000EDF8": {
+      "count": 2,
+      "sites": [
+        "0x000229DE",
+        "0x00022A0A"
+      ]
+    },
+    "0xE000E180": {
+      "count": 1,
+      "sites": [
+        "0x00025F76"
+      ]
+    },
+    "0xE000ED08": {
+      "count": 2,
+      "sites": [
+        "0x000295F4",
+        "0x00029612"
+      ]
+    },
+    "0xE000ED24": {
+      "count": 9,
+      "sites": [
+        "0x00029664",
+        "0x00029672",
+        "0x00029682",
+        "0x000296C4",
+        "0x000296D2",
+        "0x000296E2",
+        "0x00029724",
+        "0x00029732"
+      ]
+    },
+    "0xE000E010": {
+      "count": 5,
+      "sites": [
+        "0x00029690",
+        "0x000296F0",
+        "0x0002974E",
+        "0x00029D3C",
+        "0x00029D4C"
+      ]
+    },
+    "0xE000E014": {
+      "count": 2,
+      "sites": [
+        "0x00029D5C",
+        "0x00029D68"
+      ]
+    },
+    "0xE000E018": {
+      "count": 1,
+      "sites": [
+        "0x00029D74"
+      ]
+    }
+  },
+  "top_functions": [
+    {
+      "addr": "0x0002938E",
+      "callers": 234
+    },
+    {
+      "addr": "0x0002F01C",
+      "callers": 176
+    },
+    {
+      "addr": "0x000293CC",
+      "callers": 113
+    },
+    {
+      "addr": "0x0002DF04",
+      "callers": 90
+    },
+    {
+      "addr": "0x0001AF70",
+      "callers": 85
+    },
+    {
+      "addr": "0x0001AF64",
+      "callers": 83
+    },
+    {
+      "addr": "0x0002F1AC",
+      "callers": 67
+    },
+    {
+      "addr": "0x000291DC",
+      "callers": 61
+    },
+    {
+      "addr": "0x0001E15C",
+      "callers": 56
+    },
+    {
+      "addr": "0x0002F1BC",
+      "callers": 54
+    },
+    {
+      "addr": "0x000293B0",
+      "callers": 53
+    },
+    {
+      "addr": "0x0001E18C",
+      "callers": 53
+    },
+    {
+      "addr": "0x0001BB10",
+      "callers": 49
+    },
+    {
+      "addr": "0x0001BB04",
+      "callers": 49
+    },
+    {
+      "addr": "0x00029914",
+      "callers": 44
+    },
+    {
+      "addr": "0x000295A2",
+      "callers": 44
+    },
+    {
+      "addr": "0x000295B2",
+      "callers": 42
+    },
+    {
+      "addr": "0x00004EE0",
+      "callers": 40
+    },
+    {
+      "addr": "0x00015834",
+      "callers": 36
+    },
+    {
+      "addr": "0x000294C8",
+      "callers": 32
+    },
+    {
+      "addr": "0x000240CC",
+      "callers": 32
+    },
+    {
+      "addr": "0x00023FA0",
+      "callers": 31
+    },
+    {
+      "addr": "0x0001AF94",
+      "callers": 31
+    },
+    {
+      "addr": "0x0003217C",
+      "callers": 31
+    },
+    {
+      "addr": "0x00023CD0",
+      "callers": 30
+    },
+    {
+      "addr": "0x0002D96C",
+      "callers": 30
+    },
+    {
+      "addr": "0x000295B6",
+      "callers": 28
+    },
+    {
+      "addr": "0x000244A0",
+      "callers": 28
+    },
+    {
+      "addr": "0x0001BB2C",
+      "callers": 27
+    },
+    {
+      "addr": "0x0001DE58",
+      "callers": 27
+    },
+    {
+      "addr": "0x00034C60",
+      "callers": 26
+    },
+    {
+      "addr": "0x00024A28",
+      "callers": 25
+    },
+    {
+      "addr": "0x0001DF84",
+      "callers": 25
+    },
+    {
+      "addr": "0x0000F184",
+      "callers": 24
+    },
+    {
+      "addr": "0x0002F7A0",
+      "callers": 24
+    },
+    {
+      "addr": "0x00033C02",
+      "callers": 24
+    },
+    {
+      "addr": "0x0001AF7C",
+      "callers": 23
+    },
+    {
+      "addr": "0x00006824",
+      "callers": 23
+    },
+    {
+      "addr": "0x0002D672",
+      "callers": 23
+    },
+    {
+      "addr": "0x0002E680",
+      "callers": 22
+    },
+    {
+      "addr": "0x00015B34",
+      "callers": 21
+    },
+    {
+      "addr": "0x0002F694",
+      "callers": 20
+    },
+    {
+      "addr": "0x0002B1F4",
+      "callers": 20
+    },
+    {
+      "addr": "0x0002B214",
+      "callers": 20
+    },
+    {
+      "addr": "0x00026498",
+      "callers": 19
+    },
+    {
+      "addr": "0x00022AB4",
+      "callers": 18
+    },
+    {
+      "addr": "0x0002914C",
+      "callers": 17
+    },
+    {
+      "addr": "0x0000F1C8",
+      "callers": 17
+    },
+    {
+      "addr": "0x0001D798",
+      "callers": 17
+    },
+    {
+      "addr": "0x0002A178",
+      "callers": 16
+    },
+    {
+      "addr": "0x0001F8E0",
+      "callers": 16
+    },
+    {
+      "addr": "0x00024A8A",
+      "callers": 15
+    },
+    {
+      "addr": "0x00029388",
+      "callers": 15
+    },
+    {
+      "addr": "0x0001BCB0",
+      "callers": 15
+    },
+    {
+      "addr": "0x0001AFA8",
+      "callers": 15
+    },
+    {
+      "addr": "0x000295CE",
+      "callers": 15
+    },
+    {
+      "addr": "0x00029954",
+      "callers": 15
+    },
+    {
+      "addr": "0x0001F0FC",
+      "callers": 15
+    },
+    {
+      "addr": "0x0002CD3C",
+      "callers": 14
+    },
+    {
+      "addr": "0x0000DF30",
+      "callers": 13
+    },
+    {
+      "addr": "0x00014E94",
+      "callers": 13
+    },
+    {
+      "addr": "0x0001B5F4",
+      "callers": 13
+    },
+    {
+      "addr": "0x0001AF88",
+      "callers": 13
+    },
+    {
+      "addr": "0x0002959A",
+      "callers": 13
+    },
+    {
+      "addr": "0x000295D2",
+      "callers": 13
+    },
+    {
+      "addr": "0x0002E730",
+      "callers": 13
+    },
+    {
+      "addr": "0x00033BA4",
+      "callers": 13
+    },
+    {
+      "addr": "0x00029660",
+      "callers": 12
+    },
+    {
+      "addr": "0x000205E0",
+      "callers": 12
+    },
+    {
+      "addr": "0x0001D864",
+      "callers": 12
+    },
+    {
+      "addr": "0x000201F0",
+      "callers": 12
+    },
+    {
+      "addr": "0x00022A08",
+      "callers": 12
+    },
+    {
+      "addr": "0x0002CD90",
+      "callers": 12
+    },
+    {
+      "addr": "0x0002D746",
+      "callers": 12
+    },
+    {
+      "addr": "0x000074A2",
+      "callers": 11
+    },
+    {
+      "addr": "0x0001AE6E",
+      "callers": 11
+    },
+    {
+      "addr": "0x000243F8",
+      "callers": 11
+    },
+    {
+      "addr": "0x00024138",
+      "callers": 11
+    },
+    {
+      "addr": "0x0001B35C",
+      "callers": 11
+    },
+    {
+      "addr": "0x0001BB1C",
+      "callers": 11
+    }
+  ]
+}
