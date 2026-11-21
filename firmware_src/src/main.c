@@ -1,11 +1,11 @@
 /*
  * main.c - Open-source bare-metal firmware entry point for TI LP-XDS110ET.
  *
- * Phase 1A (USB 2.0 High-Speed ULPI Device Stack):
+ * Phase 1B (Core XDS110 Control Channel):
  *   - LP-XDS110ET BSP & 1 kHz SysTick uptime timebase
  *   - Boot-time double-reset DFU failsafe
  *   - USB3300-EZK ULPI HS-USB enumeration (0451:BEF3 composite device)
- *   - Bulk 0 (CMD: 0x02/0x83) and Bulk 1 (Data/ET: 0x06/0x87) endpoints
+ *   - XDS110 0x2A command framing & core control opcodes (info, reset, DFU)
  */
 
 #include <stdbool.h>
@@ -13,6 +13,7 @@
 
 #include "board_lp_xds110et.h"
 #include "dfu_jump.h"
+#include "protocol/xds_cmd.h"
 #include "usb/usb_device.h"
 
 /*
@@ -30,12 +31,14 @@ int main(void)
     bool ulpi_present = board_has_ulpi_phy();
     bool board_ok = (hw_version == BOARD_HW_VERSION_LP_XDS110ET) && ulpi_present;
 
+    xds_cmd_init(g_firmware_version);
     usb_device_init(g_firmware_version);
 
     bool led_on = false;
     uint32_t last_toggle_ms = board_get_uptime_ms();
 
     while (1) {
+        bool did_work = xds_cmd_poll();
         uint32_t now_ms = board_get_uptime_ms();
 
         if (!board_ok) {
@@ -57,7 +60,9 @@ int main(void)
             }
         }
 
-        __WFI();
+        if (!did_work) {
+            __WFI();
+        }
     }
 
     return 0;

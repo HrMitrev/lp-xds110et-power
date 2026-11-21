@@ -70,7 +70,8 @@ LDFLAGS     = $(MCU_FLAGS) \
 
 # Source files
 APP_SRCS    = src/main.c src/startup_gcc.c src/board.c src/dfu_jump.c \
-              src/usb/usb_descriptors.c src/usb/usb_device.c
+              src/usb/usb_descriptors.c src/usb/usb_device.c \
+              src/protocol/xds_cmd.c
 DL_DIR      = sdk/ti/devices/msp432e4/driverlib
 DL_SRCS     = $(wildcard $(DL_DIR)/sysctl.c $(DL_DIR)/gpio.c $(DL_DIR)/cpu.c \
                          $(DL_DIR)/interrupt.c $(DL_DIR)/fpu.c $(DL_DIR)/systick.c \
