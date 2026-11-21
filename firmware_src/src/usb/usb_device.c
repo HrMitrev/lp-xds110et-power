@@ -1042,6 +1042,23 @@ uint32_t usb_cdc_rx_read(uint8_t port, uint8_t *dst, uint32_t len)
     return got;
 }
 
+void usb_cdc_rx_flush(uint8_t port)
+{
+    if (port >= USB_CDC_PORT_COUNT) {
+        return;
+    }
+    uint32_t crit = usb_crit_enter();
+    ring_reset(&g_cdc_rx_rings[port]);
+    uint32_t ep = g_cdc_out_ep[port];
+    if (MAP_USBEndpointDataAvail(USB0_BASE, ep) > 0U) {
+        uint8_t discard[USB_BULK_MPS_HS];
+        uint32_t len = sizeof(discard);
+        MAP_USBEndpointDataGet(USB0_BASE, ep, discard, &len);
+        MAP_USBDevEndpointDataAck(USB0_BASE, ep, false);
+    }
+    usb_crit_exit(crit);
+}
+
 uint32_t usb_cdc_tx_space(uint8_t port)
 {
     if (port >= USB_CDC_PORT_COUNT) {
@@ -1060,6 +1077,16 @@ uint32_t usb_cdc_tx_write(uint8_t port, const uint8_t *src, uint32_t len)
     usb_kick_bulk_in(g_cdc_in_ep[port], &g_cdc_tx_rings[port], &g_cdc_tx_busy[port], NULL, g_cdc_in_fifo_bytes[port]);
     usb_crit_exit(crit);
     return written;
+}
+
+void usb_cdc_tx_flush(uint8_t port)
+{
+    if (port >= USB_CDC_PORT_COUNT) {
+        return;
+    }
+    uint32_t crit = usb_crit_enter();
+    ring_reset(&g_cdc_tx_rings[port]);
+    usb_crit_exit(crit);
 }
 
 bool usb_cdc_take_line_coding(uint8_t port, usb_cdc_line_coding_t *out_coding)

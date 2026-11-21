@@ -70,8 +70,10 @@ void usb_data_tx_flush(void);
 /* CDC ACM Virtual COM Ports (port = USB_CDC_PORT_APP or USB_CDC_PORT_AUX) */
 uint32_t usb_cdc_rx_available(uint8_t port);
 uint32_t usb_cdc_rx_read(uint8_t port, uint8_t *dst, uint32_t len);
+void usb_cdc_rx_flush(uint8_t port);
 uint32_t usb_cdc_tx_space(uint8_t port);
 uint32_t usb_cdc_tx_write(uint8_t port, const uint8_t *src, uint32_t len);
+void usb_cdc_tx_flush(uint8_t port);
 bool usb_cdc_take_line_coding(uint8_t port, usb_cdc_line_coding_t *out_coding);
 void usb_cdc_get_line_coding(uint8_t port, usb_cdc_line_coding_t *out_coding);
 bool usb_cdc_is_dtr_asserted(uint8_t port);

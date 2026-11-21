@@ -15,6 +15,7 @@
 
 #include <stdint.h>
 
+#include "bmp/bmp_mode.h"
 #include "board_lp_xds110et.h"
 #include "driverlib/gpio.h"
 #include "driverlib/interrupt.h"
@@ -325,8 +326,11 @@ bool cdc_uart_poll(void)
     bool did_work = false;
     uint8_t chunk_buf[CDC_UART_PUMP_CHUNK];
 
-    /* 1. Apply any pending USB CDC SET_LINE_CODING changes */
-    for (uint8_t port = 0U; port < USB_CDC_PORT_COUNT; port++) {
+    bool bmp_active = bmp_mode_is_active();
+    uint8_t uart_port_limit = bmp_active ? 1U : USB_CDC_PORT_COUNT;
+
+    /* 1. Apply any pending USB CDC SET_LINE_CODING changes (skip CDC1 in BMP mode) */
+    for (uint8_t port = 0U; port < uart_port_limit; port++) {
         usb_cdc_line_coding_t coding;
         if (usb_cdc_take_line_coding(port, &coding)) {
             cdc_uart_apply_line_coding(port, &coding);
@@ -341,8 +345,13 @@ bool cdc_uart_poll(void)
         return did_work;
     }
 
-    /* 2. Forward UART0/UART7 RX rings -> USB CDC0/CDC1 IN */
-    for (uint8_t port = 0U; port < USB_CDC_PORT_COUNT; port++) {
+    if (bmp_active) {
+        /* Discard idle UART7 RX bytes while CDC1 is owned by BMP GDB server */
+        uart_ring_discard(&g_uart_rx_rings[USB_CDC_PORT_AUX]);
+    }
+
+    /* 2. Forward UART0 (and UART7 in Normal mode) RX rings -> USB CDC IN */
+    for (uint8_t port = 0U; port < uart_port_limit; port++) {
         uint32_t rx_avail = uart_ring_used(&g_uart_rx_rings[port]);
         if (rx_avail == 0U) {
             continue;
@@ -385,12 +394,14 @@ bool cdc_uart_poll(void)
         }
     }
 
-    /* 4. Drain & discard CDC1 OUT (UART7 on LP-XDS110ET is RX-only on PC4) */
-    uint32_t cdc1_avail = usb_cdc_rx_available(USB_CDC_PORT_AUX);
-    if (cdc1_avail > 0U) {
-        uint32_t to_drop = (cdc1_avail > sizeof(chunk_buf)) ? sizeof(chunk_buf) : cdc1_avail;
-        (void)usb_cdc_rx_read(USB_CDC_PORT_AUX, chunk_buf, to_drop);
-        did_work = true;
+    /* 4. In Normal mode, drain & discard CDC1 OUT (UART7 on LP-XDS110ET is RX-only on PC4) */
+    if (!bmp_active) {
+        uint32_t cdc1_avail = usb_cdc_rx_available(USB_CDC_PORT_AUX);
+        if (cdc1_avail > 0U) {
+            uint32_t to_drop = (cdc1_avail > sizeof(chunk_buf)) ? sizeof(chunk_buf) : cdc1_avail;
+            (void)usb_cdc_rx_read(USB_CDC_PORT_AUX, chunk_buf, to_drop);
+            did_work = true;
+        }
     }
 
     return did_work;

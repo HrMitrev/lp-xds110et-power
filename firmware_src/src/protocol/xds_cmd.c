@@ -14,6 +14,7 @@
 
 #include <string.h>
 
+#include "bmp/bmp_mode.h"
 #include "board_lp_xds110et.h"
 #include "dap/xds_swd.h"
 #include "dfu_jump.h"
@@ -441,6 +442,19 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
         }
         write_u32le(resp_data, idcode);
         resp_len = 4U;
+        break;
+    }
+
+    case XDS_CMD_PROBE_MODE: {
+        if ((args_len >= 1U) && (args[0] != PROBE_MODE_QUERY)) {
+            err = bmp_mode_set(args[0]);
+            if (err != XDS_ERR_OK) {
+                break;
+            }
+        }
+        resp_data[0] = bmp_mode_get();
+        resp_data[1] = bmp_mode_get_caps();
+        resp_len = 2U;
         break;
     }
 

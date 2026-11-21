@@ -70,6 +70,9 @@
 #define XDS_CMD_SACI_READ          0x51U
 #define XDS_CMD_CMAPI_CONNECT_EX   0x5AU
 
+/* OpenFW vendor extension opcodes (outside TI 0x00..0x62 dispatch table) */
+#define XDS_CMD_PROBE_MODE 0x63U
+
 /* Standard signed error codes returned in response bytes [3..6] */
 #define XDS_ERR_OK             0
 #define XDS_ERR_GENERIC        (-1)

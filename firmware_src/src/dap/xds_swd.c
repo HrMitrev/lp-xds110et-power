@@ -10,6 +10,7 @@
 
 #include <stddef.h>
 
+#include "bmp/bmp_mode.h"
 #include "protocol/xds_cmd.h"
 #include "swd.h"
 
@@ -336,6 +337,9 @@ int32_t xds_swd_cycle_tck(uint32_t count)
 
 int32_t xds_swd_connect(void)
 {
+    if (bmp_mode_is_active()) {
+        return XDS_ERR_SWD_PROTOCOL;
+    }
     swd_connect();
     swd_configure(1U, false, 0U);
     xds_swd_send_jtag_to_swd();
@@ -373,6 +377,10 @@ int32_t xds_swd_disconnect(void)
 int32_t xds_swd_cmapi_connect(uint32_t *out_idcode)
 {
     *out_idcode = 0U;
+    if (bmp_mode_is_active()) {
+        g_xds_cmapi_connected = false;
+        return XDS_ERR_SWD_PROTOCOL;
+    }
     if (!g_xds_swd_active) {
         (void)xds_swd_connect();
     }

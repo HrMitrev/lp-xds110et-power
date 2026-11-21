@@ -2,4 +2,5 @@ build/
 sdk/
 toolchain/
 arch_libs/
+third_party/
 compile_commands.json

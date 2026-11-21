@@ -46,11 +46,15 @@ INCLUDES    = -Isrc \
               -Isdk/ti/devices/msp432e4/inc \
               -Isdk/third_party/CMSIS/Include
 
+# Default probe boot mode: 0 = Normal (XDS110/CMSIS-DAP/Aux UART), 1 = BMP on CDC1
+BMP_DEFAULT_MODE ?= 0
+
 # Preprocessor defines
 DEFINES     = -Dgcc \
               -D__MSP432E401Y__ \
               -DTARGET_IS_MSP432E401Y \
-              -DPART_MSP432E401Y
+              -DPART_MSP432E401Y \
+              -DFW_DEFAULT_BMP_MODE=$(BMP_DEFAULT_MODE)
 
 # Compiler options (size optimization, dead code stripping, standards compliance)
 CFLAGS      = $(MCU_FLAGS) $(DEFINES) $(INCLUDES) \
@@ -76,6 +80,7 @@ APP_SRCS    = src/main.c src/startup_gcc.c src/board.c src/dfu_jump.c \
               src/energytrace/et_hdr.c \
               src/uart/cdc_uart.c \
               src/gpio/aux_gpio.c \
+              src/bmp/bmp_mode.c \
               src/dap/cmsis_dap.c src/dap/swd.c src/dap/xds_swd.c
 DL_DIR      = sdk/ti/devices/msp432e4/driverlib
 DL_SRCS     = $(DL_DIR)/sysctl.c $(DL_DIR)/gpio.c $(DL_DIR)/cpu.c \
@@ -90,7 +95,7 @@ SRCS        = $(APP_SRCS) $(DL_SRCS)
 OBJS        = $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 DEPS        = $(OBJS:.o=.d)
 
-.PHONY: all clean check-sdk fetch-sdk sdk fetch-toolchain toolchain inspect flash clang-format compile-commands clangd-check test-hil test-swd
+.PHONY: all clean check-sdk fetch-sdk sdk fetch-bmp bmp fetch-toolchain toolchain inspect flash clang-format compile-commands clangd-check test-hil test-swd
 
 all: $(BUILD_DIR)/$(TARGET).bin $(BUILD_DIR)/$(TARGET).hex compile_commands.json
 
@@ -111,6 +116,9 @@ check-sdk: $(SDK_STAMP)
 
 fetch-sdk sdk:
 	$(Q)$(PYTHON) scripts/fetch_sdk.py
+
+fetch-bmp bmp:
+	$(Q)$(PYTHON) scripts/fetch_bmp.py
 
 fetch-toolchain toolchain:
 	$(Q)$(PYTHON) scripts/fetch_toolchain.py

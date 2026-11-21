@@ -21,4 +21,7 @@ void cmsis_dap_init(const uint8_t fw_version[4]);
  */
 bool cmsis_dap_poll(void);
 
+/* Force-disconnect any active CMSIS-DAP SWD session (e.g., on mode switch to BMP) */
+void cmsis_dap_force_disconnect(void);
+
 #endif /* CMSIS_DAP_H */

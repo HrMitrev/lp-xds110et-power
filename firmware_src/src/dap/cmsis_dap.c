@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "bmp/bmp_mode.h"
 #include "board_lp_xds110et.h"
 #include "swd.h"
 #include "usb/usb_device.h"
@@ -248,6 +249,12 @@ static void dap_handle_connect(const uint8_t *req, uint8_t *resp)
     uint8_t port = req[1];
     resp[0] = DAP_CMD_CONNECT;
 
+    if (bmp_mode_is_active()) {
+        g_dap_port = DAP_PORT_DISABLED;
+        resp[1] = DAP_PORT_DISABLED;
+        return;
+    }
+
     if ((port == DAP_PORT_AUTODETECT) || (port == DAP_PORT_SWD)) {
         swd_connect();
         g_dap_port = DAP_PORT_SWD;
@@ -255,6 +262,14 @@ static void dap_handle_connect(const uint8_t *req, uint8_t *resp)
     } else {
         g_dap_port = DAP_PORT_DISABLED;
         resp[1] = DAP_PORT_DISABLED;
+    }
+}
+
+void cmsis_dap_force_disconnect(void)
+{
+    if (g_dap_port != DAP_PORT_DISABLED) {
+        swd_disconnect();
+        g_dap_port = DAP_PORT_DISABLED;
     }
 }
 
