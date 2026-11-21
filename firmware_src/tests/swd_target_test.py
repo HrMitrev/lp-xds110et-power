@@ -77,7 +77,7 @@ def test_swd_target(
     csv_path: str | None = None
 
     try:
-        # 1. OpenOCD attach, reset halt, Flash dump & CRC-32 verify, SRAM R/W/restore
+        # 1a. OpenOCD CMSIS-DAP v2 (Interface 5): reset halt, Flash dump & CRC-32 verify, SRAM R/W/restore
         ocd_script = (
             f"init; reset halt; flash probe 0; "
             f"dump_image {dump_path} 0x{flash_addr:08X} {dump_size}; "
@@ -109,7 +109,7 @@ def test_swd_target(
             p.returncode != 0
             or "SRAM_RW: 0xdeadbeef 0xcafebabe 0x12345678 0xa5a55a5a" not in out
         ):
-            raise RuntimeError(f"OpenOCD SWD target verification failed:\n{out}")
+            raise RuntimeError(f"OpenOCD CMSIS-DAP SWD target verification failed:\n{out}")
         dpidr_line = next(
             (line.strip() for line in out.splitlines() if "SWD DPIDR" in line), "SWD OK"
         )
@@ -119,7 +119,41 @@ def test_swd_target(
         detail = f"{dpidr_line}, {dump_size // 1024} KiB flash verify + SRAM R/W, {dt_ocd * 1000:.0f}ms"
         if dap_line:
             detail = f"{dap_line.removeprefix('Info : ')}; {detail}"
-        print(f"  [openocd SWD   ] OK ({detail})")
+        print(f"  [openocd DAPv2 ] OK ({detail})")
+
+        # 1b. OpenOCD native interface/xds110.cfg (Interface 2, OCD_DAP_REQUEST 0x3A + connect_assert_srst)
+        t0 = time.monotonic()
+        p_xds = subprocess.run(
+            [
+                "openocd",
+                "-f",
+                "interface/xds110.cfg",
+                "-c",
+                f"transport select swd; adapter speed {speed_khz}",
+                "-f",
+                target_cfg,
+                "-c",
+                "reset_config srst_only srst_nogate connect_assert_srst",
+                "-c",
+                ocd_script,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        dt_xds = time.monotonic() - t0
+        xds_out = p_xds.stdout + p_xds.stderr
+        if (
+            p_xds.returncode != 0
+            or "SRAM_RW: 0xdeadbeef 0xcafebabe 0x12345678 0xa5a55a5a" not in xds_out
+        ):
+            raise RuntimeError(f"OpenOCD native xds110.cfg SWD verification failed:\n{xds_out}")
+        xds_dpidr = next(
+            (line.strip() for line in xds_out.splitlines() if "SWD DPIDR" in line), "SWD OK"
+        )
+        print(
+            f"  [openocd XDS110] OK ({xds_dpidr}, connect_assert_srst + {dump_size // 1024} KiB flash verify + SRAM R/W, {dt_xds * 1000:.0f}ms)"
+        )
 
         # 2. probe-rs ROM table discovery (while target is halted)
         if shutil.which("probe-rs"):

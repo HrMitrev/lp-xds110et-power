@@ -19,6 +19,7 @@
 #include <string.h>
 
 #include "board_lp_xds110et.h"
+#include "dap/xds_swd.h"
 #include "dfu_jump.h"
 #include "energytrace/et_hdr.h"
 #include "gpio/aux_gpio.h"
@@ -30,6 +31,18 @@ static bool g_session_connected = false;
 static uint8_t g_req_buf[XDS_MAX_FRAME_SIZE];
 static uint8_t g_resp_buf[XDS_MAX_FRAME_SIZE];
 static uint8_t g_loopback_buf[512];
+
+/* Temporary opcode trace ring for host-tool protocol discovery (opcode 0x70) */
+typedef struct {
+    uint8_t op;
+    uint8_t len;
+    int16_t err;
+    uint8_t a[4];
+} xds_trace_entry_t;
+
+#define XDS_TRACE_CAP 64U
+static xds_trace_entry_t g_trace[XDS_TRACE_CAP];
+static uint32_t g_trace_cnt = 0U;
 
 static uint16_t read_u16le(const uint8_t *src)
 {
@@ -103,6 +116,9 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
         if (et_hdr_is_running()) {
             (void)et_hdr_cleanup();
         }
+        if (xds_swd_is_active()) {
+            (void)xds_swd_disconnect();
+        }
         g_session_connected = false;
         break;
 
@@ -112,9 +128,43 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
         resp_len = 6U;
         break;
 
+    case XDS_CMD_SET_TCK:
+        if (args_len < 4U) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        err = xds_swd_set_tck_delay(read_u32le(args));
+        break;
+
+    case XDS_CMD_SET_TRST:
+        if ((args_len < 1U) || (args[0] > 1U)) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        break;
+
+    case 0x06U: /* XDS_GET_TRST (1-byte pin status: 1 = deasserted/high) */
+        resp_data[0] = 1U;
+        resp_len = 1U;
+        break;
+
+    case XDS_CMD_CYCLE_TCK:
+        if (args_len < 4U) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        err = xds_swd_cycle_tck(read_u32le(args));
+        break;
+
     case XDS_CMD_GET_POWER:
         write_u32le(resp_data, BOARD_TARGET_VCC_MV);
         resp_len = 4U;
+        break;
+
+    case 0x09U: /* XDS_JTAG_GOTO_STATE (no-op in SWD mode) */
+        if (args_len < 8U) {
+            err = XDS_ERR_INVALID_PARAM;
+        }
         break;
 
     case XDS_CMD_SET_SRST:
@@ -123,6 +173,94 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
             break;
         }
         board_srst_set(args[0] == 0U);
+        break;
+
+    case XDS_CMD_CMAPI_CONNECT: {
+        uint32_t idcode = 0U;
+        err = xds_swd_cmapi_connect(&idcode);
+        write_u32le(resp_data, idcode);
+        resp_len = 4U;
+        break;
+    }
+
+    case XDS_CMD_CMAPI_DISCONNECT:
+        err = xds_swd_cmapi_disconnect();
+        break;
+
+    case XDS_CMD_CMAPI_ACQUIRE:
+        err = xds_swd_cmapi_acquire();
+        break;
+
+    case XDS_CMD_CMAPI_RELEASE:
+        err = xds_swd_cmapi_release();
+        break;
+
+    case XDS_CMD_CMAPI_READ_MEM: {
+        if ((args_len != 9U) && (args_len != 13U)) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        bool has_csw = (args_len == 13U);
+        uint32_t csw = has_csw ? read_u32le(&args[9]) : 0U;
+        uint16_t byte_cnt = read_u16le(&args[7]);
+        err = xds_swd_cmapi_read_mem(
+            args[0], args[1], args[2], read_u32le(&args[3]), byte_cnt, has_csw, csw, resp_data, XDS_MAX_RESP_DATA_LEN,
+            &resp_len);
+        break;
+    }
+
+    case XDS_CMD_CMAPI_WRITE_MEM: {
+        if (args_len < 9U) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        uint16_t byte_cnt = read_u16le(&args[7]);
+        uint16_t hdr_len = (uint16_t)(args_len - byte_cnt);
+        if ((byte_cnt > args_len) || ((hdr_len != 9U) && (hdr_len != 13U))) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        bool has_csw = (hdr_len == 13U);
+        uint32_t csw = has_csw ? read_u32le(&args[9]) : 0U;
+        err = xds_swd_cmapi_write_mem(
+            args[0], args[1], args[2], read_u32le(&args[3]), byte_cnt, has_csw, csw, &args[hdr_len]);
+        break;
+    }
+
+    case XDS_CMD_CMAPI_REG_READ: {
+        uint32_t reg_val = 0U;
+        if (args_len < 3U) {
+            err = XDS_ERR_INVALID_PARAM;
+        } else {
+            err = xds_swd_cmapi_read_reg(args[0], args[1], args[2], &reg_val);
+        }
+        write_u32le(resp_data, reg_val);
+        resp_len = 4U;
+        break;
+    }
+
+    case XDS_CMD_CMAPI_REG_WRITE:
+        if (args_len < 7U) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        err = xds_swd_cmapi_write_reg(args[0], args[1], args[2], read_u32le(&args[3]));
+        break;
+
+    case XDS_CMD_SWD_CONNECT:
+        err = xds_swd_connect();
+        break;
+
+    case XDS_CMD_SWD_DISCONNECT:
+        err = xds_swd_disconnect();
+        break;
+
+    case XDS_CMD_SWD_CLEAR_ERRORS:
+        err = xds_swd_clear_errors();
+        break;
+
+    case XDS_CMD_SWD_DORMANT_WAKE:
+        err = xds_swd_dormant_wake();
         break;
 
     case XDS_CMD_ET_HWINFO: {
@@ -218,13 +356,87 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
         err = aux_gpio_set(read_u32le(args), read_u16le(&args[4]));
         break;
 
+    case XDS_CMD_CJTAG_CONNECT:
+        if (args_len < 4U) {
+            err = XDS_ERR_INVALID_PARAM;
+            break;
+        }
+        break;
+
+    case XDS_CMD_CJTAG_DISCONNECT:
+        break;
+
+    case XDS_CMD_OCD_DAP_REQUEST:
+        err = xds_swd_ocd_dap_request(args, args_len, resp_data, XDS_MAX_RESP_DATA_LEN, &resp_len);
+        break;
+
+    case 0x32U: /* XDS_SET_SUPPLY (no-op on LP-XDS110ET hw=0x23) */
+        if (args_len < 5U) {
+            err = XDS_ERR_INVALID_PARAM;
+        }
+        break;
+
+    case 0x39U: /* JTAG_SET_MODE_EX */
+        if (args_len < 1U) {
+            err = XDS_ERR_INVALID_PARAM;
+        }
+        break;
+
+    case 0x45U: /* JTAG_SET_FREQ_EX */
+        if (args_len < 4U) {
+            err = XDS_ERR_INVALID_PARAM;
+        }
+        break;
+
+    case 0x49U: /* XDS_SET_OPTION / keepalive & LED options (subcmd 0..5) */
+        if ((args_len < 8U) || (args[0] > 5U)) {
+            err = XDS_ERR_INVALID_PARAM;
+        }
+        break;
+
     case XDS_CMD_PING:
         break;
+
+    case XDS_CMD_CMAPI_CONNECT_EX: {
+        uint32_t idcode = 0U;
+        if (args_len < 4U) {
+            err = XDS_ERR_INVALID_PARAM;
+        } else {
+            err = xds_swd_cmapi_connect(&idcode);
+        }
+        write_u32le(resp_data, idcode);
+        resp_len = 4U;
+        break;
+    }
+
+    case 0x70U: {
+        uint32_t n = (g_trace_cnt > XDS_TRACE_CAP) ? XDS_TRACE_CAP : g_trace_cnt;
+        uint32_t start = (g_trace_cnt > XDS_TRACE_CAP) ? (g_trace_cnt - XDS_TRACE_CAP) : 0U;
+        for (uint32_t i = 0U; i < n; i++) {
+            memcpy(&resp_data[i * sizeof(xds_trace_entry_t)], &g_trace[(start + i) % XDS_TRACE_CAP],
+                sizeof(xds_trace_entry_t));
+        }
+        resp_len = (uint16_t)(n * sizeof(xds_trace_entry_t));
+        if ((args_len >= 1U) && (args[0] != 0U)) {
+            g_trace_cnt = 0U;
+        }
+        xds_send_response(XDS_ERR_OK, resp_len);
+        return;
+    }
 
     default:
         err = XDS_ERR_UNSUPPORTED;
         break;
     }
+
+    xds_trace_entry_t *te = &g_trace[g_trace_cnt % XDS_TRACE_CAP];
+    te->op = opcode;
+    te->len = (args_len > 255U) ? 255U : (uint8_t)args_len;
+    te->err = (int16_t)err;
+    for (uint32_t i = 0U; i < 4U; i++) {
+        te->a[i] = (i < args_len) ? args[i] : 0U;
+    }
+    g_trace_cnt++;
 
     xds_send_response(err, resp_len);
 }
@@ -308,6 +520,7 @@ void xds_cmd_init(const uint8_t fw_version[4])
 {
     memcpy(g_fw_version, fw_version, sizeof(g_fw_version));
     g_session_connected = false;
+    xds_swd_init();
 }
 
 bool xds_cmd_poll(void)

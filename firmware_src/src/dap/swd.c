@@ -133,8 +133,6 @@ void swd_connect(void)
 
     MAP_GPIOPinTypeGPIOInput(BOARD_JTAG_PORT_BASE, BOARD_JTAG_TDO_PIN);
     MAP_GPIOPadConfigSet(BOARD_JTAG_PORT_BASE, BOARD_JTAG_TDO_PIN, GPIO_STRENGTH_2MA, GPIO_PIN_TYPE_STD_WPU);
-
-    board_srst_set(false);
 }
 
 void swd_disconnect(void)

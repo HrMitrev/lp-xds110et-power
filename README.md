@@ -20,12 +20,11 @@ Utilities for capturing, logging, and visualizing power measurements from Texas 
 
 ## Project Components
 
-- **`xds110-et/`**: Modern, all-in-one Rust CLI and GUI application for high-speed (256 kS/s) streaming, decoupled CSV logging, and real-time visualization with sliding timeline window. Zero external C/DLL dependencies on Windows.
-- **`PROTOCOL.md`**: Reverse-engineered protocol documentation of the XDS110 EnergyTrace WinUSB command and data streaming interfaces, including hardware reset from `xds110reset.exe`.
-- **Python Scripts (Reference implementations in `py_ref/`)**:
-  - `xds110_et_long.py`: CLI tool for long-duration captures with decimated CSV logging.
-  - `xds110_et_live.py`: Real-time streaming and monitoring tool.
-  - `plot_long_log.py`: Matplotlib/Tkinter GUI viewer for decimated capture logs.
+- **`xds110-et/`**: Modern, all-in-one Rust CLI and GUI application for high-speed (256 kS/s) EnergyTrace streaming, decoupled CSV logging, real-time visualization, and native USB DFU firmware flashing (`xds110-et dfu-flash`). Zero external C/DLL dependencies on Windows.
+- **`firmware_src/`**: Clean-room, open-source bare-metal firmware for the **TI LP-XDS110ET** (`MSP432E401Y`, `hw_version = 0x23`), featuring USB 2.1 High-Speed ULPI (`USB3300`), 256 kS/s EnergyTrace HDR (`ADS127L01` + ping-pong uDMA), Dual Virtual COM Ports (up to 2 Mbps), Target Aux GPIOs, **CMSIS-DAP v2.0.0 WinUSB Bulk** (512-byte HS packets + BOS / MS OS 2.0 auto-binding + Atomic Commands `0x7F` for OpenOCD, `probe-rs`, and `pyOCD`), and **OpenOCD native `interface/xds110.cfg` SWD** (`OCD_DAP_REQUEST 0x3A`) on Interface 2.
+- **`rev-eng/`**: Hardware map, architecture analysis, protocol specification, EnergyTrace deep-dive, and phased firmware roadmap.
+- **`PROTOCOL.md`**: Protocol documentation of the XDS110 EnergyTrace WinUSB command and data streaming interfaces, including hardware reset.
+- **Python Scripts (`py_ref/`)**: Legacy reference Python scripts for EnergyTrace capture and plotting.
 
 ## Quick Start (Rust CLI & GUI)
 

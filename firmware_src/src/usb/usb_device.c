@@ -974,7 +974,7 @@ uint32_t usb_cmd_tx_write(const uint8_t *src, uint32_t len)
 {
     uint32_t crit = usb_crit_enter();
     uint32_t written = ring_push(&g_cmd_tx_ring, src, len);
-    if ((written > 0U) && ((written % g_bulk_mps) == 0U)) {
+    if ((written > 0U) && (USB_CMD_IN_FIFO_BYTES >= g_bulk_mps) && ((written % g_bulk_mps) == 0U)) {
         g_cmd_tx_need_zlp = true;
     }
     usb_kick_bulk_in(USB_EP_3, &g_cmd_tx_ring, &g_cmd_tx_busy, &g_cmd_tx_need_zlp, USB_CMD_IN_FIFO_BYTES);

@@ -24,11 +24,11 @@
 #include "uart/cdc_uart.h"
 #include "usb/usb_device.h"
 
-/* Firmware version components (3.0.0.02) */
-#define FW_VERSION_MAJOR 3U
-#define FW_VERSION_MINOR 0U
-#define FW_VERSION_PATCH 0U
-#define FW_VERSION_BUILD 2U
+/* Firmware version components (BCD: 3.0.0.45 -> 0x03000045) */
+#define FW_VERSION_MAJOR 0x03U
+#define FW_VERSION_MINOR 0x00U
+#define FW_VERSION_PATCH 0x00U
+#define FW_VERSION_BUILD 0x45U
 
 /*
  * Firmware version marker matching XDS_VERSION (CMD 0x03) wire format:

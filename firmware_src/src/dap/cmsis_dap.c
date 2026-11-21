@@ -833,7 +833,7 @@ static uint16_t dap_process_packet(const uint8_t *req, uint32_t req_len, uint8_t
 void cmsis_dap_init(const uint8_t fw_version[4])
 {
     board_read_serial(g_dap_serial);
-    snprintf(g_dap_product_fw_ver, sizeof(g_dap_product_fw_ver), "%02u.%02u.%02u.%02u", (unsigned)fw_version[3],
+    snprintf(g_dap_product_fw_ver, sizeof(g_dap_product_fw_ver), "%02x.%02x.%02x.%02x", (unsigned)fw_version[3],
         (unsigned)fw_version[2], (unsigned)fw_version[1], (unsigned)fw_version[0]);
 
     g_dap_port = DAP_PORT_DISABLED;
