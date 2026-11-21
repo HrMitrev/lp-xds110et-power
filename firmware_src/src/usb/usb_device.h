@@ -22,7 +22,7 @@
 #define USB_CMD_TX_BUF_SIZE  8192U
 #define USB_DATA_RX_BUF_SIZE 2048U
 #define USB_DATA_TX_BUF_SIZE 65536U
-#define USB_CDC_RX_BUF_SIZE  2048U
+#define USB_CDC_RX_BUF_SIZE  4096U
 #define USB_CDC_TX_BUF_SIZE  8192U
 
 /* CMSIS-DAP v2 WinUSB Bulk variable-length packet queue parameters */

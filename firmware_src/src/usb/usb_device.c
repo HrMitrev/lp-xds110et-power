@@ -55,37 +55,38 @@
 #define ULPI_REG_IF_CTRL   0x07U
 
 /*
- * MSP432E4 USB0 4,096-byte FIFO RAM layout (all addresses naturally aligned):
+ * MSP432E4 USB0 4,096-byte FIFO RAM layout (all addresses 8-byte aligned):
  *   0..63      EP0 Control (64 B, fixed hardware)
  *   64..79     CDC0 INT IN  0x81 (16 B)
  *   80..95     CDC1 INT IN  0x84 (16 B)
- *   96..127    CDC1 IN      0x85 (32 B, software-capped <=32 B/pkt)
- *   128..255   CDC0 IN      0x82 (128 B, software-capped <=128 B/pkt)
- *   256..511   CDC1 OUT     0x04 (256 B, Aux/SWO RX-only sink)
+ *   96..159    CDC1 IN      0x85 (64 B, BMP GDB RSP TX, software-capped <=64 B/pkt)
+ *   160..223   CDC0 IN      0x82 (64 B, App UART / RTT TX, software-capped <=64 B/pkt)
+ *   224..255   (32 B spare)
+ *   256..511   DATA OUT     0x06 (256 B, idle loopback sink; unused by EnergyTrace)
  *   512..1023  CMD IN       0x83 (512 B, full HS MPS — avoids short-packet splits)
  *   1024..1535 CMD OUT      0x02 (512 B)
  *   1536..2047 DATA IN      0x87 (512 B, EnergyTrace streaming)
- *   2048..2559 DATA OUT     0x06 (512 B)
+ *   2048..2559 CDC1 OUT     0x04 (512 B, full HS MPS for BMP GDB vFlashWrite bursts)
  *   2560..3071 CDC0 OUT     0x01 (512 B)
  *   3072..3583 DAP v2 OUT   0x05 (512 B, CMSIS-DAP v2 WinUSB)
  *   3584..4095 DAP v2 IN    0x86 (512 B, CMSIS-DAP v2 WinUSB)
- * Total used: 4,096 / 4,096 bytes.
+ * Total used: 4,064 / 4,096 bytes.
  */
 #define USB_FIFO_ADDR_CDC0_INT 64U
 #define USB_FIFO_ADDR_CDC1_INT 80U
 #define USB_FIFO_ADDR_CDC1_IN  96U
-#define USB_FIFO_ADDR_CDC0_IN  128U
-#define USB_FIFO_ADDR_CDC1_OUT 256U
+#define USB_FIFO_ADDR_CDC0_IN  160U
+#define USB_FIFO_ADDR_DATA_OUT 256U
 #define USB_FIFO_ADDR_CMD_IN   512U
 #define USB_FIFO_ADDR_CMD_OUT  1024U
 #define USB_FIFO_ADDR_DATA_IN  1536U
-#define USB_FIFO_ADDR_DATA_OUT 2048U
+#define USB_FIFO_ADDR_CDC1_OUT 2048U
 #define USB_FIFO_ADDR_CDC0_OUT 2560U
 #define USB_FIFO_ADDR_DAP_OUT  3072U
 #define USB_FIFO_ADDR_DAP_IN   3584U
 #define USB_CMD_IN_FIFO_BYTES  512U
-#define USB_CDC0_IN_FIFO_BYTES 128U
-#define USB_CDC1_IN_FIFO_BYTES 32U
+#define USB_CDC0_IN_FIFO_BYTES 64U
+#define USB_CDC1_IN_FIFO_BYTES 64U
 
 typedef enum {
     EP0_STATE_IDLE = 0,
@@ -329,8 +330,7 @@ static void usb_configure_endpoints(void)
 {
     uint32_t mps = g_bulk_mps;
     uint32_t fifo_full = g_usb_high_speed ? USB_FIFO_SZ_512 : USB_FIFO_SZ_64;
-    uint32_t fifo_cdc1_out = g_usb_high_speed ? USB_FIFO_SZ_256 : USB_FIFO_SZ_64;
-    uint32_t fifo_cdc0_in = g_usb_high_speed ? USB_FIFO_SZ_128 : USB_FIFO_SZ_64;
+    uint32_t fifo_data_out = g_usb_high_speed ? USB_FIFO_SZ_256 : USB_FIFO_SZ_64;
 
     /* CDC0 / CDC1 Interrupt IN (EP1 IN 0x81, EP4 IN 0x84) */
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_1, USB_CDC_INT_MPS, USB_EP_MODE_INT | USB_EP_DEV_IN);
@@ -348,24 +348,24 @@ static void usb_configure_endpoints(void)
 
     /* Bulk 1 OUT (EP6, 0x06) & IN (EP7, 0x87) — EnergyTrace Data Port */
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_6, mps, USB_EP_MODE_BULK | USB_EP_DEV_OUT);
-    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_6, USB_FIFO_ADDR_DATA_OUT, fifo_full, USB_EP_DEV_OUT);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_6, USB_FIFO_ADDR_DATA_OUT, fifo_data_out, USB_EP_DEV_OUT);
 
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_7, mps, USB_EP_MODE_BULK | USB_EP_DEV_IN);
     MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_7, USB_FIFO_ADDR_DATA_IN, fifo_full, USB_EP_DEV_IN);
 
-    /* CDC0 Bulk OUT (EP1, 0x01) & IN (EP2, 0x82) — Application UART */
+    /* CDC0 Bulk OUT (EP1, 0x01) & IN (EP2, 0x82) — Application UART / RTT */
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_1, mps, USB_EP_MODE_BULK | USB_EP_DEV_OUT);
     MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_1, USB_FIFO_ADDR_CDC0_OUT, fifo_full, USB_EP_DEV_OUT);
 
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_2, mps, USB_EP_MODE_BULK | USB_EP_DEV_IN);
-    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_2, USB_FIFO_ADDR_CDC0_IN, fifo_cdc0_in, USB_EP_DEV_IN);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_2, USB_FIFO_ADDR_CDC0_IN, USB_FIFO_SZ_64, USB_EP_DEV_IN);
 
-    /* CDC1 Bulk OUT (EP4, 0x04) & IN (EP5, 0x85) — Aux / SWO UART */
+    /* CDC1 Bulk OUT (EP4, 0x04) & IN (EP5, 0x85) — Black Magic GDB Server / Aux UART */
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_4, mps, USB_EP_MODE_BULK | USB_EP_DEV_OUT);
-    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_4, USB_FIFO_ADDR_CDC1_OUT, fifo_cdc1_out, USB_EP_DEV_OUT);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_4, USB_FIFO_ADDR_CDC1_OUT, fifo_full, USB_EP_DEV_OUT);
 
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_5, mps, USB_EP_MODE_BULK | USB_EP_DEV_IN);
-    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_5, USB_FIFO_ADDR_CDC1_IN, USB_FIFO_SZ_32, USB_EP_DEV_IN);
+    MAP_USBFIFOConfigSet(USB0_BASE, USB_EP_5, USB_FIFO_ADDR_CDC1_IN, USB_FIFO_SZ_64, USB_EP_DEV_IN);
 
     /* CMSIS-DAP v2 WinUSB Bulk OUT (EP5, 0x05) & IN (EP6, 0x86) */
     MAP_USBDevEndpointConfigSet(USB0_BASE, USB_EP_5, mps, USB_EP_MODE_BULK | USB_EP_DEV_OUT);
