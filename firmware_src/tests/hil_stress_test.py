@@ -56,6 +56,7 @@ DAP_CMD_RESET_TARGET = 0x0A
 DAP_CMD_SWJ_PINS = 0x10
 DAP_CMD_SWJ_CLOCK = 0x11
 DAP_CMD_SWD_CONFIGURE = 0x13
+DAP_CMD_EXECUTE_COMMANDS = 0x7F
 DAP_HID_PKT_SIZE = 64
 
 BAUD_MAP = {
@@ -354,10 +355,33 @@ def test_cmsis_dap_hid() -> None:
             f"  [HID {dap.path}] {vendor} / {product} (SN={serial}, DAP={dap_ver}, FW={prod_fw}, "
             f"caps=0x{caps:02X}, pkts={pkt_cnt}x{pkt_sz}B)"
         )
-        if (caps & 0x01) == 0 or pkt_cnt < 1 or pkt_sz != DAP_HID_PKT_SIZE:
+        if (caps & 0x11) != 0x11 or pkt_cnt < 1 or pkt_sz != DAP_HID_PKT_SIZE:
             raise RuntimeError(f"Invalid CMSIS-DAP capabilities/geometry: caps={caps:#x}, {pkt_cnt}x{pkt_sz}")
 
         try:
+            # Verify DAP_ExecuteCommands (0x7F) packs multiple commands into 1 HID report
+            batch_req = bytes(
+                [
+                    DAP_CMD_EXECUTE_COMMANDS,
+                    3,
+                    DAP_CMD_INFO,
+                    0xF0,
+                    DAP_CMD_INFO,
+                    0xFE,
+                    DAP_CMD_INFO,
+                    0xFF,
+                ]
+            )
+            r_batch = dap.xfer(batch_req)
+            if (
+                r_batch[0] != DAP_CMD_EXECUTE_COMMANDS
+                or r_batch[1] != 3
+                or r_batch[2:5] != bytes([DAP_CMD_INFO, 1, caps])
+                or r_batch[5:8] != bytes([DAP_CMD_INFO, 1, pkt_cnt])
+                or r_batch[8:12] != struct.pack("<BBH", DAP_CMD_INFO, 2, pkt_sz)
+            ):
+                raise RuntimeError(f"DAP_ExecuteCommands(0x7F) mismatch: {r_batch[:14].hex()}")
+
             # Connect SWD, configure clock/transfer/SWD, toggle SWJ pins, and disconnect
             r_conn = dap.xfer(bytes([DAP_CMD_CONNECT, 0x01]))
             if r_conn[0] != DAP_CMD_CONNECT or r_conn[1] != 0x01:
@@ -393,7 +417,7 @@ def test_cmsis_dap_hid() -> None:
                 if rr[0] != DAP_CMD_INFO or rr[2] != caps:
                     raise RuntimeError("HID round-trip burst mismatch")
             dt_ms = (time.monotonic() - t0) * 1000.0
-            print(f"  [HID Commands  ] connect/clock/pins/100x burst OK ({dt_ms:.1f}ms, {dt_ms/100:.2f}ms/pkt)")
+            print(f"  [HID Commands  ] 0x7F batch/connect/clock/pins/100x burst OK ({dt_ms:.1f}ms, {dt_ms/100:.2f}ms/pkt)")
         finally:
             dap.xfer(bytes([DAP_CMD_HOST_STATUS, 0x00, 0x00]))
             dap.xfer(bytes([DAP_CMD_DISCONNECT]))
@@ -537,6 +561,128 @@ def test_concurrent_et_and_uart(xds_cmd: list[str], app_uart: str, duration_s: i
             os.remove(csv_path)
 
 
+def test_swd_target(xds_cmd: list[str], target_cfg: str, run_et: bool, et_duration_s: int) -> None:
+    print(f"\n=== 7. Live SWD Target Verification ({target_cfg}) ===")
+    if not shutil.which("openocd"):
+        raise RuntimeError("openocd not found in PATH (required for --test-swd-target)")
+
+    with tempfile.NamedTemporaryFile(prefix="swd_dump_", suffix=".bin", delete=False) as tmp_bin:
+        dump_path = tmp_bin.name
+    csv_path: str | None = None
+
+    try:
+        # 1. OpenOCD attach, reset halt, 8 KiB Flash dump & CRC verify, SRAM R/W/restore
+        ocd_script = (
+            f"init; reset halt; flash probe 0; "
+            f"dump_image {dump_path} 0x08000000 8192; "
+            f"verify_image {dump_path} 0x08000000; "
+            f"set orig [read_memory 0x20001F00 32 4]; "
+            f"write_memory 0x20001F00 32 {{0xDEADBEEF 0xCAFEBABE 0x12345678 0xA5A55A5A}}; "
+            f'echo "SRAM_RW: [read_memory 0x20001F00 32 4]"; '
+            f"write_memory 0x20001F00 32 $orig; "
+            f"shutdown"
+        )
+        p = subprocess.run(
+            [
+                "openocd",
+                "-c",
+                "adapter driver cmsis-dap; cmsis-dap backend hid; transport select swd; adapter speed 2000",
+                "-f",
+                target_cfg,
+                "-c",
+                ocd_script,
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        out = p.stdout + p.stderr
+        if p.returncode != 0 or "SRAM_RW: 0xdeadbeef 0xcafebabe 0x12345678 0xa5a55a5a" not in out:
+            raise RuntimeError(f"OpenOCD SWD target verification failed:\n{out}")
+        dpidr_line = next((line.strip() for line in out.splitlines() if "SWD DPIDR" in line), "SWD OK")
+        print(f"  [openocd SWD   ] OK ({dpidr_line}, 8 KiB flash verify + SRAM R/W @ 2 MHz)")
+
+        # 2. probe-rs ROM table discovery (while target is halted)
+        if shutil.which("probe-rs"):
+            p_rs = subprocess.run(
+                ["probe-rs", "info", "--speed", "1000", "--verbose"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            rs_out = p_rs.stdout + p_rs.stderr
+            if p_rs.returncode != 0 or "ROM Table" not in rs_out:
+                raise RuntimeError(f"probe-rs ROM table scan failed:\n{rs_out}")
+            print("  [probe-rs info ] OK (SWD DP/AP + CoreSight ROM tables)")
+
+        # 3. pyocd attach + register & flash readback (while target is halted)
+        if shutil.which("pyocd"):
+            p_py = subprocess.run(
+                ["pyocd", "cmd", "-c", "status", "-c", "reg", "-c", "read32 0x08000000 16"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            py_out = p_py.stdout + p_py.stderr
+            if p_py.returncode != 0 or "Halted" not in py_out or "08000000:" not in py_out:
+                raise RuntimeError(f"pyocd SWD target check failed:\n{py_out}")
+            print("  [pyocd SWD     ] OK (core status + registers + flash read32)")
+
+        # 4. Concurrent EnergyTrace HDR 256 kS/s + OpenOCD 8 KiB SWD dump/verify
+        if run_et:
+            with tempfile.NamedTemporaryFile(prefix="et_swd_", suffix=".csv", delete=False) as tmp_csv:
+                csv_path = tmp_csv.name
+            et_proc = subprocess.Popen(
+                [*xds_cmd, "capture", "-t", str(et_duration_s), "-o", csv_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+            time.sleep(0.6)
+            p_coex = subprocess.run(
+                [
+                    "openocd",
+                    "-c",
+                    "adapter driver cmsis-dap; cmsis-dap backend hid; transport select swd; adapter speed 2000",
+                    "-f",
+                    target_cfg,
+                    "-c",
+                    f"init; reset halt; dump_image {dump_path} 0x08000000 8192; verify_image {dump_path} 0x08000000; resume; shutdown",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            et_out, _ = et_proc.communicate(timeout=et_duration_s + 15)
+            if p_coex.returncode != 0:
+                raise RuntimeError(f"OpenOCD failed during EnergyTrace:\n{p_coex.stdout + p_coex.stderr}")
+            if et_proc.returncode != 0 or "0 frames lost" not in et_out or "0 reconnects" not in et_out:
+                raise RuntimeError(f"EnergyTrace lost frames during SWD:\n{et_out}")
+            summary_line = next((line.strip() for line in et_out.splitlines() if "Capture finished:" in line), "")
+            current_line = next((line.strip() for line in et_out.splitlines() if "Current:" in line), "")
+            print(f"  [ET + SWD coex ] OK ({summary_line}; {current_line})")
+        else:
+            # Leave target resumed if concurrent ET block didn't run
+            subprocess.run(
+                [
+                    "openocd",
+                    "-c",
+                    "adapter driver cmsis-dap; cmsis-dap backend hid; transport select swd; adapter speed 1000",
+                    "-f",
+                    target_cfg,
+                    "-c",
+                    "init; resume; shutdown",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+    finally:
+        for path in (dump_path, csv_path):
+            if path and os.path.exists(path):
+                os.remove(path)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="LP-XDS110ET HIL stress test suite")
     parser.add_argument("--app-uart", default="/dev/ttyACM0", help="Application UART CDC device (default: /dev/ttyACM0)")
@@ -545,6 +691,13 @@ def main() -> int:
     parser.add_argument("--et-duration", type=int, default=4, help="EnergyTrace capture duration in seconds (default: 4)")
     parser.add_argument("--expect-version", default=None, help="Expected firmware version string (e.g. 3.0.0.02)")
     parser.add_argument("--blink-identify", action="store_true", help="Also exercise 0x80000010 probe-identify LED blink")
+    parser.add_argument(
+        "--test-swd-target",
+        nargs="?",
+        const="target/stm32g0x.cfg",
+        default=None,
+        help="Run live SWD target tests via openocd/probe-rs/pyocd (default cfg: target/stm32g0x.cfg)",
+    )
     parser.add_argument("--skip-gpio", action="store_true", help="Skip Target Aux GPIO (0x29/0x2A) loopback tests")
     parser.add_argument("--skip-dap", action="store_true", help="Skip CMSIS-DAP HID & host tool discovery tests")
     parser.add_argument("--skip-uart", action="store_true", help="Skip UART loopback tests")
@@ -562,8 +715,10 @@ def main() -> int:
         if not args.skip_uart:
             test_uart_standalone(args.app_uart)
             test_aux_uart(args.aux_uart)
-        if not args.skip_et:
+        if not args.skip_et and not args.test_swd_target:
             test_concurrent_et_and_uart(xds_cmd, args.app_uart, args.et_duration, run_uart=not args.skip_uart)
+        if args.test_swd_target:
+            test_swd_target(xds_cmd, args.test_swd_target, run_et=not args.skip_et, et_duration_s=args.et_duration)
     except Exception as exc:
         print(f"\nFAIL: {exc}", file=sys.stderr)
         return 1

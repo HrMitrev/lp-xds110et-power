@@ -6,6 +6,7 @@
  *   - 0x04 DAP_TransferConfigure, 0x05 DAP_Transfer, 0x06 DAP_TransferBlock
  *   - 0x07 DAP_TransferAbort, 0x08 DAP_WriteABORT, 0x09 DAP_Delay, 0x0A DAP_ResetTarget
  *   - 0x10 DAP_SWJ_Pins, 0x11 DAP_SWJ_Clock, 0x12 DAP_SWJ_Sequence, 0x13 DAP_SWD_Configure
+ *   - 0x7E DAP_QueueCommands, 0x7F DAP_ExecuteCommands (Atomic Commands)
  */
 
 #include "cmsis_dap.h"
@@ -33,6 +34,8 @@
 #define DAP_CMD_SWJ_CLOCK          0x11U
 #define DAP_CMD_SWJ_SEQUENCE       0x12U
 #define DAP_CMD_SWD_CONFIGURE      0x13U
+#define DAP_CMD_QUEUE_COMMANDS     0x7EU
+#define DAP_CMD_EXECUTE_COMMANDS   0x7FU
 #define DAP_CMD_INVALID            0xFFU
 
 /* CMSIS-DAP status & port constants */
@@ -58,8 +61,9 @@
 #define DAP_INFO_PACKET_COUNT      0xFEU
 #define DAP_INFO_PACKET_SIZE       0xFFU
 
-/* Capabilities byte 0: bit 0 = SWD supported */
-#define DAP_CAP_SWD 0x01U
+/* Capabilities byte 0: bit 0 = SWD, bit 4 = Atomic Commands (0x7F/0x7E) */
+#define DAP_CAP_SWD             (1U << 0U)
+#define DAP_CAP_ATOMIC_COMMANDS (1U << 4U)
 
 /* DAP_Transfer request flags & response status bits */
 #define DAP_TRANSFER_APnDP      (1U << 0U)
@@ -134,18 +138,24 @@ static uint8_t dap_swd_xfer_retry(uint8_t req, uint32_t *data)
 
 /* ---- CMSIS-DAP Command Handlers ---- */
 
-static void dap_write_info_string(uint8_t *resp, const char *str)
+static uint32_t dap_write_info_string(uint8_t *resp, uint32_t resp_max, const char *str)
 {
+    if (resp_max < 2U) {
+        return 0U;
+    }
     uint32_t len = (uint32_t)strlen(str) + 1U;
-    if (len > (USB_HID_PKT_SIZE - 2U)) {
-        len = USB_HID_PKT_SIZE - 2U;
+    if (len > (resp_max - 2U)) {
+        len = resp_max - 2U;
     }
     resp[1] = (uint8_t)len;
-    memcpy(&resp[2], str, len);
-    resp[2U + len - 1U] = '\0';
+    if (len > 0U) {
+        memcpy(&resp[2], str, len);
+        resp[2U + len - 1U] = '\0';
+    }
+    return 2U + len;
 }
 
-static void dap_handle_info(const uint8_t *req, uint8_t *resp)
+static uint32_t dap_handle_info(const uint8_t *req, uint8_t *resp, uint32_t resp_max)
 {
     uint8_t info_id = req[1];
     resp[0] = DAP_CMD_INFO;
@@ -153,54 +163,56 @@ static void dap_handle_info(const uint8_t *req, uint8_t *resp)
 
     switch (info_id) {
     case DAP_INFO_VENDOR:
-        dap_write_info_string(resp, "Texas Instruments");
-        break;
+        return dap_write_info_string(resp, resp_max, "Texas Instruments");
 
     case DAP_INFO_PRODUCT:
-        dap_write_info_string(resp, "XDS110 OpenFW CMSIS-DAP");
-        break;
+        return dap_write_info_string(resp, resp_max, "XDS110 OpenFW CMSIS-DAP");
 
     case DAP_INFO_SER_NUM:
-        dap_write_info_string(resp, g_dap_serial);
-        break;
+        return dap_write_info_string(resp, resp_max, g_dap_serial);
 
     case DAP_INFO_FW_VER:
-        dap_write_info_string(resp, DAP_PROTOCOL_VERSION);
-        break;
+        return dap_write_info_string(resp, resp_max, DAP_PROTOCOL_VERSION);
 
     case DAP_INFO_BOARD_VENDOR:
-        dap_write_info_string(resp, "Texas Instruments");
-        break;
+        return dap_write_info_string(resp, resp_max, "Texas Instruments");
 
     case DAP_INFO_BOARD_NAME:
-        dap_write_info_string(resp, "LP-XDS110ET");
-        break;
+        return dap_write_info_string(resp, resp_max, "LP-XDS110ET");
 
     case DAP_INFO_PRODUCT_FW_VER:
-        dap_write_info_string(resp, g_dap_product_fw_ver);
-        break;
+        return dap_write_info_string(resp, resp_max, g_dap_product_fw_ver);
 
     case DAP_INFO_CAPABILITIES:
-        resp[1] = 1U;
-        resp[2] = DAP_CAP_SWD;
-        break;
+        if (resp_max >= 3U) {
+            resp[1] = 1U;
+            resp[2] = DAP_CAP_SWD | DAP_CAP_ATOMIC_COMMANDS;
+            return 3U;
+        }
+        return 2U;
 
     case DAP_INFO_PACKET_COUNT:
-        resp[1] = 1U;
-        resp[2] = USB_HID_QUEUE_DEPTH;
-        break;
+        if (resp_max >= 3U) {
+            resp[1] = 1U;
+            resp[2] = USB_HID_QUEUE_DEPTH;
+            return 3U;
+        }
+        return 2U;
 
     case DAP_INFO_PACKET_SIZE:
-        resp[1] = 2U;
-        write_u16le(&resp[2], USB_HID_PKT_SIZE);
-        break;
+        if (resp_max >= 4U) {
+            resp[1] = 2U;
+            write_u16le(&resp[2], USB_HID_PKT_SIZE);
+            return 4U;
+        }
+        return 2U;
 
     case DAP_INFO_DEVICE_VENDOR:
     case DAP_INFO_DEVICE_NAME:
     case DAP_INFO_TEST_DOMAIN_TIMER:
     default:
         resp[1] = 0U;
-        break;
+        return 2U;
     }
 }
 
@@ -256,7 +268,8 @@ static void dap_handle_transfer_configure(const uint8_t *req, uint8_t *resp)
     resp[1] = DAP_STATUS_OK;
 }
 
-static void dap_handle_transfer(const uint8_t *req, uint8_t *resp)
+static void dap_handle_transfer(const uint8_t *req, uint32_t req_max, uint8_t *resp, uint32_t resp_max,
+    uint32_t *out_req_used, uint32_t *out_resp_used)
 {
     uint8_t xfer_count = req[2];
     uint32_t req_off = 3U;
@@ -264,183 +277,224 @@ static void dap_handle_transfer(const uint8_t *req, uint8_t *resp)
     uint8_t resp_count = 0U;
     uint8_t resp_val = 0U;
     bool post_read = false;
+    uint8_t executed = 0U;
 
     resp[0] = DAP_CMD_TRANSFER;
 
-    if (g_dap_port != DAP_PORT_SWD) {
-        resp[1] = 0U;
-        resp[2] = 0U;
-        return;
-    }
+    if (g_dap_port == DAP_PORT_SWD) {
+        for (; executed < xfer_count; executed++) {
+            if (req_off >= req_max) {
+                break;
+            }
+            uint8_t xfer_req = req[req_off++];
 
-    for (uint8_t i = 0U; i < xfer_count; i++) {
-        if (req_off >= USB_HID_PKT_SIZE) {
-            break;
-        }
-        uint8_t xfer_req = req[req_off++];
+            if ((xfer_req & DAP_TRANSFER_RnW) != 0U) {
+                /* Read transfer */
+                if (post_read) {
+                    if (((xfer_req & DAP_TRANSFER_APnDP) != 0U) && ((xfer_req & DAP_TRANSFER_MATCH_VAL) == 0U)) {
+                        /* Pipelined AP read: returns previous AP read while posting new one */
+                        uint32_t val = 0U;
+                        resp_val = dap_swd_xfer_retry(xfer_req, &val);
+                        if (resp_val != SWD_ACK_OK) {
+                            post_read = false;
+                            executed++;
+                            break;
+                        }
+                        if ((resp_off + 4U) <= resp_max) {
+                            write_u32le(&resp[resp_off], val);
+                            resp_off += 4U;
+                        }
+                        resp_count++;
+                        continue;
+                    }
 
-        if ((xfer_req & DAP_TRANSFER_RnW) != 0U) {
-            /* Read transfer */
-            if (post_read) {
-                if (((xfer_req & DAP_TRANSFER_APnDP) != 0U) && ((xfer_req & DAP_TRANSFER_MATCH_VAL) == 0U)) {
-                    /* Pipelined AP read: returns previous AP read while posting new one */
-                    uint32_t val = 0U;
-                    resp_val = dap_swd_xfer_retry(xfer_req, &val);
+                    /* Flush previous posted AP read before DP read or value-match read */
+                    uint32_t prev_val = 0U;
+                    resp_val = dap_swd_xfer_retry(DAP_DP_RDBUFF_READ, &prev_val);
+                    post_read = false;
                     if (resp_val != SWD_ACK_OK) {
-                        post_read = false;
+                        if ((xfer_req & DAP_TRANSFER_MATCH_VAL) != 0U) {
+                            req_off = ((req_off + 4U) <= req_max) ? (req_off + 4U) : req_max;
+                        }
+                        executed++;
                         break;
                     }
-                    if ((resp_off + 4U) <= USB_HID_PKT_SIZE) {
-                        write_u32le(&resp[resp_off], val);
+                    if ((resp_off + 4U) <= resp_max) {
+                        write_u32le(&resp[resp_off], prev_val);
                         resp_off += 4U;
                     }
                     resp_count++;
-                    continue;
                 }
 
-                /* Flush previous posted AP read before DP read or value-match read */
-                uint32_t prev_val = 0U;
-                resp_val = dap_swd_xfer_retry(DAP_DP_RDBUFF_READ, &prev_val);
-                post_read = false;
-                if (resp_val != SWD_ACK_OK) {
-                    break;
-                }
-                if ((resp_off + 4U) <= USB_HID_PKT_SIZE) {
-                    write_u32le(&resp[resp_off], prev_val);
-                    resp_off += 4U;
-                }
-            }
+                if ((xfer_req & DAP_TRANSFER_MATCH_VAL) != 0U) {
+                    if ((req_off + 4U) > req_max) {
+                        executed++;
+                        break;
+                    }
+                    uint32_t match_val = read_u32le(&req[req_off]);
+                    req_off += 4U;
 
-            if ((xfer_req & DAP_TRANSFER_MATCH_VAL) != 0U) {
-                if ((req_off + 4U) > USB_HID_PKT_SIZE) {
-                    break;
-                }
-                uint32_t match_val = read_u32le(&req[req_off]);
-                req_off += 4U;
+                    if ((xfer_req & DAP_TRANSFER_APnDP) != 0U) {
+                        /* Post initial AP read before polling */
+                        resp_val = dap_swd_xfer_retry(xfer_req, NULL);
+                        if (resp_val != SWD_ACK_OK) {
+                            executed++;
+                            break;
+                        }
+                    }
 
-                if ((xfer_req & DAP_TRANSFER_APnDP) != 0U) {
-                    /* Post initial AP read before polling */
+                    uint32_t val = 0U;
+                    uint32_t retry = g_dap_match_retry;
+                    do {
+                        resp_val = dap_swd_xfer_retry(xfer_req, &val);
+                        if (resp_val != SWD_ACK_OK) {
+                            break;
+                        }
+                        if ((val & g_dap_match_mask) == match_val) {
+                            break;
+                        }
+                    } while (retry-- > 0U);
+
+                    if (resp_val != SWD_ACK_OK) {
+                        executed++;
+                        break;
+                    }
+                    if ((val & g_dap_match_mask) != match_val) {
+                        resp_val |= DAP_TRANSFER_MISMATCH;
+                        executed++;
+                        break;
+                    }
+                } else if ((xfer_req & DAP_TRANSFER_APnDP) != 0U) {
+                    /* Initial AP read: post it and count it once its data is collected */
                     resp_val = dap_swd_xfer_retry(xfer_req, NULL);
                     if (resp_val != SWD_ACK_OK) {
+                        executed++;
                         break;
                     }
-                }
-
-                uint32_t val = 0U;
-                uint32_t retry = g_dap_match_retry;
-                do {
+                    post_read = true;
+                    continue;
+                } else {
+                    /* Direct DP read */
+                    uint32_t val = 0U;
                     resp_val = dap_swd_xfer_retry(xfer_req, &val);
                     if (resp_val != SWD_ACK_OK) {
+                        executed++;
                         break;
                     }
-                    if ((val & g_dap_match_mask) == match_val) {
+                    if ((resp_off + 4U) <= resp_max) {
+                        write_u32le(&resp[resp_off], val);
+                        resp_off += 4U;
+                    }
+                }
+            } else {
+                /* Write transfer (or MATCH_MASK pseudo-write) */
+                if (post_read) {
+                    uint32_t prev_val = 0U;
+                    resp_val = dap_swd_xfer_retry(DAP_DP_RDBUFF_READ, &prev_val);
+                    post_read = false;
+                    if (resp_val != SWD_ACK_OK) {
+                        req_off = ((req_off + 4U) <= req_max) ? (req_off + 4U) : req_max;
+                        executed++;
                         break;
                     }
-                } while (retry-- > 0U);
+                    if ((resp_off + 4U) <= resp_max) {
+                        write_u32le(&resp[resp_off], prev_val);
+                        resp_off += 4U;
+                    }
+                    resp_count++;
+                }
 
-                if (resp_val != SWD_ACK_OK) {
+                if ((req_off + 4U) > req_max) {
+                    executed++;
                     break;
                 }
-                if ((val & g_dap_match_mask) != match_val) {
-                    resp_val |= DAP_TRANSFER_MISMATCH;
-                    break;
-                }
-            } else if ((xfer_req & DAP_TRANSFER_APnDP) != 0U) {
-                /* Initial AP read: post it and collect data on next transfer or at end */
-                resp_val = dap_swd_xfer_retry(xfer_req, NULL);
-                if (resp_val != SWD_ACK_OK) {
-                    break;
-                }
-                post_read = true;
-            } else {
-                /* Direct DP read */
-                uint32_t val = 0U;
-                resp_val = dap_swd_xfer_retry(xfer_req, &val);
-                if (resp_val != SWD_ACK_OK) {
-                    break;
-                }
-                if ((resp_off + 4U) <= USB_HID_PKT_SIZE) {
-                    write_u32le(&resp[resp_off], val);
-                    resp_off += 4U;
-                }
-            }
-        } else {
-            /* Write transfer (or MATCH_MASK pseudo-write) */
-            if (post_read) {
-                uint32_t prev_val = 0U;
-                resp_val = dap_swd_xfer_retry(DAP_DP_RDBUFF_READ, &prev_val);
-                post_read = false;
-                if (resp_val != SWD_ACK_OK) {
-                    break;
-                }
-                if ((resp_off + 4U) <= USB_HID_PKT_SIZE) {
-                    write_u32le(&resp[resp_off], prev_val);
-                    resp_off += 4U;
+                uint32_t wdata = read_u32le(&req[req_off]);
+                req_off += 4U;
+
+                if ((xfer_req & DAP_TRANSFER_MATCH_MASK) != 0U) {
+                    g_dap_match_mask = wdata;
+                    resp_val = SWD_ACK_OK;
+                } else {
+                    resp_val = dap_swd_xfer_retry(xfer_req, &wdata);
+                    if (resp_val != SWD_ACK_OK) {
+                        executed++;
+                        break;
+                    }
                 }
             }
 
-            if ((req_off + 4U) > USB_HID_PKT_SIZE) {
-                break;
-            }
-            uint32_t wdata = read_u32le(&req[req_off]);
-            req_off += 4U;
-
-            if ((xfer_req & DAP_TRANSFER_MATCH_MASK) != 0U) {
-                g_dap_match_mask = wdata;
-                resp_val = SWD_ACK_OK;
-            } else {
-                resp_val = dap_swd_xfer_retry(xfer_req, &wdata);
-                if (resp_val != SWD_ACK_OK) {
-                    break;
-                }
-            }
+            resp_count++;
         }
 
-        resp_count++;
+        /* Flush final posted AP read if the loop completed cleanly */
+        if (post_read && (resp_val == SWD_ACK_OK)) {
+            uint32_t final_val = 0U;
+            resp_val = dap_swd_xfer_retry(DAP_DP_RDBUFF_READ, &final_val);
+            if (resp_val == SWD_ACK_OK) {
+                if ((resp_off + 4U) <= resp_max) {
+                    write_u32le(&resp[resp_off], final_val);
+                    resp_off += 4U;
+                }
+                resp_count++;
+            }
+        }
     }
 
-    /* Flush final posted AP read if the loop completed cleanly */
-    if (post_read && (resp_val == SWD_ACK_OK)) {
-        uint32_t final_val = 0U;
-        resp_val = dap_swd_xfer_retry(DAP_DP_RDBUFF_READ, &final_val);
-        if ((resp_val == SWD_ACK_OK) && ((resp_off + 4U) <= USB_HID_PKT_SIZE)) {
-            write_u32le(&resp[resp_off], final_val);
+    /* Skip any unexecuted request entries so DAP_ExecuteCommands stays aligned */
+    while ((executed < xfer_count) && (req_off < req_max)) {
+        uint8_t skipped = req[req_off++];
+        if (((skipped & DAP_TRANSFER_RnW) == 0U) || ((skipped & DAP_TRANSFER_MATCH_VAL) != 0U)) {
+            req_off = ((req_off + 4U) <= req_max) ? (req_off + 4U) : req_max;
         }
+        executed++;
     }
 
     resp[1] = resp_count;
     resp[2] = resp_val;
+    *out_req_used = req_off;
+    *out_resp_used = resp_off;
 }
 
-static void dap_handle_transfer_block(const uint8_t *req, uint8_t *resp)
+static void dap_handle_transfer_block(const uint8_t *req, uint32_t req_max, uint8_t *resp, uint32_t resp_max,
+    uint32_t *out_req_used, uint32_t *out_resp_used)
 {
     uint16_t xfer_count = read_u16le(&req[2]);
     uint8_t xfer_req = req[4];
     uint16_t resp_count = 0U;
     uint8_t resp_val = 0U;
+    uint32_t req_off = 5U;
+    uint32_t resp_off = 4U;
 
     resp[0] = DAP_CMD_TRANSFER_BLOCK;
 
-    if ((g_dap_port != DAP_PORT_SWD) || (xfer_count == 0U)) {
-        write_u16le(&resp[1], 0U);
-        resp[3] = 0U;
-        return;
-    }
-
-    if ((xfer_req & DAP_TRANSFER_RnW) != 0U) {
-        /* Block Read (max 15 words fit in 64-byte HID report: 4 + 15*4 = 64) */
-        uint32_t resp_off = 4U;
-        if ((xfer_req & DAP_TRANSFER_APnDP) != 0U) {
-            /* Post initial AP read */
-            resp_val = dap_swd_xfer_retry(xfer_req, NULL);
-            if (resp_val == SWD_ACK_OK) {
+    if ((g_dap_port == DAP_PORT_SWD) && (xfer_count > 0U)) {
+        if ((xfer_req & DAP_TRANSFER_RnW) != 0U) {
+            /* Block Read */
+            if ((xfer_req & DAP_TRANSFER_APnDP) != 0U) {
+                resp_val = dap_swd_xfer_retry(xfer_req, NULL);
+                if (resp_val == SWD_ACK_OK) {
+                    for (uint16_t i = 0U; i < xfer_count; i++) {
+                        if ((resp_off + 4U) > resp_max) {
+                            break;
+                        }
+                        uint8_t wire_req = ((i + 1U) < xfer_count) ? xfer_req : DAP_DP_RDBUFF_READ;
+                        uint32_t val = 0U;
+                        resp_val = dap_swd_xfer_retry(wire_req, &val);
+                        if (resp_val != SWD_ACK_OK) {
+                            break;
+                        }
+                        write_u32le(&resp[resp_off], val);
+                        resp_off += 4U;
+                        resp_count++;
+                    }
+                }
+            } else {
                 for (uint16_t i = 0U; i < xfer_count; i++) {
-                    if ((resp_off + 4U) > USB_HID_PKT_SIZE) {
+                    if ((resp_off + 4U) > resp_max) {
                         break;
                     }
-                    uint8_t wire_req = ((i + 1U) < xfer_count) ? xfer_req : DAP_DP_RDBUFF_READ;
                     uint32_t val = 0U;
-                    resp_val = dap_swd_xfer_retry(wire_req, &val);
+                    resp_val = dap_swd_xfer_retry(xfer_req, &val);
                     if (resp_val != SWD_ACK_OK) {
                         break;
                     }
@@ -450,39 +504,32 @@ static void dap_handle_transfer_block(const uint8_t *req, uint8_t *resp)
                 }
             }
         } else {
+            /* Block Write */
             for (uint16_t i = 0U; i < xfer_count; i++) {
-                if ((resp_off + 4U) > USB_HID_PKT_SIZE) {
+                if ((req_off + 4U) > req_max) {
                     break;
                 }
-                uint32_t val = 0U;
-                resp_val = dap_swd_xfer_retry(xfer_req, &val);
+                uint32_t wdata = read_u32le(&req[req_off]);
+                req_off += 4U;
+                resp_val = dap_swd_xfer_retry(xfer_req, &wdata);
                 if (resp_val != SWD_ACK_OK) {
                     break;
                 }
-                write_u32le(&resp[resp_off], val);
-                resp_off += 4U;
                 resp_count++;
             }
         }
-    } else {
-        /* Block Write (max 14 words fit in 64-byte HID request: 5 + 14*4 = 61) */
-        uint32_t req_off = 5U;
-        for (uint16_t i = 0U; i < xfer_count; i++) {
-            if ((req_off + 4U) > USB_HID_PKT_SIZE) {
-                break;
-            }
-            uint32_t wdata = read_u32le(&req[req_off]);
-            req_off += 4U;
-            resp_val = dap_swd_xfer_retry(xfer_req, &wdata);
-            if (resp_val != SWD_ACK_OK) {
-                break;
-            }
-            resp_count++;
-        }
+    }
+
+    if ((xfer_req & DAP_TRANSFER_RnW) == 0U) {
+        /* Always advance past the full write payload for DAP_ExecuteCommands */
+        uint32_t full_req = 5U + ((uint32_t)xfer_count * 4U);
+        req_off = (full_req <= req_max) ? full_req : req_max;
     }
 
     write_u16le(&resp[1], resp_count);
     resp[3] = resp_val;
+    *out_req_used = req_off;
+    *out_resp_used = resp_off;
 }
 
 static void dap_handle_write_abort(const uint8_t *req, uint8_t *resp)
@@ -537,12 +584,20 @@ static void dap_handle_swj_clock(const uint8_t *req, uint8_t *resp)
     resp[1] = DAP_STATUS_OK;
 }
 
-static void dap_handle_swj_sequence(const uint8_t *req, uint8_t *resp)
+static uint32_t dap_handle_swj_sequence(const uint8_t *req, uint32_t req_max, uint8_t *resp)
 {
     uint32_t bit_count = (req[1] == 0U) ? 256U : (uint32_t)req[1];
-    swd_sequence(bit_count, &req[2]);
+    uint32_t byte_count = (bit_count + 7U) >> 3U;
     resp[0] = DAP_CMD_SWJ_SEQUENCE;
+
+    if ((2U + byte_count) > req_max) {
+        resp[1] = DAP_STATUS_ERROR;
+        return req_max;
+    }
+
+    swd_sequence(bit_count, &req[2]);
     resp[1] = DAP_STATUS_OK;
+    return 2U + byte_count;
 }
 
 static void dap_handle_swd_configure(const uint8_t *req, uint8_t *resp)
@@ -557,83 +612,194 @@ static void dap_handle_swd_configure(const uint8_t *req, uint8_t *resp)
     resp[1] = DAP_STATUS_OK;
 }
 
+/*
+ * Execute a single non-compound CMSIS-DAP command.
+ * Returns true if the command was recognized (false for DAP_CMD_INVALID or truncated input).
+ */
+static bool dap_process_single(const uint8_t *req, uint32_t req_max, uint8_t *resp, uint32_t resp_max,
+    uint32_t *out_req_used, uint32_t *out_resp_used)
+{
+    if ((req_max < 1U) || (resp_max < 1U)) {
+        *out_req_used = req_max;
+        *out_resp_used = 0U;
+        return false;
+    }
+
+    uint8_t cmd = req[0];
+    switch (cmd) {
+    case DAP_CMD_INFO:
+        if ((req_max < 2U) || (resp_max < 2U)) {
+            break;
+        }
+        *out_req_used = 2U;
+        *out_resp_used = dap_handle_info(req, resp, resp_max);
+        return true;
+
+    case DAP_CMD_HOST_STATUS:
+        if ((req_max < 3U) || (resp_max < 2U)) {
+            break;
+        }
+        dap_handle_host_status(req, resp);
+        *out_req_used = 3U;
+        *out_resp_used = 2U;
+        return true;
+
+    case DAP_CMD_CONNECT:
+        if ((req_max < 2U) || (resp_max < 2U)) {
+            break;
+        }
+        dap_handle_connect(req, resp);
+        *out_req_used = 2U;
+        *out_resp_used = 2U;
+        return true;
+
+    case DAP_CMD_DISCONNECT:
+        if (resp_max < 2U) {
+            break;
+        }
+        dap_handle_disconnect(resp);
+        *out_req_used = 1U;
+        *out_resp_used = 2U;
+        return true;
+
+    case DAP_CMD_TRANSFER_CONFIGURE:
+        if ((req_max < 6U) || (resp_max < 2U)) {
+            break;
+        }
+        dap_handle_transfer_configure(req, resp);
+        *out_req_used = 6U;
+        *out_resp_used = 2U;
+        return true;
+
+    case DAP_CMD_TRANSFER:
+        if ((req_max < 3U) || (resp_max < 3U)) {
+            break;
+        }
+        dap_handle_transfer(req, req_max, resp, resp_max, out_req_used, out_resp_used);
+        return true;
+
+    case DAP_CMD_TRANSFER_BLOCK:
+        if ((req_max < 5U) || (resp_max < 4U)) {
+            break;
+        }
+        dap_handle_transfer_block(req, req_max, resp, resp_max, out_req_used, out_resp_used);
+        return true;
+
+    case DAP_CMD_TRANSFER_ABORT:
+        /* Per CMSIS-DAP specification, DAP_TransferAbort produces no response */
+        *out_req_used = 1U;
+        *out_resp_used = 0U;
+        return true;
+
+    case DAP_CMD_WRITE_ABORT:
+        if ((req_max < 6U) || (resp_max < 2U)) {
+            break;
+        }
+        dap_handle_write_abort(req, resp);
+        *out_req_used = 6U;
+        *out_resp_used = 2U;
+        return true;
+
+    case DAP_CMD_DELAY:
+        if ((req_max < 3U) || (resp_max < 2U)) {
+            break;
+        }
+        board_delay_us(read_u16le(&req[1]));
+        resp[0] = DAP_CMD_DELAY;
+        resp[1] = DAP_STATUS_OK;
+        *out_req_used = 3U;
+        *out_resp_used = 2U;
+        return true;
+
+    case DAP_CMD_RESET_TARGET:
+        if (resp_max < 3U) {
+            break;
+        }
+        resp[0] = DAP_CMD_RESET_TARGET;
+        resp[1] = DAP_STATUS_OK;
+        resp[2] = 0U; /* No device-specific reset sequence executed */
+        *out_req_used = 1U;
+        *out_resp_used = 3U;
+        return true;
+
+    case DAP_CMD_SWJ_PINS:
+        if ((req_max < 7U) || (resp_max < 2U)) {
+            break;
+        }
+        dap_handle_swj_pins(req, resp);
+        *out_req_used = 7U;
+        *out_resp_used = 2U;
+        return true;
+
+    case DAP_CMD_SWJ_CLOCK:
+        if ((req_max < 5U) || (resp_max < 2U)) {
+            break;
+        }
+        dap_handle_swj_clock(req, resp);
+        *out_req_used = 5U;
+        *out_resp_used = 2U;
+        return true;
+
+    case DAP_CMD_SWJ_SEQUENCE:
+        if ((req_max < 2U) || (resp_max < 2U)) {
+            break;
+        }
+        *out_req_used = dap_handle_swj_sequence(req, req_max, resp);
+        *out_resp_used = 2U;
+        return true;
+
+    case DAP_CMD_SWD_CONFIGURE:
+        if ((req_max < 2U) || (resp_max < 2U)) {
+            break;
+        }
+        dap_handle_swd_configure(req, resp);
+        *out_req_used = 2U;
+        *out_resp_used = 2U;
+        return true;
+
+    default:
+        break;
+    }
+
+    resp[0] = DAP_CMD_INVALID;
+    *out_req_used = 1U;
+    *out_resp_used = 1U;
+    return false;
+}
+
 /* Returns true if a 64-byte HID response report should be sent */
 static bool dap_process_packet(const uint8_t req[USB_HID_PKT_SIZE], uint8_t resp[USB_HID_PKT_SIZE])
 {
     memset(resp, 0, USB_HID_PKT_SIZE);
     uint8_t cmd = req[0];
 
-    switch (cmd) {
-    case DAP_CMD_INFO:
-        dap_handle_info(req, resp);
-        return true;
+    if ((cmd == DAP_CMD_EXECUTE_COMMANDS) || (cmd == DAP_CMD_QUEUE_COMMANDS)) {
+        uint8_t num_cmds = req[1];
+        uint32_t req_off = 2U;
+        uint32_t resp_off = 2U;
+        uint8_t executed = 0U;
 
-    case DAP_CMD_HOST_STATUS:
-        dap_handle_host_status(req, resp);
-        return true;
-
-    case DAP_CMD_CONNECT:
-        dap_handle_connect(req, resp);
-        return true;
-
-    case DAP_CMD_DISCONNECT:
-        dap_handle_disconnect(resp);
-        return true;
-
-    case DAP_CMD_TRANSFER_CONFIGURE:
-        dap_handle_transfer_configure(req, resp);
-        return true;
-
-    case DAP_CMD_TRANSFER:
-        dap_handle_transfer(req, resp);
-        return true;
-
-    case DAP_CMD_TRANSFER_BLOCK:
-        dap_handle_transfer_block(req, resp);
-        return true;
-
-    case DAP_CMD_TRANSFER_ABORT:
-        /* Per CMSIS-DAP specification, DAP_TransferAbort produces no response */
-        return false;
-
-    case DAP_CMD_WRITE_ABORT:
-        dap_handle_write_abort(req, resp);
-        return true;
-
-    case DAP_CMD_DELAY: {
-        uint16_t delay_us = read_u16le(&req[1]);
-        board_delay_us(delay_us);
-        resp[0] = DAP_CMD_DELAY;
-        resp[1] = DAP_STATUS_OK;
+        resp[0] = cmd;
+        while ((executed < num_cmds) && (req_off < USB_HID_PKT_SIZE) && (resp_off < USB_HID_PKT_SIZE)) {
+            uint32_t sub_req = 0U;
+            uint32_t sub_resp = 0U;
+            bool ok = dap_process_single(&req[req_off], USB_HID_PKT_SIZE - req_off, &resp[resp_off],
+                USB_HID_PKT_SIZE - resp_off, &sub_req, &sub_resp);
+            req_off += sub_req;
+            resp_off += sub_resp;
+            executed++;
+            if (!ok) {
+                break;
+            }
+        }
+        resp[1] = executed;
         return true;
     }
 
-    case DAP_CMD_RESET_TARGET:
-        resp[0] = DAP_CMD_RESET_TARGET;
-        resp[1] = DAP_STATUS_OK;
-        resp[2] = 0U; /* No device-specific reset sequence executed */
-        return true;
-
-    case DAP_CMD_SWJ_PINS:
-        dap_handle_swj_pins(req, resp);
-        return true;
-
-    case DAP_CMD_SWJ_CLOCK:
-        dap_handle_swj_clock(req, resp);
-        return true;
-
-    case DAP_CMD_SWJ_SEQUENCE:
-        dap_handle_swj_sequence(req, resp);
-        return true;
-
-    case DAP_CMD_SWD_CONFIGURE:
-        dap_handle_swd_configure(req, resp);
-        return true;
-
-    default:
-        resp[0] = DAP_CMD_INVALID;
-        return true;
-    }
+    uint32_t req_used = 0U;
+    uint32_t resp_used = 0U;
+    (void)dap_process_single(req, USB_HID_PKT_SIZE, resp, USB_HID_PKT_SIZE, &req_used, &resp_used);
+    return (resp_used > 0U);
 }
 
 /* ---- Public API ---- */
