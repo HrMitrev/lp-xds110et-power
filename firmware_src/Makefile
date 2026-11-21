@@ -163,14 +163,33 @@ APP_OBJS    = $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 OBJS        = $(APP_OBJS) $(BMP_OBJS)
 DEPS        = $(OBJS:.o=.d)
 
-.PHONY: all clean check-sdk fetch-sdk sdk fetch-bmp bmp fetch-toolchain toolchain inspect flash clang-format compile-commands clangd-check test-hil test-swd
+# Build configuration stamp: triggers a clean rebuild whenever Makefile or build
+# flags (e.g. BMP_ENABLE, BMP_DEFAULT_MODE, CFLAGS, LDFLAGS) change.
+BUILD_CFG_STAMP = $(BUILD_DIR)/.build_config
+BUILD_CFG_SIG   = $(CC)|$(BMP_ENABLE)|$(EFFECTIVE_BMP_DEFAULT_MODE)|$(CFLAGS)|$(BMP_CFLAGS)|$(LDFLAGS)|$(SRCS)|$(BMP_SRCS)
+
+.PHONY: all clean check-sdk fetch-sdk sdk fetch-bmp bmp fetch-toolchain toolchain inspect flash clang-format compile-commands clangd-check test-hil test-swd FORCE
 
 all: $(BUILD_DIR)/$(TARGET).bin $(BUILD_DIR)/$(TARGET).hex compile_commands.json
 
-# Ensure SDK (and BMP sources when enabled) are fetched before compiling
-$(APP_OBJS): | $(BUILD_DIR) $(SDK_STAMP)
+FORCE:
+
+$(BUILD_CFG_STAMP): FORCE
+	$(Q)CUR='$(BUILD_CFG_SIG)'; \
+	OLD=$$(cat "$@" 2>/dev/null || true); \
+	if [ ! -f "$@" ] || [ Makefile -nt "$@" ] || [ "$$CUR" != "$$OLD" ]; then \
+		if [ -d "$(BUILD_DIR)" ]; then \
+			echo "  CLEAN Makefile or build configuration changed"; \
+			rm -rf $(BUILD_DIR); \
+		fi; \
+		mkdir -p $(BUILD_DIR)/src $(BUILD_DIR)/sdk/ti/devices/msp432e4/driverlib; \
+		printf '%s' "$$CUR" > "$@"; \
+	fi
+
+# Ensure build-config check and SDK/BMP sources are ready before compiling
+$(APP_OBJS): $(BUILD_CFG_STAMP) | $(SDK_STAMP)
 ifeq ($(BMP_ENABLE),1)
-$(BMP_OBJS): | $(BUILD_DIR) $(SDK_STAMP) $(BMP_STAMP) $(BMP_VERSION_H)
+$(BMP_OBJS): $(BUILD_CFG_STAMP) | $(SDK_STAMP) $(BMP_STAMP) $(BMP_VERSION_H)
 endif
 
 $(SDK_STAMP):
@@ -181,7 +200,7 @@ $(BMP_STAMP):
 	$(ECHO) "Black Magic Debug sources not found. Fetching main branch..."
 	$(Q)$(PYTHON) scripts/fetch_bmp.py
 
-$(BMP_VERSION_H): $(BMP_STAMP) | $(BUILD_DIR)
+$(BMP_VERSION_H): $(BMP_STAMP) $(BUILD_CFG_STAMP)
 	$(Q)mkdir -p $(dir $@)
 	$(Q)VCS_TAG=$$(git -C third_party/blackmagic describe --always --dirty 2>/dev/null || echo "v2.0-openfw"); \
 		printf '#define FIRMWARE_VERSION "v2.0-%s"\n' "$$VCS_TAG" > $@
@@ -243,7 +262,7 @@ clang-format:
 	$(ECHO) "  FMT   $(FORMAT_FILES)"
 	$(Q)uvx clang-format@latest -i $(FORMAT_FILES)
 
-compile_commands.json: Makefile scripts/gen_compile_commands.py
+compile_commands.json: Makefile scripts/gen_compile_commands.py $(BUILD_CFG_STAMP)
 	$(ECHO) "  CDB   $@"
 	$(Q)$(PYTHON) scripts/gen_compile_commands.py .
 
