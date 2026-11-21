@@ -1,8 +1,9 @@
 /*
- * xds_swd.c - Native XDS110 Interface 2 SWD & OpenOCD DAP command handlers.
+ * xds_swd.c - Native XDS110 Interface 2 SWD, CMAPI, SACI & OpenOCD DAP handlers.
  *
- * Reuses the fast DWT-paced SWD wire driver in swd.c to serve OpenOCD's native
- * `interface/xds110.cfg` SWD protocol over USB Interface 2 (Bulk 0x02/0x83).
+ * Reuses the fast DWT-paced SWD wire driver in swd.c to serve both OpenOCD's
+ * native `interface/xds110.cfg` SWD driver and TI UniFlash `DSLite` over USB
+ * Interface 2 (Bulk 0x02/0x83).
  */
 
 #include "xds_swd.h"
@@ -53,7 +54,6 @@
 
 static bool g_xds_swd_active = false;
 static bool g_xds_cmapi_connected = false;
-static bool g_xds_cmapi_acquired = false;
 static bool g_xds_select_valid = false;
 static uint32_t g_xds_select_cache = 0U;
 static uint32_t g_xds_csw_cache[XDS_AP_CSW_CACHE_MAX];
@@ -273,7 +273,6 @@ void xds_swd_init(void)
 {
     g_xds_swd_active = false;
     g_xds_cmapi_connected = false;
-    g_xds_cmapi_acquired = false;
     xds_swd_clear_caches();
 }
 
@@ -352,20 +351,7 @@ int32_t xds_swd_disconnect(void)
 
     g_xds_swd_active = false;
     g_xds_cmapi_connected = false;
-    g_xds_cmapi_acquired = false;
     xds_swd_clear_caches();
-    return XDS_ERR_OK;
-}
-
-int32_t xds_swd_clear_errors(void)
-{
-    /* Opcode 0x19 in TI XDS110 configures SWO/UART routing and returns OK */
-    return XDS_ERR_OK;
-}
-
-int32_t xds_swd_dormant_wake(void)
-{
-    /* Opcode 0x1A in TI XDS110 restores SWO/UART routing and returns OK */
     return XDS_ERR_OK;
 }
 
@@ -422,7 +408,6 @@ int32_t xds_swd_cmapi_connect(uint32_t *out_idcode)
 int32_t xds_swd_cmapi_disconnect(void)
 {
     g_xds_cmapi_connected = false;
-    g_xds_cmapi_acquired = false;
     return XDS_ERR_OK;
 }
 
@@ -431,13 +416,11 @@ int32_t xds_swd_cmapi_acquire(void)
     if (!g_xds_cmapi_connected) {
         return XDS_ERR_SWD_PROTOCOL;
     }
-    g_xds_cmapi_acquired = true;
     return XDS_ERR_OK;
 }
 
 int32_t xds_swd_cmapi_release(void)
 {
-    g_xds_cmapi_acquired = false;
     return XDS_ERR_OK;
 }
 

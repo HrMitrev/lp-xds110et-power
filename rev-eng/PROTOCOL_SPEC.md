@@ -52,49 +52,54 @@ Extracted directly from `XDS_DispatchCommand` (`0x0000685C`, `TBH` jump table at
 
 | Opcode | Case Addr | Callee(s) | Name | Request Args / Notes |
 |---|---|---|---|---|
-| `0x04` | `0x699A` | `0x0EE20` | `XDS_SET_TCK_DELAY` | `u32 delay` (sets TCK half-period delay) |
+| `0x04` | `0x699A` | `0x0EE20` | `XDS_SET_TCK_DELAY` | `u32 delay` (fast-TCK delay count; special `0 / 0xFFFFFFFE / 0xFFFFFFFD / 1 / 2` = 14 / 12 / 10 / 8.5 / 5.5 MHz) |
 | `0x05` | `0x69A4` | `0x0DE18` | `XDS_SET_TRST` | `u8 state` (`0`=assert nTRST, `1`=deassert nTRST; **`>=2` returns `-122`**) |
-| `0x06` | `0x69AE` | `0x0DE8C` | `XDS_CYCLE_TCK` | `u32 cycles` |
-| `0x07` | `0x69BE` | inline | `XDS_SET_JTAG_MODE` | `u32 mode` |
+| `0x06` | `0x69AE` | `0x0DE8C` | `XDS_GET_TRST` | Returns `u8` current nTRST pin state (`1` = deasserted/high) |
+| `0x07` | `0x69BE` | inline | `XDS_CYCLE_TCK` | `u32 cycles` — clock TCK/SWCLK for `cycles` idle edges |
 | `0x09` | `0x69E0` | `0x07634` (via `0x200017F0`) | `XDS_JTAG_GOTO_STATE` | `u8 target_state` (`+4`, 0..9), `u8 path` (`+8`, 0..3). Uses 10×10×4 TAP table @ `0x0003605C` |
 | `0x0A` | `0x69EE` | JTAG scan | `XDS_JTAG_SCAN_IR` | Bit count, pre/post pad, end state, TDI data → TDO data |
 | `0x0B` | `0x6A4E` | JTAG scan | `XDS_JTAG_SCAN_DR` | Bit count, pre/post pad, end state, TDI data → TDO data |
 | `0x0C` | `0x6AD4` | JTAG scan | `XDS_JTAG_SCAN_RAW` | Raw TMS/TDI bit stream → TDO |
 | `0x0D` | `0x6B66` | `0x0DEE4` | `XDS_JTAG_EXEC` | Multi-command JTAG sequence |
-| `0x0F` | `0x6BFE` | inline | `CJTAG_INIT` | — |
-| `0x10` | `0x6C02` | `0x157E0` | `CJTAG_CONNECT` | — |
-| `0x11` | `0x6C0A` | `0x157E4` | `CJTAG_DISCONNECT` | — |
-| `0x12` | `0x6C12` | `0x15828` | `CJTAG_ESCAPE` | Zero-bit / escape sequence |
-| `0x2B` | `0x6F02` | `0x111FC` | `CJTAG_SET_FORMAT` | `u32 format` |
-| `0x2C` | `0x6F0A` | `0x112B0` | `CJTAG_RESET` | — |
+| `0x2B` | `0x6F02` | `0x111FC` | `CJTAG_CONNECT` | `u32 format` — enable 2-wire cJTAG mode |
+| `0x2C` | `0x6F0A` | `0x112B0` | `CJTAG_DISCONNECT` | Disable cJTAG mode |
 | `0x2D` | `0x6F10` | `0x0E0D4` | `JTAG_SCAN_EXT_A` | Extended JTAG/cJTAG scan |
 | `0x2E` | `0x6F30` | `0x0E3F4` | `JTAG_SCAN_EXT_B` | Extended JTAG/cJTAG scan |
 | `0x2F` | `0x6F4E` | `0x0E5EC` | `JTAG_FLUSH` | — |
-| `0x32` | `0x6F54` | `0x0E8E0` | `JTAG_SET_PIN_STATE` | `u32 pin_mask`, `u8 val` |
+| `0x32` | `0x6F54` | `0x0E8E0` | `XDS_SET_SUPPLY` | `u32 voltage_mv`, `u8 enable` (no-op on LP-XDS110ET `hw=0x23`) |
 | `0x39` | `0x7086` | `0x0E648` | `JTAG_SET_MODE_EX` | `u8 mode` |
 | `0x45` | `0x70C8` | `0x0F108` | `JTAG_SET_FREQ_EX` | `u32 freq_or_div` |
 
-### SWD, ARM DAP (ADIv5 / ADIv6) & Target Memory
+### SWD, ARM CMAPI (ADIv5 / ADIv6), OpenOCD DAP & SEC-AP SACI
 
 | Opcode | Case Addr | Callee(s) | Name | Notes |
 |---|---|---|---|---|
-| `0x13` | `0x6C1A` | inline/SWD | `SWD_READ_MEM_32` | `u8 ap`, `u8 flags`, `u8 size`, addr/count |
-| `0x14` | `0x6C70` | inline/SWD | `SWD_WRITE_MEM_32` | `u8 ap`, `u8 flags`, `u8 size`, addr/data |
-| `0x15` | `0x6D6A` | `0x16570` | `SWD_READ_REG` | Read DP/AP register |
-| `0x16` | `0x6D86` | `0x165AC` | `SWD_WRITE_REG` | Write DP/AP register |
-| `0x17` | `0x6D9C` | `0x15454` | `SWD_CONNECT` | JTAG-to-SWD switch sequence (`0xE79E`) |
-| `0x18` | `0x6DA2` | `0x153A8` | `SWD_DISCONNECT` | SWD-to-JTAG / line idle |
-| `0x19` | `0x6DA8` | `0x14F8C` | `SWD_CLEAR_ERRORS` | Clear SWD sticky errors |
-| `0x1A` | `0x6DAE` | `0x14FA4` | `SWD_DORMANT_WAKE` | ADIv5.2/ADIv6 dormant wake sequence |
+| `0x0F` | `0x6BFE` | `0x155D8` | `CMAPI_CONNECT` | Read SW-DP `DPIDR`, clear `DP.ABORT`, power up debug/system domains → `u32le idcode` |
+| `0x10` | `0x6C02` | `0x157E0` | `CMAPI_DISCONNECT` | Close CMAPI session |
+| `0x11` | `0x6C0A` | `0x157E4` | `CMAPI_ACQUIRE` | Acquire CMAPI session |
+| `0x12` | `0x6C12` | `0x15828` | `CMAPI_RELEASE` | Release CMAPI session |
+| `0x13` | `0x6C1A` | `0x15834` | `CMAPI_READ_MEM` | `u8 size`, `u8 flags` (`b0=inc, b1=secure`), `u8 ap`, `u32le addr`, `u16le count`, optional `u32le csw` → `data[count]` |
+| `0x14` | `0x6C70` | `0x15B4C` | `CMAPI_WRITE_MEM` | `u8 size`, `u8 flags`, `u8 ap`, `u32le addr`, `u16le count`, optional `u32le csw`, `data[count]` |
+| `0x15` | `0x6D6A` | `0x16570` | `CMAPI_REG_READ` | `u8 type` (`0`=AP, `1`=DP), `u8 ap_num`, `u8 reg_addr` → `u32le val` |
+| `0x16` | `0x6D86` | `0x165AC` | `CMAPI_REG_WRITE` | `u8 type`, `u8 ap_num`, `u8 reg_addr`, `u32le val` (auto-updates cached `AP.CSW` on `reg=0`) |
+| `0x17` | `0x6D9C` | `0x15454` | `SWD_CONNECT` | JTAG-to-SWD switch (`0xE79E`) + immediate `DPIDR` read (with ADIv5.2 Dormant-to-SWD fallback) |
+| `0x18` | `0x6DA2` | `0x153A8` | `SWD_DISCONNECT` | SWD-to-JTAG (`0xE73C`) & pin tri-state |
+| `0x19` | `0x6DA8` | `0x14F8C` | `SWO_ROUTE_ENABLE` | Configure SWO/UART routing (returns `0`) |
+| `0x1A` | `0x6DAE` | `0x14FA4` | `SWO_ROUTE_DISABLE` | Restore SWO/UART routing (returns `0`) |
 | `0x1B` | `0x6DB4` | inline | `SWD_SET_CONFIG` | `u8 p0`, `u8 p1` |
 | `0x1C` | `0x6DC2` | inline | `SWD_BATCH_TRANSFER` | Batched DAP read/write |
-| `0x33..0x38` | `0x6F5E..0x7064` | `0x178A4..0x180B8` | `ARM_MEM_ACCESS_*` | Block memory read/write & AP banked transfers |
-| `0x3A..0x3C` | `0x7094..0x70BC` | `0x16F5C..0x17114` | `DAP_MULTI_DROP_*` | SWD multi-drop target select (`TARGETSEL`) |
-| `0x3D..0x3E` | `0x6CC2..0x6D18` | inline | `SWD_MEM_BLOCK_EX` | Extended SWD block transfer |
+| `0x33..0x38` | `0x6F5E..0x7064` | `0x178A4..0x180B8` | `ARM_MEM_ACCESS_*` | Legacy/DSP block memory read/write & AP banked transfers |
+| `0x3A` | `0x7094` | `0x16F5C` | `OCD_DAP_REQUEST` | OpenOCD batched null-terminated raw SWD command queue (`cmd` byte + optional `u32le` write data → `u32le[]` reads) |
+| `0x3B..0x3C` | `0x70A8..0x70BC` | `0x17060..0x17114` | `OCD_SCAN_REQUEST_*` | OpenOCD batched JTAG/cJTAG scan requests |
+| `0x3D` | `0x6CC2` | `0x15D98` | `CMAPI_READ_MEM_64` | 64-bit address variant of `0x13`: `u8 size`, `u8 flags`, `u8 ap`, `u64le addr`, `u16le count`, `u32le csw` → `data[count]` |
+| `0x3E` | `0x6D18` | `0x161E0` | `CMAPI_WRITE_MEM_64` | 64-bit address variant of `0x14`: `u8 size`, `u8 flags`, `u8 ap`, `u64le addr`, `u16le count`, `u32le csw`, `data[count]` |
 | `0x3F..0x40` | `0x70D0..0x70F4` | `0x2112A`, `0x2135C` | `I2C_BID_READ/WRITE` | Board-ID I2C register read/write |
 | `0x47..0x48` | `0x7130..0x7146` | `0x174E0`, `0x17630` | `DAP_REG_POLL_*` | Wait/poll target memory or register |
+| `0x50` | `0x71C0` | `0x18C1C` | `SACI_WRITE` | TI `SEC_AP` SACI mailbox write: `u8 ap_num`, `u16le word_cnt`, `u32le words[word_cnt]` (polls `TXCTL 0x04` bit0==0 before each write to `TXD 0x00` and once after; timeout `-1141`) |
+| `0x51` | `0x71CE` | `0x18C38` | `SACI_READ` | TI `SEC_AP` SACI mailbox read: `u8 ap_num`, `u16le word_cnt` → `u32le words[word_cnt]` (polls `RXCTL 0x0C` bit0==1 then reads `RXD 0x08`; timeout `-1141`) |
 | `0x52..0x55` | `0x6FAC..0x6FE0` | `0x17B76`, `0x17BA0` | `DSP_OR_EXT_MEM_*` | Extended memory R/W (`0x52`/`0x54` share handler; `0x53`/`0x55` share handler) |
-| `0x5A..0x60` | `0x7236..0x7458` | `0x155D8..0x165AC` | `ADIv6_64BIT_*` | 64-bit address / ADIv6 AP & memory read/write (`error -1002` if mode != 6) |
+| `0x5A` | `0x7236` | `0x155D8` | `CMAPI_CONNECT_EX` | `u32le adi_version` (`5` = ADIv5, `6` = ADIv6) → `u32le idcode` |
+| `0x5B..0x60` | `0x724C..0x7458` | `0x155D8..0x165AC` | `ADIv6_64BIT_*` | ADIv6 64-bit AP & memory read/write (`error -1002` if `adi_version != 6`) |
 | `0x61..0x62` | `0x7494..0x749C` | `0x16EE8`, `0x16E7C` | `DAP_EXT_CTRL` | `u8 arg` |
 
 ### EnergyTrace & Profiling (`0x1D..0x25`, `0x30`, `0x31`, `0x41..0x44`, `0x46`)
@@ -118,12 +123,10 @@ Extracted directly from `XDS_DispatchCommand` (`0x0000685C`, `TBH` jump table at
 | `0x44` | `0x6E30` | `0x1C870` | `ET_SETUP_DIG_PARAMS` | `u8 count`, `u8 params[count]` | — |
 | `0x46` | `0x6E82` | `0x1C904` | `ET_HARDWARE_INFO` | — | `u32le hw_type` (`2`=HDR), `u8 caps` (`0x07` in Std cfg, `0x02` in cfg 3/4) |
 
-### Target SPI / SWO Streaming (`SSI3` on `PQ0..PQ3`) & Misc
+### Target SPI / SWO Streaming (`SSI3` on `PQ0..PQ3`)
 
 | Opcode | Case Addr | Callee | Name | Request Args | Response Data |
 |---|---|---|---|---|---|
-| `0x50` | `0x71C0` | `0x18C1C` | `SWO_UART_START` | `u8 cfg` | — |
-| `0x51` | `0x71CE` | `0x18C38` | `SWO_UART_STOP` | `u8 cfg` | — |
 | `0x56` | `0x71F0` | `0x1858C` | `SSI3_STREAM_START` | `u8 mode`, `u8 div` | — (enables `SSI3` on `PQ0..PQ3`, sets `0x20029128=1`) |
 | `0x57` | `0x71FA` | `0x186DC` | `SSI3_STREAM_STOP` | — | — |
 | `0x58` | `0x7200` | `0x18B04` | `SSI3_WRITE` | `u8 a0`, `u8 a1`, `u8 data[len-3]` | — |
@@ -137,13 +140,18 @@ Extracted directly from `XDS_DispatchCommand` (`0x0000685C`, `TBH` jump table at
 |---|---|---|
 | `0x00000000` | `0` | Success (`OK`) |
 | `0xFFFFFFFF` | `-1` | Generic failure (e.g., external ET pod not detected on `hw=0x21` @ `0x00020142`) |
-| `0xFFFFFF86` | `-122` | Invalid parameter (`XDS_SET_TRST` with arg >= 2 @ `0x0000DE72`) |
+| `0xFFFFFF86` | `-122` | Invalid parameter / unsupported opcode (`XDS_SET_TRST` with arg >= 2 @ `0x0000DE72`) |
+| `0xFFFFFD9B` | `-613` | SWD `WAIT` retry timeout (auto-clears `DP.ABORT = 0x1F`) |
+| `0xFFFFFD9A` | `-614` | SWD `FAULT` response (CMAPI auto-clears `DP.ABORT = 0x1E` @ `0x00016C28`) |
+| `0xFFFFFD99` | `-615` | SWD protocol error (invalid ACK / target unresponsive) |
+| `0xFFFFFD98` | `-616` | SWD read data parity error |
 | `0xFFFFFD80` | `-640` | Unsupported EnergyTrace hardware / invalid sample rate (`0x0001CA78`, `0x0001FE6E`, `0x0002013E`) |
 | `0xFFFFFD7C` | `-644` | EnergyTrace not initialized / vtable is NULL (`ET_Start`/`ET_Stop` after `ET_Cleanup` @ `0x0001CAB4`) |
 | `0xFFFFFD77` | `-649` | DCDC MCU version mismatch (`0x00020148`: `~0x288`) |
 | `0xFFFFFD62` | `-670` | Hardware board does not support EnergyTrace (`ET_HardwareInfo` @ `0x0001C94E`) |
 | `0xFFFFFD61` | `-671` | EnergyTrace unavailable in Drag-n-Drop config (`0xAA550002` @ `0x0001C952`) |
 | `0xFFFFFC16` | `-1002` | Invalid debug protocol mode for ADIv6 command (`0x00007450`, `0x00007490`) |
+| `0xFFFFFB8B` | `-1141` | `SEC_AP` SACI mailbox poll timeout after 50,000 retries (`0x00018B84`) |
 
 ---
 

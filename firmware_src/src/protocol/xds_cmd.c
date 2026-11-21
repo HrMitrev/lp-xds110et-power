@@ -1,17 +1,13 @@
 /*
- * xds_cmd.c - XDS110 Bulk Command Protocol framing and core opcode handlers.
+ * xds_cmd.c - XDS110 Bulk Command Protocol (0x2A framing) and opcode dispatcher.
  *
- * Implements Phase 1B core control commands:
- *   0x00 XDS_ECHO       - Echo test payload
- *   0x01 XDS_CONNECT    - Open debug session
- *   0x02 XDS_DISCONNECT - Close debug / EnergyTrace session
- *   0x03 XDS_VERSION    - Firmware version (4 B) + HW ID (u16le)
- *   0x08 XDS_GET_POWER  - Target supply voltage (3300 mV)
- *   0x0E XDS_SET_SRST   - Assert (0) / deassert (1) target nSRST on PA6
- *   0x26 XDS_ENTER_DFU  - Tear down USB and jump to TI Flash DFU bootloader
- *   0x28 XDS_CONNECT_ET - Open EnergyTrace session
- *   0x4A XDS_PING       - Session keep-alive
- * plus Bulk 1 OUT -> IN byte-reversal loopback (matching firmware 0x00004DBC).
+ * Serves Interface 2 (Bulk OUT 0x02 / Bulk IN 0x83):
+ *   - Core session, probe version/power, nSRST, keep-alive, and DFU entry
+ *   - EnergyTrace HDR 256 kS/s configuration, calibration, and streaming control
+ *   - Target Aux GPIOs (0x29 / 0x2A) and probe-identify LED blink
+ *   - Native XDS110 SWD for OpenOCD (`interface/xds110.cfg`, 0x3A) and TI
+ *     UniFlash `DSLite` (CMAPI 0x0F..0x18 / 0x3D..0x3E / 0x5A + SACI 0x50..0x51)
+ * plus Bulk 1 OUT -> IN byte-reversal loopback when EnergyTrace is idle.
  */
 
 #include "xds_cmd.h"
@@ -242,12 +238,9 @@ static void xds_dispatch_frame(uint8_t opcode, const uint8_t *args, uint16_t arg
         err = xds_swd_disconnect();
         break;
 
-    case XDS_CMD_SWD_CLEAR_ERRORS:
-        err = xds_swd_clear_errors();
-        break;
-
-    case XDS_CMD_SWD_DORMANT_WAKE:
-        err = xds_swd_dormant_wake();
+    case XDS_CMD_SWO_ROUTE_ENABLE:
+    case XDS_CMD_SWO_ROUTE_DISABLE:
+        /* TI XDS110 SWO/UART routing toggles; accepted as no-ops on LP-XDS110ET */
         break;
 
     case XDS_CMD_ET_HWINFO: {

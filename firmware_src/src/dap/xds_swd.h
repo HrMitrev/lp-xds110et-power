@@ -44,13 +44,7 @@ int32_t xds_swd_connect(void);
 /* Switch target out of SWD mode and tri-state debug pins (opcode 0x18) */
 int32_t xds_swd_disconnect(void);
 
-/* Clear sticky SW-DP errors via DP ABORT write (opcode 0x19) */
-int32_t xds_swd_clear_errors(void);
-
-/* Execute ARM ADIv5.2 Dormant-to-SWD selection alert wake sequence (opcode 0x1A) */
-int32_t xds_swd_dormant_wake(void);
-
-/* CMAPI lifecycle & discrete register / memory access (opcodes 0x0F..0x16, 0x5A) */
+/* CMAPI lifecycle & discrete register / memory access (opcodes 0x0F..0x16, 0x3D..0x3E, 0x5A) */
 int32_t xds_swd_cmapi_connect(uint32_t *out_idcode);
 int32_t xds_swd_cmapi_disconnect(void);
 int32_t xds_swd_cmapi_acquire(void);

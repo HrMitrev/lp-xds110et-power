@@ -41,8 +41,8 @@
 #define XDS_CMD_CMAPI_REG_WRITE    0x16U
 #define XDS_CMD_SWD_CONNECT        0x17U
 #define XDS_CMD_SWD_DISCONNECT     0x18U
-#define XDS_CMD_SWD_CLEAR_ERRORS   0x19U
-#define XDS_CMD_SWD_DORMANT_WAKE   0x1AU
+#define XDS_CMD_SWO_ROUTE_ENABLE   0x19U
+#define XDS_CMD_SWO_ROUTE_DISABLE  0x1AU
 #define XDS_CMD_ET_SETUP           0x1DU
 #define XDS_CMD_ET_CAL             0x1EU
 #define XDS_CMD_ET_START           0x1FU

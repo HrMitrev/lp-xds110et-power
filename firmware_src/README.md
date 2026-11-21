@@ -103,6 +103,11 @@ openocd -f interface/cmsis-dap.cfg -c "transport select swd" -f target/stm32g0x.
 # OpenOCD via native XDS110 driver (drop-in for existing XDS110 scripts)
 openocd -f interface/xds110.cfg -c "transport select swd" -f target/stm32g0x.cfg
 
+# TI UniFlash DSLite (e.g. CC2340R5 with SEC_AP SACI DebugPassword)
+/opt/ti/uniflash/deskdb/content/TICloudAgent/linux/ccs_base/DebugServer/bin/DSLite noConnectFlash \
+  --config cc2340r5.ccxml --setting "DebugPassword=Open Sesame!" \
+  --setting "FlashEraseSetting=Chip Erase" --flash --verify --run image.hex
+
 # probe-rs / pyOCD (auto-detects CMSIS-DAP v2 WinUSB)
 probe-rs info --speed 2000
 pyocd list
